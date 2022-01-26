@@ -1,0 +1,162 @@
+---
+title: "ibutton data"
+author: "Alyssa-Lois Gehman"
+date: "2/16/2018"
+output: html_document
+---
+
+packages and requirements
+
+```{r}
+library(plyr)
+library(dplyr)
+library(lattice)
+library(readr)
+library(MuMIn)
+library(tidyr)
+
+#set working directory so that all files are saved to one location
+setwd("~/Dropbox/UBC projects/Hakai/ibutton Hakai temp data 2017")
+
+```
+
+*How to prepare ibutton files for below processing*
+
+1. Graph & look for outliers
+2. Filter out unreasonably extreme values
+3. Remove poor data days/times as identified by field logs, etc.
+4. Match date-time to tide based on logger tidal height--usually as 0 for immersed & 1 for emersed. Using NOAA or Environment Canada observed if available and predictions if not. "Trim" questionable times when water level transitioning if it's important to separate air and water temps.
+    canadian tide site:
+        http://tides.gc.ca/eng/data/predictions/2017
+        
+    code for new column labeled 'in.water'    
+        0= immersed - in water
+        1= emersed - out of water
+        2= transition
+        
+5. Remove the ibutton metadata from the top of the file, resave with a new name in a single folder
+    change column label for date to 'date.time'
+    For the below code to run you need the column labels to read:
+            date.time = col_character(),
+            Unit = col_character(),
+            Value = col_double(),
+            `in.water` = col_integer()
+6. Place all processed files into a single folder
+
+*Output of below code*
+Three files with these variables:
+      avgair= the average air temp (not suggested to be used for analysis - just as a reference)
+      maxair=the absolute max air temp (could be used for analysis but generally this could be influenced by outliers)
+      sdair=the standard deviation for variation in air temperature experienced
+      air90th= the 90th quantile of air temperature experienced
+      air99th=the 99th quantile of air temperature experienced (a better max temperature estimate)
+      air10th=the 10th quantile of air temperature experienced
+      
+      avgwater= the average water temp (not suggested to be used for analysis - just as a reference)
+      maxwater=the absolute max water temp (could be used for analysis but generally this could be influenced by outliers)
+      sdwater=the standard deviation for variation in water temperature experienced
+      water90th= the 90th quantile of water temperature experienced
+      water99th=the 99th quantile of water temperature experienced (a better max temperature estimate)
+      water10th=the 10th quantile of water temperature experienced
+
+```{r ibutton dataset creation}
+#remove all lists
+rm(list=ls(all=TRUE)) 
+
+#reads all the files in a single folder that have a .csv extension (change so that it goes to your files)
+fileNames <- Sys.glob("~/Dropbox/UBC projects/Hakai/ibutton Hakai temp data 2017/processed ibutton data/ibuttoncsvfiles/*.csv")
+
+#creates a list of the file names so that you can label them appropriately below (change so that it goes to your files)
+filename<-list.files(path="~/Dropbox/UBC projects/Hakai/ibutton Hakai temp data 2017/processed ibutton data/ibuttoncsvfiles", pattern="csv")
+
+##create empty vectors
+f.air=NULL
+f.water=NULL
+airtemp=NULL
+watertemp=NULL
+
+# we'll be leaving the original files unaltered but using their data to create new files:
+for(i in 1:37){
+  sample <- read.csv(fileNames[i],
+    header = TRUE)
+  
+  #seperate file by water and air
+  f.air<-sample %>% filter(in.water=="1")
+  f.water<-sample %>% filter(in.water=="0")
+  
+  ## creating columns to label sites and replicates based off our file name extension: 'BSP.1 iButton Data.csv', or "site.plot iButton Data.csv"
+  
+  #a column the length of water or air data that names which file the data came from
+  fileair<-rep(filename[i],length(f.air[,1]))
+  filewater<-rep(filename[i],length(f.water[,1]))
+  
+  #pull out station (col1) and plot number (col2)
+  sair1<-unlist(lapply(strsplit(as.character(fileair), " "),function(z) z[1]))
+  swater1<-unlist(lapply(strsplit(as.character(filewater), " "),function(z) z[1]))
+  
+  sair2<-strsplit(as.character(sair1), "[.]")
+  siteair<-do.call(rbind, sair2)
+  
+  swater2<-strsplit(as.character(swater1), "[.]")
+  sitewater<-do.call(rbind, swater2)
+  
+  #combine site label with ibutton data
+  f2.air<-cbind(siteair, f.air)  
+  f2.water<-cbind(sitewater, f.water)
+  
+  #stack the sites in rows
+  airtemp<-rbind(airtemp, f2.air)
+  watertemp<-rbind(watertemp, f2.water)
+  }
+
+#check out the files to make sure that the labeling is done correctly
+View(airtemp)
+View(watertemp)
+
+#####sumarize by site
+
+## Grouped by site
+sum_air_site<-airtemp %>%
+            group_by(airtemp[,1]) %>%
+                summarise(avgair=mean(Value), maxair=max(Value), sdair=sd(Value), air90th=quantile(Value, 0.90), air99th=quantile(Value, 0.99), air10th=quantile(Value, 0.10))
+
+sum_water_site<-watertemp %>%
+                  group_by(watertemp[,1]) %>%
+                    summarise(avgwater=mean(Value), maxwater=max(Value), sdwater=sd(Value),water90th=quantile(Value, 0.90), water99th=quantile(Value, 0.99), water10th=quantile(Value, 0.10))
+
+sumbysite<-cbind(sum_air_site,sum_water_site[,2:4])
+##combine and write summary file to csv
+#write.csv(sumbysite, "temp_airwater_bysite_5Mar18.csv")
+
+###### summarize by site and plot
+#grouped by site and by plot
+sum_air_plot<-airtemp %>%
+              group_by(airtemp[,1], airtemp[,2]) %>%
+                    summarise(avgair=mean(Value), maxair=max(Value), sdair=sd(Value), air90th=quantile(Value, 0.90), air99th=quantile(Value, 0.99), air10th=quantile(Value, 0.10))
+#write summary to csv
+#write.csv(sum_air_plot, "temp_air_byplot_5Mar18.csv")
+
+
+sum_water_plot<-watertemp %>%
+              group_by(watertemp[,1], watertemp[,2]) %>%
+                  summarise(avgwater=mean(Value), maxwater=max(Value), sdwater=sd(Value), water90th=quantile(Value, 0.90), water99th=quantile(Value, 0.99), water10th=quantile(Value, 0.10))
+#write summary to csv
+#write.csv(sum_water_plot, "temp_water_byplot_5Mar18.csv")
+
+
+## plots of summary to evaluate for outliers 
+
+xyplot(air99th~`airtemp[, 1]`, group=`airtemp[, 1]`, data=sum_air_plot, pch=16, jitter.x=TRUE)
+xyplot(air90th~`airtemp[, 1]`, data=sum_air_plot, group=`airtemp[, 1]`, pch=16, jitter.x=TRUE)
+xyplot(air10th~`airtemp[, 1]`, group=`airtemp[, 1]`, data=sum_air_plot, pch=16, jitter.x=TRUE)
+xyplot(sdair~`airtemp[, 1]`, group=`airtemp[, 1]`, data=sum_air_plot, pch=16, jitter.x=TRUE)
+
+
+xyplot(water99th~`watertemp[, 1]`, group=`watertemp[, 1]`, data=sum_water_plot, pch=16, jitter.x=TRUE)
+xyplot(water90th~`watertemp[, 1]`, group=`watertemp[, 1]`, data=sum_water_plot, pch=16, jitter.x=TRUE)
+xyplot(water10th~`watertemp[, 1]`, group=`watertemp[, 1]`, data=sum_water_plot, pch=16, jitter.x=TRUE)
+xyplot(sdwater~`watertemp[, 1]`, group=`watertemp[, 1]`, data=sum_water_plot, pch=16, jitter.x=TRUE)
+
+
+```
+
