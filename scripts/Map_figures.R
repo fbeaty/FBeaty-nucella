@@ -61,10 +61,6 @@ label_bc <- st_sfc(st_point(c(-124, 53)), crs = 4326)
 label_bc_trans <-st_transform(label_bc, crs = target_crs)
 label_bc_trans_coord <- st_coordinates(label_bc_trans)
 
-#label_nan <- st_sfc(st_point(c(-123.95, 49.1)), crs = 4326)
-#label_nan_trans <-st_transform(label_nan, crs = target_crs)
-#label_nan_trans_coord <- st_coordinates(label_nan_trans)
-
 #Visualize the data ----
 full <- ggplot() +
   geom_sf(data = df_transformed, color = "black", fill = "gray94") +
@@ -134,7 +130,7 @@ combined <- plot_grid(full, insets, nrow = 1, rel_widths = c(2,1),
                         align = "v")
 
 #It takes about 35 seconds to draw this figure
-ggsave(combined, file = "plots/combined.pdf")
+ggsave(combined, file = "plots/combined.pdf", width = 9, height = 8, dpi = 300)
 
 #There is still some awkward white space in this figure, but I have spent too long on figuring it out so Im moving on!
 
@@ -142,8 +138,7 @@ ggsave(combined, file = "plots/combined.pdf")
 rm(full, insets, combined, calvert, df, df_2, df_2_transformed, df_transformed,
    disp_win_coord_cal, disp_win_coord_nan, disp_win_coord_reg, disp_win_trans_cal,
    disp_win_trans_nan, disp_win_trans_reg, disp_win_wgs84_cal, disp_win_wgs84_nan,
-   disp_win_wgs84_reg, label_cal, label_cal_trans, label_cal_trans_coord, target_crs,
-   label_nan, label_nan_trans, label_nan_trans_coord, nanaimo, sites, sites_transformed,
+   disp_win_wgs84_reg, nanaimo, sites, sites_transformed,
    box_cal, box_cal_coords, box_cal_win, box_nan, box_nan_coords, box_nan_win, 
    label_bc, label_bc_trans, label_bc_trans_coord)
 
