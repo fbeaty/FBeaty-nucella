@@ -15,7 +15,7 @@ rm(pkgs)
 #which were programmed to start at 2000). For Cedar and Heron the unaltered files are in the 'Original> Combined>Heron or Cedar folders.
 
 DF_K1 <- data.frame()	
-files <- list.files(path="data/ibutton data/Cleaned/Combined/Kwak_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/ibutton data/Cleaned/Combined/Kwak_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   Kwak_1<- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -38,7 +38,7 @@ DF_K1 <- DF_K1 %>%
 
 #Now do the same code with the Pruth data sets from the first time point
 DF_P1 <- data.frame()	
-files_P1 <- list.files(path="data/ibutton data/Cleaned/Combined/Pruth_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files_P1 <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/ibutton data/Cleaned/Combined/Pruth_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files_P1)) {	
   Pruth_1<- read.csv(as.character(files_P1[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -61,7 +61,7 @@ DF_P1 <- DF_P1 %>%
 #Load & clean ibutton data from Heron and Cedar (at Calvert)
 
 DF_H1 <- data.frame()	
-files_H1 <- list.files(path="data/ibutton data/Original/Combined/Heron", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files_H1 <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/ibutton data/Original/Combined/Heron", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files_H1)) {	
   Heron_1<- read.csv(as.character(files_H1[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 14)	
@@ -86,7 +86,7 @@ DF_H1 <- DF_H1 %>%
 #Now with Cedar! 
 DF_C1 <- data.frame()	
 
-files_C1 <- list.files(path="data/ibutton data/Original/Combined/Cedar", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files_C1 <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/ibutton data/Original/Combined/Cedar", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files_C1)) {	
   Cedar_1<- read.csv(as.character(files_C1[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 14)	
@@ -120,3 +120,6 @@ all_df <- rbind(nanaimo_df, calvert_df)
 #Export this to csv
 #write.csv(all_df, "cleaned_iButtons_2019.csv")
 
+#Remove unnecessary objects
+rm(calvert_df, Cedar_1, DF_C1, DF_H1, DF_K1, DF_P1, Heron_1, Kwak_1, nanaimo_df, Pruth_1,
+   dates_excl, files, files_C1, files_H1, files_P1, i)
