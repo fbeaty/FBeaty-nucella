@@ -4,7 +4,7 @@
 #Last updated by FB Jan 2022
 
 #Load packages----
-pkgs <- c("plyr", "dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate")
+pkgs <- c("plyr", "dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -75,10 +75,10 @@ DF_H1<- DF_H1 %>%
   setNames(., c("DT" , "Value" , "Temp" , "Date" , "SP"))
 
 #delete any days when the ibuttons were recording in the lab. For Heron remove everything prior to 
-#2019-04-10 and anything after 2019-08-12 
+#2019-04-10, 2019-06-17 (when I switched the sampling frequency) and anything after 2019-08-12 
 dates_excl <- c("2019-04-04", "2019-04-05", "2019-04-06", "2019-04-07", "2019-04-08", "2019-04-09", 
-                "2019-08-13", "2019-08-14", "2019-08-15", "2019-08-16", "2019-08-17", "2019-08-18",
-                "2019-08-19", "2019-08-20", "2019-08-21", "2019-08-22")
+                "2019-06-17", "2019-08-13", "2019-08-14", "2019-08-15", "2019-08-16", "2019-08-17", 
+                "2019-08-18", "2019-08-19", "2019-08-20", "2019-08-21", "2019-08-22")
 
 DF_H1 <- DF_H1 %>% 
   filter(Date != dates_excl)
@@ -121,18 +121,42 @@ all_df <- rbind(nanaimo_df, calvert_df) %>%
                              ifelse(SP == "Heron", 0.925,
                                     ifelse(SP == "Kwak", 1.30,
                                            ifelse(SP == "Pruth", 1.65, ""))))) %>% 
-  mutate(date.time = ymd_hms(paste(Date, Time)))
+  mutate(date.time = ymd_hms(paste(Date, Time))) %>% 
+  select(Date, Time, date.time, SP, Temp, TideHeight)
 
-
-#Export this to csv so that you can add in a column with the submerged/air manually 
-write.csv(all_df, "data/iButtons/cleaned_iButtons_2019.csv")
-
+#Remove objects/variables not needed from hereon----
 #Remove unnecessary objects
 rm(calvert_df, Cedar_1, DF_C1, DF_H1, DF_K1, DF_P1, Heron_1, Kwak_1, nanaimo_df, Pruth_1,
    dates_excl, files, files_C1, files_H1, files_P1, i)
 
 #Manually assign 0 or 1 based on whether the marker is emmersed or not based on tide data from----
-#insert website here
+#I exported a csv from April - Aug for Nanaimo from here: https://www.isdm-gdsi.gc.ca/isdm-gdsi/twl-mne/inventory-inventaire/sd-ds-eng.asp?no=7917&user=isdm-gdsi&region=PAC
+#First I manually deleted the top few rows
+nan_tides <- read_csv("data/iButtons/7917-01-APR-2019_slev.csv") %>% 
+  mutate(Obs_date = as.POSIXct(Obs_date)) %>% 
+  rename("SLEV" = "SLEV(metres)")
+
+#I want to combine the datasets by the time column but the all_df reports time at different minute increments than the 
+#exported csv reports time which reports on the 00 min. So, I rounded the minutes to the hour by replacing them with '00'
+
+all_df_nan <- all_df %>% 
+  filter(SP == "Cedar" | SP == "Heron") %>% 
+  mutate(time_corr = format(date.time, format = "%H")) %>% 
+  mutate(time_corr = paste0(time_corr, ":00:00")) %>% 
+  mutate(time_corr = format(time_corr, format = "%H:%M:%S")) %>% 
+  mutate(Obs_date = as.POSIXct(paste(Date, time_corr))) %>% 
+  select(SP, Temp, TideHeight, Date, Time, date.time, Obs_date)
+
+#Merge the nan_tides & all_df_nan & assign whether ibutton was:
+#immersed = 0, if SLEV > TideHeight
+#emersed = 1, if SLEV <= TideHeight
+all_df_nan_tides <- left_join(all_df_nan, nan_tides, by = "Obs_date") %>% 
+  mutate(in.water = ifelse(SLEV > TideHeight, 0, 1))
+
+#Export this to csv for further analysis
+write.csv(all_df_nan_tides, "data/iButtons/withtides/cleaned_iButtons_2019_nan_tides.csv")
+
+#Convert dataset into correct format & run Alyssa's code----
 #The code in this section is informed by Alyssa's code
 #For the below code to run you need the column labels to read:
 #  date.time = col_character(),
@@ -157,56 +181,40 @@ rm(calvert_df, Cedar_1, DF_C1, DF_H1, DF_K1, DF_P1, Heron_1, Kwak_1, nanaimo_df,
 #  water10th=the 10th quantile of water temperature experienced
 #load in new dataframe with tide levels assigned
 
-#The code is slightly unnecessary, given that I have already merged my csvs into one file,
-#but I'm going to see whether it will still work on my one csv! As it's easier than re-writing it all
-#for just one file
+#Revise this one you've combined the nan & cal sites into one tides df
 
-#remove all lists
-rm(list=ls(all=TRUE)) 
+air <- all_df_nan_tides %>% 
+  filter(in.water == 1)
 
-#reads all the files in a single folder that have a .csv extension (change so that it goes to your files)
-fileNames <- Sys.glob("data/iButtons/cleaned_iButtons_2019.csv")
+water <- all_df_nan_tides %>% 
+  filter(in.water == 0)
 
-#creates a list of the file names so that you can label them appropriately below (change so that it goes to your files)
-filename<-list.files(path="data/iButtons", pattern="csv")
+## Summarize values by site & dates
+sum_air <- air %>% 
+  group_by(SP, date.time) %>% 
+  summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10))
 
-##create empty vectors
-f.air=NULL
-f.water=NULL
-airtemp=NULL
-watertemp=NULL
+sum_water <- water %>% 
+  group_by(SP, date.time) %>% 
+  summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10))
 
+#Visualize
+xyplot(air99th~date.time, group=SP, data=sum_air, pch=16, jitter.x=TRUE)
+xyplot(air90th~date.time, group=SP, data=sum_air, pch=16, jitter.x=TRUE)
+xyplot(air10th~date.time, group=SP, data=sum_air, pch=16, jitter.x=TRUE)
+xyplot(sdair~date.time, group=SP, data=sum_air, pch=16, jitter.x=TRUE)
 
-# we'll be leaving the original files unaltered but using their data to create new files:
-for(i in 1:37){
-  sample <- read.csv(fileNames[i],
-                     header = TRUE)
-  
-  #seperate file by water and air
-  f.air<-sample %>% filter(in.water=="1")
-  f.water<-sample %>% filter(in.water=="0")
-  
-  ## creating columns to label sites and replicates based off our file name extension: 'BSP.1 iButton Data.csv', or "site.plot iButton Data.csv"
-  
-  #a column the length of water or air data that names which file the data came from
-  fileair<-rep(filename[i],length(f.air[,1]))
-  filewater<-rep(filename[i],length(f.water[,1]))
-  
-  #pull out station (col1) and plot number (col2)
-  sair1<-unlist(lapply(strsplit(as.character(fileair), " "),function(z) z[1]))
-  swater1<-unlist(lapply(strsplit(as.character(filewater), " "),function(z) z[1]))
-  
-  sair2<-strsplit(as.character(sair1), "[.]")
-  siteair<-do.call(rbind, sair2)
-  
-  swater2<-strsplit(as.character(swater1), "[.]")
-  sitewater<-do.call(rbind, swater2)
-  
-  #combine site label with ibutton data
-  f2.air<-cbind(siteair, f.air)  
-  f2.water<-cbind(sitewater, f.water)
-  
-  #stack the sites in rows
-  airtemp<-rbind(airtemp, f2.air)
-  watertemp<-rbind(watertemp, f2.water)
-}
+xyplot(air99th~date.time, group=SP, data=sum_water, pch=16, jitter.x=TRUE)
+xyplot(air90th~date.time, group=SP, data=sum_water, pch=16, jitter.x=TRUE)
+xyplot(air10th~date.time, group=SP, data=sum_water, pch=16, jitter.x=TRUE)
+xyplot(sdair~date.time, group=SP, data=sum_water, pch=16, jitter.x=TRUE)
+
+#Create final figures
+#Air: mean 
+ggplot(data = sum_air, aes(date.time, avgair, fill = SP)) + geom_point(aes(colour = SP), size = 1) +
+  geom_line(aes(colour = SP), size = 1) +
+  scale_colour_manual(values = c("palevioletred2", "plum2", "palegreen4", "darkseagreen2")) +
+  theme_bw() + labs(x = "Date, 2019", y = "Temp (Celsius)") +
+  facet_grid(. ~ SP) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
