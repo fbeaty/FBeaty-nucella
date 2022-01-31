@@ -30,117 +30,113 @@ df_2_transformed <- st_transform(df_2, 3005)
 sites_transformed <- st_transform(sites, 3005)
 
 #Set your regional, Calvert, and Nanaimo windows & label positions
-disp_win_wgs84_reg <- st_sfc(st_point(c(-132.2, 46.5)), st_point(c(-121, 55)),
-                             crs = 4326)
-disp_win_trans_reg <- st_transform(disp_win_wgs84_reg, crs = target_crs)
-disp_win_coord_reg <- st_coordinates(disp_win_trans_reg)
+disp_win <- st_sfc(st_point(c(-129, 47)), st_point(c(-122, 53)),
+                     crs = 4326)
+disp_win_trans <- st_transform(disp_win, crs = target_crs)
+disp_win_coords <- st_coordinates(disp_win_trans)
 
-disp_win_wgs84_cal <- st_sfc(st_point(c(-128.4, 51.05)), st_point(c(-127.6, 51.85)),
+disp_win_cal <- st_sfc(st_point(c(-128.4, 51.05)), st_point(c(-127.6, 51.85)),
                              crs = 4326)
-disp_win_trans_cal <- st_transform(disp_win_wgs84_cal, crs = target_crs)
+disp_win_trans_cal <- st_transform(disp_win_cal, crs = target_crs)
 disp_win_coord_cal <- st_coordinates(disp_win_trans_cal)
+box_cal_2 <- st_as_sf(disp_win_trans_cal, coords = "Value") %>% 
+  rename(geometry = x)
 
-disp_win_wgs84_nan <- st_sfc(st_point(c(-124.3, 48.8)), st_point(c(-123.5, 49.5)),
+disp_win_nan <- st_sfc(st_point(c(-124.3, 48.85)), st_point(c(-123.5, 49.55)),
                              crs = 4326)
-disp_win_trans_nan <- st_transform(disp_win_wgs84_nan, crs = target_crs)
+disp_win_trans_nan <- st_transform(disp_win_nan, crs = target_crs)
 disp_win_coord_nan <- st_coordinates(disp_win_trans_nan)
-
-box_cal_coords <- st_sfc(st_point(c(-128.4, 51.05)), st_point(c(-127.6, 51.85)),
-                  crs = 4326)
-box_cal_win <- st_transform(box_cal_coords, crs = target_crs)
-box_cal <- st_as_sf(box_cal_win, coords = "Value") %>% 
+box_nan <- st_as_sf(disp_win_trans_nan, coords = "Value") %>% 
   rename(geometry = x)
 
-box_nan_coords <- st_sfc(st_point(c(-124.3, 48.8)), st_point(c(-123.5, 49.5)),
-                         crs = 4326)
-box_nan_win <- st_transform(box_nan_coords, crs = target_crs)
-box_nan <- st_as_sf(box_nan_win, coords = "Value") %>% 
-  rename(geometry = x)
-
-label_bc <- st_sfc(st_point(c(-124, 53)), crs = 4326)
+label_bc <- st_sfc(st_point(c(-124.5, 51.75)), crs = 4326)
 label_bc_trans <-st_transform(label_bc, crs = target_crs)
 label_bc_trans_coord <- st_coordinates(label_bc_trans)
+
+label_cal <- st_sfc(st_point(c(-128.1, 51.3)), crs = 4326)
+label_cal_trans <-st_transform(label_cal, crs = target_crs)
+label_cal_trans_coord <- st_coordinates(label_cal_trans)
+
+label_nan <- st_sfc(st_point(c(-124.05, 49.38)), crs = 4326)
+label_nan_trans <-st_transform(label_nan, crs = target_crs)
+label_nan_trans_coord <- st_coordinates(label_nan_trans)
 
 #Visualize the data ----
 full <- ggplot() +
   geom_sf(data = df_transformed, color = "grey34", fill = "wheat") +
-  geom_sf(data = sites_transformed, color = "black") +
-  annotation_scale(location = "bl", width_hint = 0.5) +
+  annotation_scale(location = "bl", width_hint = 0.3) +
   annotation_north_arrow(location = "bl", which_north = "true", 
                          pad_x = unit(0.1, "in"), pad_y = unit(0.5, "in"),
                          style = north_arrow_fancy_orienteering) +
-  coord_sf(xlim = disp_win_coord_reg[,'X'], ylim = disp_win_coord_reg[,'Y'],
+  coord_sf(xlim = disp_win_2_coords[,'X'], ylim = disp_win_2_coords[,'Y'],
            expand = FALSE) +
   annotate(geom = "text", x = label_bc_trans_coord[,'X'], y = label_bc_trans_coord[,'Y'], 
-           label = "British Columbia", fontface = "bold", color = "grey34", size = 4) +
+           label = "British Columbia", fontface = "bold", color = "grey34", size = 5) +
   geom_rect(aes(xmin = st_bbox(box_cal)[[1]], ymin = st_bbox(box_cal)[[2]], 
                 xmax = st_bbox(box_cal)[[3]], ymax = st_bbox(box_cal)[[4]]), fill = NA, 
-            colour = "red", size = 0.6) +
+            colour = "skyblue", size = 1) +
   geom_rect(aes(xmin = st_bbox(box_nan)[[1]], ymin = st_bbox(box_nan)[[2]], 
                 xmax = st_bbox(box_nan)[[3]], ymax = st_bbox(box_nan)[[4]]), fill = NA,
-            colour = "red", size = 0.6) +
+            colour = "coral", size = 1) +
   labs(y = "", x = "") +
   theme(panel.background = element_rect(fill = "skyblue4",
                                         color = "skyblue4"),
-        panel.grid.major = element_line(size = 0.5, linetype = 'solid',
-                                        colour = "grey87"), 
-        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
-                                        colour = "grey87"),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         legend.position = "none") 
-
+  
 calvert <- ggplot() +
   geom_sf(data = df_2_transformed, color = "grey34", fill = "wheat") +
-  geom_sf(data = sites_transformed, aes(color = Region, size = 1)) +
-  scale_color_manual(values = c("skyblue", "black", "coral")) +
+  geom_sf(data = sites_transformed, aes(color = Type, size = 1)) +
+  scale_color_manual(values = c("skyblue", "black")) +
   annotation_scale(location = "bl", width_hint = 0.3) +
   coord_sf(xlim = disp_win_coord_cal[,'X'], ylim = disp_win_coord_cal[,'Y'],
            expand = FALSE) +
-  ggtitle("Calvert Island") +
-  theme(panel.background = element_rect(fill = "skyblue2",
-                                        color = "skyblue2"),
+  annotate(geom = "text", x = label_cal_trans_coord[,'X'], y = label_cal_trans_coord[,'Y'], 
+           label = "Calvert Island", fontface = "bold", color = "wheat", size = 5) +
+  labs(y = "", x = "") +
+  theme(panel.background = element_rect(fill = "skyblue4",
+                                        color = "skyblue4"),
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(),
-        plot.title = element_text(face = "bold", size = 12),
-        legend.position = "none")
-
-#it takes about 15-20 seconds to load the nanaimo & calvert figures b/c the spatial files are larger
+        legend.position = "none",
+        panel.border = element_rect(colour = "skyblue", fill=NA, size=3))
 
 nanaimo <- ggplot() +
-  geom_sf(data = df_2_transformed, color = "black", fill = "grey94") +
-  geom_sf(data = sites_transformed, aes(color = Region, size = 1)) +
-  scale_color_manual(values = c("skyblue", "black", "coral")) +
+  geom_sf(data = df_2_transformed, color = "grey34", fill = "wheat") +
+  geom_sf(data = sites_transformed, aes(color = Type, size = 1)) +
+  scale_color_manual(values = c("coral", "black")) +
   annotation_scale(location = "bl", width_hint = 0.3) +
   coord_sf(xlim = disp_win_coord_nan[,'X'], ylim = disp_win_coord_nan[,'Y'],
            expand = FALSE) +
-  ggtitle("Nanaimo") +
-  theme(panel.background = element_rect(fill = "skyblue2",
-                                        color = "skyblue2"),
+  annotate(geom = "text", x = label_nan_trans_coord[,'X'], y = label_nan_trans_coord[,'Y'], 
+           label = "Nanaimo", fontface = "bold", color = "wheat", size = 5) +
+  labs(y = "", x = "") +
+  theme(panel.background = element_rect(fill = "skyblue4",
+                                        color = "skyblue4"),
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(),
-        plot.title = element_text(face = "bold", size = 12),
-        legend.position = "none")
+        legend.position = "none",
+        plot.margin = unit(c(0,0,0,0), "cm"),
+        panel.border = element_rect(colour = "coral", fill=NA, size=3))
 
 #Combine plots into one figure & export ----
 #First create the insets
 #Note that I removed the axis ticks & grid lines for the insets, since those data are visualized in the big map
 insets <- plot_grid(calvert, nanaimo, nrow = 2, align = "hv", 
                     rel_widths = c(1,1))
-#it takes about 30 seconds to load this figure
 
 #Then combine with full
 combined <- plot_grid(full, insets, nrow = 1, rel_widths = c(2,1),
                         align = "hv")
-#It takes about 35 seconds to draw this figure
 
-ggsave(combined, file = "plots/maps/combined_map.pdf", width = 9, height = 8, dpi = 300)
 ggsave(full, file = "plots/maps/fullmap.pdf", width = 8, height = 8, dpi = 300)
+ggsave(calvert, file = "plots/maps/calvert.pdf", width = 2, height = 4, dpi = 300)
+ggsave(nanaimo, file = "plots/maps/nanaimo.pdf", width = 2, height = 4, dpi = 300)
 ggsave(insets, file = "plots/maps/inset_maps.pdf", width = 4, height = 8, dpi = 300)
+ggsave(combined, file = "plots/maps/combined_map.pdf", width = 9, height = 8, dpi = 300)
 
-#There is still some awkward white space in this figure, but I have spent too long on figuring it out so Im moving on!
-#I also think it could be worth changing either the colour of the sites or the boxes around them to match
-#whatever colour scheme I pick elsewhere
-#Also, perhaps worth adjusting the font size & labelling the lat & longs with N & W
-
+#Perhaps worth adjusting the font size & labelling the lat & longs with N & W
+#I decided to just combine the figures outside of R :) 
 
 #Remove old variables----
 rm(full, insets, combined, calvert, df, df_2, df_2_transformed, df_transformed,
