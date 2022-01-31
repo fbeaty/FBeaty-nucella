@@ -71,7 +71,7 @@ full <- ggplot() +
   coord_sf(xlim = disp_win_2_coords[,'X'], ylim = disp_win_2_coords[,'Y'],
            expand = FALSE) +
   annotate(geom = "text", x = label_bc_trans_coord[,'X'], y = label_bc_trans_coord[,'Y'], 
-           label = "British Columbia", fontface = "bold", color = "grey34", size = 5) +
+           label = "British Columbia", fontface = "bold", color = "grey34", size = 6) +
   geom_rect(aes(xmin = st_bbox(box_cal)[[1]], ymin = st_bbox(box_cal)[[2]], 
                 xmax = st_bbox(box_cal)[[3]], ymax = st_bbox(box_cal)[[4]]), fill = NA, 
             colour = "skyblue", size = 1) +
