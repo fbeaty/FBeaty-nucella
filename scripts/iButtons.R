@@ -153,33 +153,18 @@ all_df_nan <- all_df %>%
 all_df_nan_tides <- left_join(all_df_nan, nan_tides, by = "Obs_date") %>% 
   mutate(in.water = ifelse(SLEV > TideHeight, 0, 1))
 
+#Clip the dataset to date range of experiment:
+#Calvert = 2019-03-21 - 2019-08-04
+#Nanaimo = 2019-04-11 - 2019-08-12
+
+all_df_nan_tides <- all_df_nan_tides %>% 
+  filter(Date > "2019-04-11" & Date < "2019-08-12")
+
 #Export this to csv for further analysis
 write.csv(all_df_nan_tides, "data/iButtons/withtides/cleaned_iButtons_2019_nan_tides.csv")
 
-#Convert dataset into correct format & run Alyssa's code----
-#The code in this section is informed by Alyssa's code
-#For the below code to run you need the column labels to read:
-#  date.time = col_character(),
-#  Unit = col_character(),
-#  Value = col_double(),
-#  `in.water` = col_integer()
-
-#*Output of below code*
-#  Three files with these variables:
-#  avgair= the average air temp (not suggested to be used for analysis - just as a reference)
-#  maxair=the absolute max air temp (could be used for analysis but generally this could be influenced by outliers)
-#  sdair=the standard deviation for variation in air temperature experienced
-#  air90th= the 90th quantile of air temperature experienced
-#  air99th=the 99th quantile of air temperature experienced (a better max temperature estimate)
-#  air10th=the 10th quantile of air temperature experienced
-
-#  avgwater= the average water temp (not suggested to be used for analysis - just as a reference)
-#  maxwater=the absolute max water temp (could be used for analysis but generally this could be influenced by outliers)
-#  sdwater=the standard deviation for variation in water temperature experienced
-#  water90th= the 90th quantile of water temperature experienced
-#  water99th=the 99th quantile of water temperature experienced (a better max temperature estimate)
-#  water10th=the 10th quantile of water temperature experienced
-#load in new dataframe with tide levels assigned
+#Summarize iButton data ----
+#The code in this section is informed by Alyssa's code in the scripts folder
 
 #Revise this one you've combined the nan & cal sites into one tides df
 
@@ -191,30 +176,36 @@ water <- all_df_nan_tides %>%
 
 ## Summarize values by site & dates
 sum_air <- air %>% 
-  group_by(SP, date.time) %>% 
-  summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10))
+  group_by(SP, Date) %>% 
+  summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10)) %>% 
+  ungroup()
 
 sum_water <- water %>% 
-  group_by(SP, date.time) %>% 
-  summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10))
+  group_by(SP, Date) %>% 
+  summarise(avgwater=mean(Temp), maxwater=max(Temp), sdwater=sd(Temp), water90th=quantile(Temp, 0.90), water99th=quantile(Temp, 0.99), water10th=quantile(Temp, 0.10)) %>% 
+  ungroup()
 
-#Visualize
-xyplot(air99th~date.time, group=SP, data=sum_air, pch=16, jitter.x=TRUE)
-xyplot(air90th~date.time, group=SP, data=sum_air, pch=16, jitter.x=TRUE)
-xyplot(air10th~date.time, group=SP, data=sum_air, pch=16, jitter.x=TRUE)
-xyplot(sdair~date.time, group=SP, data=sum_air, pch=16, jitter.x=TRUE)
+#Visualize temps----
+#Water: 90th quantile
+#Sites together
+clumped <- ggplot(sum_water, aes(Date, water90th, fill = SP)) + 
+  geom_line (aes(colour = SP), size = 0.7) +
+  scale_colour_manual(values = c("red", "red4", "dodgerblue", "blue")) +
+  theme_bw() + labs(x = "Date", y = "90th percentile temperature (°C)") +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 
-xyplot(air99th~date.time, group=SP, data=sum_water, pch=16, jitter.x=TRUE)
-xyplot(air90th~date.time, group=SP, data=sum_water, pch=16, jitter.x=TRUE)
-xyplot(air10th~date.time, group=SP, data=sum_water, pch=16, jitter.x=TRUE)
-xyplot(sdair~date.time, group=SP, data=sum_water, pch=16, jitter.x=TRUE)
-
-#Create final figures
-#Air: mean 
-ggplot(data = sum_air, aes(date.time, avgair, fill = SP)) + geom_point(aes(colour = SP), size = 1) +
-  geom_line(aes(colour = SP), size = 1) +
-  scale_colour_manual(values = c("palevioletred2", "plum2", "palegreen4", "darkseagreen2")) +
-  theme_bw() + labs(x = "Date, 2019", y = "Temp (Celsius)") +
+#Sites faceted
+by_site <- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) + 
+  geom_line(aes(colour = SP), size = 0.7) +
+  scale_colour_manual(values = c("red", "red4")) +
+  theme_bw() + labs(x = "Date", y = "90th percentile temperature (°C)") +
   facet_grid(. ~ SP) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+ggsave(clumped, file = "plots/iButtons/90th_clumped.pdf", width = 9, height = 9, dpi = 300)
+ggsave(by_site, file = "plots/iButtons/90th_bysite.pdf", width = 9, height = 9, dpi = 300)
+
+#Remove all objects----
+rm(clumped, nan_tides, sum_air, sum_water, water, air, all_df, all_df_nan, all_df_nan_tides, by_site)

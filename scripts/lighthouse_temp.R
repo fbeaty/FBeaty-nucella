@@ -1,0 +1,58 @@
+#Visualizing the long-term temperature data at Calvert & Nanaimo
+#Data downloaded from https://open.canada.ca/data/en/dataset/719955f2-bf8e-44f7-bc26-6bd623e82884
+#Last edited Jan 2022
+
+#Load in necessary packages----
+install.packages("zoo")
+pkgs <- c("janitor", "dplyr", "tidyverse", "ggplot2", "zoo")
+lapply(pkgs, library, character.only = TRUE)
+rm(pkgs)
+
+#Load csvs & summarize temp data----
+#from Egg Island (closest lighthouse to Calvert) & Departure Bay (closest to Nanaimo sites)
+egg <- read.csv("data/lighthouse/Egg_Island_-_Daily_Sea_Surface_Temperature_and_Salinity_1970-2021.csv")
+departure <- read.csv("data/lighthouse/Departure_Bay_PBS_-_Daily_Sea_Surface_Temperature_and_Salinity_1914-2021.csv")
+
+#Clean dataset and filter for 2012-2020 data
+egg_1 <- egg[ , c(1,3)] %>% 
+  row_to_names(row_number = 1) %>% 
+  rename("date" = "DATE (YYYY-MM-DD)", "temp" = "TEMPERATURE ( C )") %>% 
+  mutate(date = ymd(date),
+         temp = as.numeric(temp),
+         station = "Egg Island",
+         year = year(date),
+         month = month(date)) %>% 
+  filter(date > "2012-01-01" & date < "2020-01-01", 
+         temp != 999.9) 
+
+departure_1 <- departure[ , c(1,3)] %>% 
+  row_to_names(row_number = 1) %>% 
+  rename("date" = "DATE (YYYY-MM-DD)", "temp" = "TEMPERATURE ( C )") %>% 
+  mutate(date = ymd(date),
+         temp = as.numeric(temp),
+         station = "Departure Bay",
+         year = year(date),
+         month = month(date)) %>% 
+  filter(date > "2012-01-01" & date < "2020-01-01", 
+         temp != 999.9) 
+
+#Combine datasets & summarize temps
+lighthouse <- rbind(egg_1, departure_1) %>% 
+  mutate(station = as.factor(station),
+         year = as.factor(year),
+         month = as.factor(month)) %>% 
+  group_by(station, year, month) %>% 
+  summarize(avgtemp = mean(temp), maxtemp = max(temp), sdtemp = sd(temp), temp90th = quantile(temp, 0.90)) %>% 
+  ungroup() %>% 
+  mutate(date = as.yearmon(paste(year, month), "%Y %m"))
+
+#Visualize the data----
+both <- ggplot(lighthouse, aes(date, temp90th, group = station)) + 
+  geom_line(aes(colour = station), size = 0.7) +
+  scale_colour_manual(values = c("coral", "skyblue")) +
+  theme_bw() + labs(x = "Year", y = "90th percentile temperature (°C)") +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+ggsave(both, file = "plots/lighthouse/both_lighthouse_stations.pdf", height = 5, width = 9, dpi = 300)
+

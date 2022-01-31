@@ -35,23 +35,23 @@ disp_win_wgs84_reg <- st_sfc(st_point(c(-132.2, 46.5)), st_point(c(-121, 55)),
 disp_win_trans_reg <- st_transform(disp_win_wgs84_reg, crs = target_crs)
 disp_win_coord_reg <- st_coordinates(disp_win_trans_reg)
 
-disp_win_wgs84_cal <- st_sfc(st_point(c(-128.3, 51.38)), st_point(c(-127.8, 51.8)),
+disp_win_wgs84_cal <- st_sfc(st_point(c(-128.4, 51.05)), st_point(c(-127.6, 51.85)),
                              crs = 4326)
 disp_win_trans_cal <- st_transform(disp_win_wgs84_cal, crs = target_crs)
 disp_win_coord_cal <- st_coordinates(disp_win_trans_cal)
 
-disp_win_wgs84_nan <- st_sfc(st_point(c(-124.05, 48.88)), st_point(c(-123.55, 49.3)),
+disp_win_wgs84_nan <- st_sfc(st_point(c(-124.3, 48.8)), st_point(c(-123.5, 49.5)),
                              crs = 4326)
 disp_win_trans_nan <- st_transform(disp_win_wgs84_nan, crs = target_crs)
 disp_win_coord_nan <- st_coordinates(disp_win_trans_nan)
 
-box_cal_coords <- st_sfc(st_point(c(-128.5, 51.2)), st_point(c(-127.5, 52)),
+box_cal_coords <- st_sfc(st_point(c(-128.4, 51.05)), st_point(c(-127.6, 51.85)),
                   crs = 4326)
 box_cal_win <- st_transform(box_cal_coords, crs = target_crs)
 box_cal <- st_as_sf(box_cal_win, coords = "Value") %>% 
   rename(geometry = x)
 
-box_nan_coords <- st_sfc(st_point(c(-124.20, 48.7)), st_point(c(-123.3, 49.4)),
+box_nan_coords <- st_sfc(st_point(c(-124.3, 48.8)), st_point(c(-123.5, 49.5)),
                          crs = 4326)
 box_nan_win <- st_transform(box_nan_coords, crs = target_crs)
 box_nan <- st_as_sf(box_nan_win, coords = "Value") %>% 
@@ -63,16 +63,16 @@ label_bc_trans_coord <- st_coordinates(label_bc_trans)
 
 #Visualize the data ----
 full <- ggplot() +
-  geom_sf(data = df_transformed, color = "black", fill = "gray94") +
-  geom_sf(data = sites_transformed, aes (color = "coral")) +
+  geom_sf(data = df_transformed, color = "grey34", fill = "wheat") +
+  geom_sf(data = sites_transformed, color = "black") +
   annotation_scale(location = "bl", width_hint = 0.5) +
   annotation_north_arrow(location = "bl", which_north = "true", 
-                         pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+                         pad_x = unit(0.1, "in"), pad_y = unit(0.5, "in"),
                          style = north_arrow_fancy_orienteering) +
   coord_sf(xlim = disp_win_coord_reg[,'X'], ylim = disp_win_coord_reg[,'Y'],
            expand = FALSE) +
   annotate(geom = "text", x = label_bc_trans_coord[,'X'], y = label_bc_trans_coord[,'Y'], 
-           label = "British Columbia", fontface = "bold", color = "black", size = 4) +
+           label = "British Columbia", fontface = "bold", color = "grey34", size = 4) +
   geom_rect(aes(xmin = st_bbox(box_cal)[[1]], ymin = st_bbox(box_cal)[[2]], 
                 xmax = st_bbox(box_cal)[[3]], ymax = st_bbox(box_cal)[[4]]), fill = NA, 
             colour = "red", size = 0.6) +
@@ -80,8 +80,8 @@ full <- ggplot() +
                 xmax = st_bbox(box_nan)[[3]], ymax = st_bbox(box_nan)[[4]]), fill = NA,
             colour = "red", size = 0.6) +
   labs(y = "", x = "") +
-  theme(panel.background = element_rect(fill = "skyblue2",
-                                        color = "skyblue2"),
+  theme(panel.background = element_rect(fill = "skyblue4",
+                                        color = "skyblue4"),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid',
                                         colour = "grey87"), 
         panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
@@ -89,8 +89,9 @@ full <- ggplot() +
         legend.position = "none") 
 
 calvert <- ggplot() +
-  geom_sf(data = df_2_transformed, color = "black", fill = "grey94") +
-  geom_sf(data = sites_transformed, aes(colour = "coral", size = 1)) +
+  geom_sf(data = df_2_transformed, color = "grey34", fill = "wheat") +
+  geom_sf(data = sites_transformed, aes(color = Region, size = 1)) +
+  scale_color_manual(values = c("skyblue", "black", "coral")) +
   annotation_scale(location = "bl", width_hint = 0.3) +
   coord_sf(xlim = disp_win_coord_cal[,'X'], ylim = disp_win_coord_cal[,'Y'],
            expand = FALSE) +
@@ -106,7 +107,8 @@ calvert <- ggplot() +
 
 nanaimo <- ggplot() +
   geom_sf(data = df_2_transformed, color = "black", fill = "grey94") +
-  geom_sf(data = sites_transformed, aes(colour = "coral", size = 1)) +
+  geom_sf(data = sites_transformed, aes(color = Region, size = 1)) +
+  scale_color_manual(values = c("skyblue", "black", "coral")) +
   annotation_scale(location = "bl", width_hint = 0.3) +
   coord_sf(xlim = disp_win_coord_nan[,'X'], ylim = disp_win_coord_nan[,'Y'],
            expand = FALSE) +
@@ -127,24 +129,24 @@ insets <- plot_grid(calvert, nanaimo, nrow = 2, align = "hv",
 
 #Then combine with full
 combined <- plot_grid(full, insets, nrow = 1, rel_widths = c(2,1),
-                        align = "v")
-
+                        align = "hv")
 #It takes about 35 seconds to draw this figure
-ggsave(combined, file = "plots/combined.pdf", width = 9, height = 8, dpi = 300)
+
+ggsave(combined, file = "plots/maps/combined_map.pdf", width = 9, height = 8, dpi = 300)
+ggsave(full, file = "plots/maps/fullmap.pdf", width = 8, height = 8, dpi = 300)
+ggsave(insets, file = "plots/maps/inset_maps.pdf", width = 4, height = 8, dpi = 300)
 
 #There is still some awkward white space in this figure, but I have spent too long on figuring it out so Im moving on!
+#I also think it could be worth changing either the colour of the sites or the boxes around them to match
+#whatever colour scheme I pick elsewhere
+#Also, perhaps worth adjusting the font size & labelling the lat & longs with N & W
 
-#Remove old variables
+
+#Remove old variables----
 rm(full, insets, combined, calvert, df, df_2, df_2_transformed, df_transformed,
    disp_win_coord_cal, disp_win_coord_nan, disp_win_coord_reg, disp_win_trans_cal,
    disp_win_trans_nan, disp_win_trans_reg, disp_win_wgs84_cal, disp_win_wgs84_nan,
    disp_win_wgs84_reg, nanaimo, sites, sites_transformed,
    box_cal, box_cal_coords, box_cal_win, box_nan, box_nan_coords, box_nan_win, 
-   label_bc, label_bc_trans, label_bc_trans_coord)
+   label_bc, label_bc_trans, label_bc_trans_coord, target_crs)
 
-#Extra resouces for sf----
-#Run tutorial from https://r-spatial.org/r/2018/10/25/ggplot2-sf.html----
-#https://r-spatial.github.io/sf/articles/sf1.html
-
-#This one is a good example for combining a csv w/ BC datasets
-#https://cran.r-project.org/web/packages/bcmaps/vignettes/add_points.html
