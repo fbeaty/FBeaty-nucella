@@ -39,7 +39,7 @@ disp_win_cal <- st_sfc(st_point(c(-128.4, 51.05)), st_point(c(-127.6, 51.85)),
                              crs = 4326)
 disp_win_trans_cal <- st_transform(disp_win_cal, crs = target_crs)
 disp_win_coord_cal <- st_coordinates(disp_win_trans_cal)
-box_cal_2 <- st_as_sf(disp_win_trans_cal, coords = "Value") %>% 
+box_cal <- st_as_sf(disp_win_trans_cal, coords = "Value") %>% 
   rename(geometry = x)
 
 disp_win_nan <- st_sfc(st_point(c(-124.3, 48.85)), st_point(c(-123.5, 49.55)),
@@ -64,24 +64,27 @@ label_nan_trans_coord <- st_coordinates(label_nan_trans)
 #Visualize the data ----
 full <- ggplot() +
   geom_sf(data = df_transformed, color = "grey34", fill = "wheat") +
+  geom_sf(data = sites_transformed, aes(color = Region)) +
+  scale_color_manual(values = c("skyblue", "black", "coral")) +
   annotation_scale(location = "bl", width_hint = 0.3) +
   annotation_north_arrow(location = "bl", which_north = "true", 
                          pad_x = unit(0.1, "in"), pad_y = unit(0.5, "in"),
                          style = north_arrow_fancy_orienteering) +
-  coord_sf(xlim = disp_win_2_coords[,'X'], ylim = disp_win_2_coords[,'Y'],
+  coord_sf(xlim = disp_win_coords[,'X'], ylim = disp_win_coords[,'Y'],
            expand = FALSE) +
   annotate(geom = "text", x = label_bc_trans_coord[,'X'], y = label_bc_trans_coord[,'Y'], 
-           label = "British Columbia", fontface = "bold", color = "grey34", size = 6) +
+           label = "British Columbia", fontface = "bold", color = "grey34", size = 8) +
   geom_rect(aes(xmin = st_bbox(box_cal)[[1]], ymin = st_bbox(box_cal)[[2]], 
                 xmax = st_bbox(box_cal)[[3]], ymax = st_bbox(box_cal)[[4]]), fill = NA, 
-            colour = "skyblue", size = 1) +
+            colour = "skyblue", size = 1.5) +
   geom_rect(aes(xmin = st_bbox(box_nan)[[1]], ymin = st_bbox(box_nan)[[2]], 
                 xmax = st_bbox(box_nan)[[3]], ymax = st_bbox(box_nan)[[4]]), fill = NA,
-            colour = "coral", size = 1) +
+            colour = "coral", size = 1.5) +
   labs(y = "", x = "") +
   theme(panel.background = element_rect(fill = "skyblue4",
                                         color = "skyblue4"),
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.text.x = element_text(size = 14), axis.text.y = element_text(size = 14),
         legend.position = "none") 
   
 calvert <- ggplot() +
@@ -99,7 +102,7 @@ calvert <- ggplot() +
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(),
         legend.position = "none",
-        panel.border = element_rect(colour = "skyblue", fill=NA, size=3))
+        panel.border = element_rect(colour = "skyblue", fill=NA, size=4))
 
 nanaimo <- ggplot() +
   geom_sf(data = df_2_transformed, color = "grey34", fill = "wheat") +
@@ -117,7 +120,7 @@ nanaimo <- ggplot() +
         axis.text = element_blank(), axis.ticks = element_blank(),
         legend.position = "none",
         plot.margin = unit(c(0,0,0,0), "cm"),
-        panel.border = element_rect(colour = "coral", fill=NA, size=3))
+        panel.border = element_rect(colour = "coral", fill=NA, size=4))
 
 #Combine plots into one figure & export ----
 #First create the insets
@@ -129,11 +132,11 @@ insets <- plot_grid(calvert, nanaimo, nrow = 2, align = "hv",
 combined <- plot_grid(full, insets, nrow = 1, rel_widths = c(2,1),
                         align = "hv")
 
-ggsave(full, file = "plots/maps/fullmap.pdf", width = 8, height = 8, dpi = 300)
+ggsave(full, file = "plots/maps/fullmap.pdf", width = 6, height = 8, dpi = 300)
 ggsave(calvert, file = "plots/maps/calvert.pdf", width = 2, height = 4, dpi = 300)
 ggsave(nanaimo, file = "plots/maps/nanaimo.pdf", width = 2, height = 4, dpi = 300)
 ggsave(insets, file = "plots/maps/inset_maps.pdf", width = 4, height = 8, dpi = 300)
-ggsave(combined, file = "plots/maps/combined_map.pdf", width = 9, height = 8, dpi = 300)
+ggsave(combined, file = "plots/maps/combined_map.pdf", width = 8, height = 8, dpi = 300)
 
 #Perhaps worth adjusting the font size & labelling the lat & longs with N & W
 #I decided to just combine the figures outside of R :) 
