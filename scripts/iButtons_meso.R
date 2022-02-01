@@ -364,7 +364,7 @@ all_treat <- all_cleaned %>%
 my_theme <- theme(axis.title.x = element_text(size = 20), axis.text.x = element_text(size = 18),
                   axis.title.y = element_text(size = 20), legend.text = element_text(size = 20))
 
-treat_meso <- ggplot(all_treat, aes(Date, avgtemp, fill = Treat)) + 
+treat_meso_iButton <- ggplot(all_treat, aes(Date, avgtemp, fill = Treat)) + 
   geom_line (aes(colour = Treat), size = 1) +
   scale_color_viridis(discrete = TRUE, option = "D") +
   scale_fill_viridis(discrete = TRUE) +
@@ -374,7 +374,7 @@ treat_meso <- ggplot(all_treat, aes(Date, avgtemp, fill = Treat)) +
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
   my_theme
 
-ggsave(treat_meso, file = "plots/iButtons/treat_meso.pdf", height = 5, width = 9, dpi = 300)
+ggsave(treat_meso_iButton, file = "plots/iButtons/treat_meso_iButton.pdf", height = 5, width = 9, dpi = 300)
 
 #Now create a second set of plots for just the Aug 1 - Sept 2----
 all_treat_subset <- all_treat %>% 
@@ -406,3 +406,7 @@ treat_subset <- all_treat_subset %>%
 
 #Remove all unneeded variables
 
+
+#Remove all objects----
+rm(all, all_cleaned, all_cleaned_1, all_treat, all_treat_subset, my_theme, treat_meso,
+   treat_subset, treat_values, Date_revised, dates_excl, dates_exl)
