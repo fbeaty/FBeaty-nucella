@@ -124,54 +124,76 @@ all_df <- rbind(nanaimo_df, calvert_df) %>%
   mutate(date.time = ymd_hms(paste(Date, Time))) %>% 
   select(Date, Time, date.time, SP, Temp, TideHeight)
 
+#Export to data folder
+write.csv(all_df, "data/iButtons/all_cleaned.csv")
+
 #Remove objects/variables not needed from hereon----
 #Remove unnecessary objects
 rm(calvert_df, Cedar_1, DF_C1, DF_H1, DF_K1, DF_P1, Heron_1, Kwak_1, nanaimo_df, Pruth_1,
    dates_excl, files, files_C1, files_H1, files_P1, i)
 
 #Manually assign 0 or 1 based on whether the marker is emmersed or not based on tide data from----
-#I exported a csv from April - Aug for Nanaimo from here: https://www.isdm-gdsi.gc.ca/isdm-gdsi/twl-mne/inventory-inventaire/sd-ds-eng.asp?no=7917&user=isdm-gdsi&region=PAC
+#I requested the tides data from DFO/CHS (see emails with Patrick McNeill on Jan 31-Feb 1 2022)
+#The data came from this website: https://tides.gc.ca/tides/en/stations
+#Chose Pruth Lagoon & Boat Harbour
+#but I requested his to send me the csvs because otherwise you have to export by 7-day incremenets
 #First I manually deleted the top few rows
-nan_tides <- read_csv("data/iButtons/7917-01-APR-2019_slev.csv") %>% 
-  mutate(Obs_date = as.POSIXct(Obs_date)) %>% 
-  rename("SLEV" = "SLEV(metres)")
+cal_tides <- read_csv("data/iButtons/08863_PruthBay_20190301.csv") %>% 
+  mutate(Obs_date = dmy_hms(paste(Date, Time))) %>% 
+  select(Obs_date, slev_m)
 
-#I want to combine the datasets by the time column but the all_df reports time at different minute increments than the 
-#exported csv reports time which reports on the 00 min. So, I rounded the minutes to the hour by replacing them with '00'
+nan_tides <- read_csv("data/iButtons/07480_BoatHarbour_20190301.csv") %>% 
+  mutate(Obs_date = dmy_hms(paste(Date, Time))) %>% 
+  select(Obs_date, slev_m)
 
-all_df_nan <- all_df %>% 
-  filter(SP == "Cedar" | SP == "Heron") %>% 
+#You  only need to run this line if you're starting the code here, otherwise just run the first section of the code
+#all_df <- read_csv("data/iButtons/all_cleaned.csv")
+#all_df <- all_df[, c(2:7)] %>% 
+#  mutate(SP = as.factor(SP))
+
+#Combine the datasets by the time column but the all_df reports time at different minute increments than the 
+#exported csv, which reports on the 00 min. So, I rounded the minutes to the hour by replacing them with '00'
+
+all_df_corr <- all_df %>% 
   mutate(time_corr = format(date.time, format = "%H")) %>% 
   mutate(time_corr = paste0(time_corr, ":00:00")) %>% 
   mutate(time_corr = format(time_corr, format = "%H:%M:%S")) %>% 
   mutate(Obs_date = as.POSIXct(paste(Date, time_corr))) %>% 
   select(SP, Temp, TideHeight, Date, Time, date.time, Obs_date)
 
-#Merge the nan_tides & all_df_nan & assign whether ibutton was:
-#immersed = 0, if SLEV > TideHeight
-#emersed = 1, if SLEV <= TideHeight
-all_df_nan_tides <- left_join(all_df_nan, nan_tides, by = "Obs_date") %>% 
-  mutate(in.water = ifelse(SLEV > TideHeight, 0, 1))
-
-#Clip the dataset to date range of experiment:
-#Calvert = 2019-03-21 - 2019-08-04
+#Merge the nan_tides & all_df_nan & assign whether ibutton was: immersed = 0, if slev_m > TideHeight OR emersed = 1, if slev_m <= TideHeight
+#Also clip each regional dataset for the following date range:
+#Calvert = 2019-03-21 - 2019-08-03
 #Nanaimo = 2019-04-11 - 2019-08-12
 
-all_df_nan_tides <- all_df_nan_tides %>% 
+all_df_corr_cal <- all_df_corr %>% 
+  filter(SP == "Kwak" | SP == "Pruth")
+
+all_df_cal_tides <- left_join(all_df_corr_cal, cal_tides, by = "Obs_date") %>% 
+  mutate(in.water = ifelse(slev_m > TideHeight, 0, 1)) %>% 
+  filter(Date > "2019-03-21" & Date < "2019-08-03")
+
+all_df_corr_nan <- all_df_corr %>% 
+  filter(SP == "Cedar" | SP == "Heron")
+
+all_df_nan_tides <- left_join(all_df_corr_nan, nan_tides, by = "Obs_date") %>% 
+  mutate(in.water = ifelse(slev_m > TideHeight, 0, 1)) %>% 
   filter(Date > "2019-04-11" & Date < "2019-08-12")
 
-#Export this to csv for further analysis
-write.csv(all_df_nan_tides, "data/iButtons/withtides/cleaned_iButtons_2019_nan_tides.csv")
+#Combine into one dataset
+all_tides <- rbind(all_df_cal_tides, all_df_nan_tides) %>% 
+  select(Date, Obs_date, SP, Temp, TideHeight, slev_m, in.water)
+
+#Export files to csv for further analysis
+write.csv(all_tides, "data/iButtons/all_tides.csv")
 
 #Summarize iButton data ----
 #The code in this section is informed by Alyssa's code in the scripts folder
 
-#Revise this one you've combined the nan & cal sites into one tides df
-
-air <- all_df_nan_tides %>% 
+air <- all_tides %>% 
   filter(in.water == 1)
 
-water <- all_df_nan_tides %>% 
+water <- all_tides %>% 
   filter(in.water == 0)
 
 ## Summarize values by site & dates
@@ -186,26 +208,35 @@ sum_water <- water %>%
   ungroup()
 
 #Visualize temps----
-#Water: 90th quantile
-#Sites together
-clumped <- ggplot(sum_water, aes(Date, water90th, fill = SP)) + 
+my_theme <- theme(axis.title.x = element_text(size = 20), axis.text.x = element_text(size = 18),
+                  axis.title.y = element_text(size = 20), legend.text = element_text(size = 20),
+                  panel.border = element_blank(), panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+water_90 <- ggplot(sum_water, aes(Date, water90th, fill = SP)) + 
   geom_line (aes(colour = SP), size = 0.7) +
-  scale_colour_manual(values = c("red", "red4", "dodgerblue", "blue")) +
-  theme_bw() + labs(x = "Date", y = "90th percentile temperature (°C)") +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+  theme_bw() + labs(x = "Date", y = "90th percentile temperature, water (°C)") +
+  my_theme
+
+air_90 <- ggplot(sum_air, aes(Date, air90th, fill = SP)) + 
+  geom_line (aes(colour = SP), size = 0.7) +
+  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+  theme_bw() + labs(x = "Date", y = "90th percentile temperature, air (°C)") +
+  my_theme
 
 #Sites faceted
-by_site <- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) + 
+water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) + 
   geom_line(aes(colour = SP), size = 0.7) +
-  scale_colour_manual(values = c("red", "red4")) +
-  theme_bw() + labs(x = "Date", y = "90th percentile temperature (°C)") +
+  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+  theme_bw() + labs(x = "Date", y = "90th percentile temperature, water (°C)") +
   facet_grid(. ~ SP) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+  my_theme
 
-ggsave(clumped, file = "plots/iButtons/90th_clumped.pdf", width = 9, height = 9, dpi = 300)
-ggsave(by_site, file = "plots/iButtons/90th_bysite.pdf", width = 9, height = 9, dpi = 300)
+ggsave(water_90, file = "plots/iButtons/water_90percentile.pdf", width = 8, height = 6, dpi = 300)
+ggsave(water_90_facet, file = "plots/iButtons/water_90percentile_facet.pdf", width = 8, height = 6, dpi = 300)
+ggsave(air_90, file = "plots/iButtons/air_90percentile.pdf", width = 8, height = 6, dpi = 300)
 
 #Remove all objects----
-rm(clumped, nan_tides, sum_air, sum_water, water, air, all_df, all_df_nan, all_df_nan_tides, by_site)
+rm(nan_tides, cal_tides, sum_air, sum_water, water, air, all_df, all_tides, water_90, air_90, water_90_facet, 
+   all_df_cal_tides, all_df_corr, all_df_corr_cal, all_df_corr_nan, my_theme)
