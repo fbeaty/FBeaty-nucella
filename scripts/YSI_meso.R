@@ -7,7 +7,7 @@ lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
 #Load & clean csv from data/YSI_meso folder----
-ysi <- read.csv("data/YSI_meso/Water parameters_final_combined_Dec 12.csv")
+ysi <- read.csv("data/meso_YSI_DIC/Water parameters_final_combined_Dec 12.csv")
 
 #Clean database: remove unncessary columns & rows (any rows w/ NAs), select for July 18-Sept 2
 #reassign Tank 16 as 15A
@@ -66,9 +66,9 @@ pH_meso_ysi <- ggplot(ysi_sum, aes(Date, avgpH, group = Treat)) +
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
   my_theme
 
-ggsave(temp_meso_ysi, file = "plots/YSI/temp_meso_ysi.pdf", height = 5, width = 9, dpi = 300)
-ggsave(sal_meso_ysi, file = "plots/YSI/sal_meso_ysi.pdf", height = 5, width = 9, dpi = 300)
-ggsave(pH_meso_ysi, file = "plots/YSI/pH_meso_ysi.pdf", height = 5, width = 9, dpi = 300)
+ggsave(temp_meso_ysi, file = "plots/YSI_DIC/temp_meso_ysi.pdf", height = 5, width = 9, dpi = 300)
+ggsave(sal_meso_ysi, file = "plots/YSI_DIC/sal_meso_ysi.pdf", height = 5, width = 9, dpi = 300)
+ggsave(pH_meso_ysi, file = "plots/YSI_DIC/pH_meso_ysi.pdf", height = 5, width = 9, dpi = 300)
 
 
 #Now create a second set of plots for just the Aug 1 - Sept 2----
@@ -105,9 +105,9 @@ pH_meso_ysi_subset <- ggplot(ysi_sum_subset, aes(Date, avgpH, group = Treat)) +
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
   my_theme
 
-ggsave(temp_meso_ysi_subset, file = "plots/YSI/temp_meso_ysi_subset.pdf", height = 5, width = 9, dpi = 300)
-ggsave(sal_meso_ysi_subset, file = "plots/YSI/sal_meso_ysi_subset.pdf", height = 5, width = 9, dpi = 300)
-ggsave(pH_meso_ysi_subset, file = "plots/YSI/pH_meso_ysi_subset.pdf", height = 5, width = 9, dpi = 300)
+ggsave(temp_meso_ysi_subset, file = "plots/YSI_DIC/temp_meso_ysi_subset.pdf", height = 5, width = 9, dpi = 300)
+ggsave(sal_meso_ysi_subset, file = "plots/YSI_DIC/sal_meso_ysi_subset.pdf", height = 5, width = 9, dpi = 300)
+ggsave(pH_meso_ysi_subset, file = "plots/YSI_DIC/pH_meso_ysi_subset.pdf", height = 5, width = 9, dpi = 300)
 
 
 #Now calculate the average & sd per treatment for you to put into the table----
