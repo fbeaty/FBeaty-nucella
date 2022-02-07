@@ -5,7 +5,7 @@
 
 
 #Load packages----
-pkgs <- c("plyr", "dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2", "visreg")
+pkgs <- c("dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2", "visreg")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -266,6 +266,26 @@ summary(anova_cal)
 
 anova_nan <-aov(avgwater ~ SP, data = sum_water_nan)
 summary(anova_nan)
+
+#Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)----
+diff <- sum_water %>% 
+  mutate(month = month(Date)) %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  group_by(region, month) %>% 
+  summarize(mean_90th = mean(water90th), meanavg = mean(avgwater)) %>% 
+  arrange(month) %>% 
+  ungroup() %>% 
+  group_by(month) %>% 
+  mutate(diff_90th = mean_90th - lead(mean_90th, default = first(mean_90th)),
+         diff_avg = meanavg - lead(meanavg, default = first(meanavg))) %>% 
+  ungroup()
+
+#Remove every even row from diff dataframe, then calculate the mean & sd of the 90th percentile diff
+ind <- seq(1, nrow(diff), by=2)
+diff_sum <- diff[ind, ] %>% 
+  summarize(mean_90th_diff = mean(diff_90th), sd_90th_diff = sd(diff_90th),
+            mean_avg_diff = mean(diff_avg), sd_avg_diff = sd(diff_avg))
+
 
 #Remove all objects----
 rm(nan_tides, cal_tides, sum_air, sum_water, water, air, all_df, all_tides, water_90, air_90, water_90_facet, 

@@ -56,7 +56,7 @@ both <- ggplot(lighthouse, aes(date, temp90th, group = station)) +
 
 ggsave(both, file = "plots/lighthouse/both_lighthouse_stations.pdf", height = 5, width = 9, dpi = 300)
 
-#Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)
+#Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)----
 diff <- lighthouse %>% 
   filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
   group_by(station, date) %>% 
