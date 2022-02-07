@@ -3,8 +3,9 @@
 #The analysis code is based on Alyssa's code (see slack & scripts folder in this project, jan 25 2022)
 #Last updated by FB Jan 2022
 
+
 #Load packages----
-pkgs <- c("plyr", "dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2")
+pkgs <- c("plyr", "dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2", "visreg")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -246,31 +247,25 @@ ggsave(air_90, file = "plots/iButtons/air_90percentile.pdf", width = 8, height =
 #Test whether the 90th percentile is significantly different across regions over time----
 #Use an ancova to test difference with time as the covariate (as per https://www.r-bloggers.com/2021/07/how-to-perform-ancova-in-r/)
 #Load the packages required for this at each stage cause they seem to interact weirdly with one another
-library("car")
-
-install.packages(c("compute.es", "effects", "emmeans", "pastecs", "WRS2"))
 
 library('car')
-library('compute.es')
-library('effects')
-library('emmeans')
-library('ggplot2')
-library('multcomp')
-library('pastecs')
-library('WRS2')
-
-ancova_model <- aov(water90th ~ region + Date, data = sum_water)
+ancova_model <- aov(avgwater ~ Date + region, data = sum_water)
 Anova(ancova_model, type="III")
-#Both region & Date are very significant
-#Use multi-comp package to figure out which combinations are significant (hopefully all!)
+visreg(ancova_model)
+#Both region & Date are very significant, with temp increasing with time & differing between the 2 regions
 
-postHoc <- TukeyHSD(ancova_model)
+#Test whether temp significantly differed across sites within each region
+sum_water_cal <- sum_water %>% 
+  filter(SP == "Kwak" | SP == "Pruth")
 
-?Tukey.HSD()
+sum_water_nan <- sum_water %>% 
+  filter(SP == "Cedar" | SP == "Heron")
 
-postHocs <- glht(ancova_model, linfct = mcp(technique = "Tukey"))
-summary(postHocs)
+anova_cal <-aov(avgwater ~ SP, data = sum_water_cal)
+summary(anova_cal)
 
+anova_nan <-aov(avgwater ~ SP, data = sum_water_nan)
+summary(anova_nan)
 
 #Remove all objects----
 rm(nan_tides, cal_tides, sum_air, sum_water, water, air, all_df, all_tides, water_90, air_90, water_90_facet, 
