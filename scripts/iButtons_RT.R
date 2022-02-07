@@ -182,8 +182,10 @@ all_df_nan_tides <- left_join(all_df_corr_nan, nan_tides, by = "Obs_date") %>%
 
 #Combine into one dataset
 all_tides <- rbind(all_df_cal_tides, all_df_nan_tides) %>% 
-  select(Date, Obs_date, SP, Temp, TideHeight, slev_m, in.water)
+  select(Date, Obs_date, SP, Temp, TideHeight, slev_m, in.water) %>% 
+  mutate(SP = as.factor(SP))
 
+  str(all_tides)
 #Export files to csv for further analysis
 write.csv(all_tides, "data/iButtons/all_tides.csv")
 
@@ -199,7 +201,8 @@ water <- all_tides %>%
 ## Summarize values by site & dates
 sum_air <- air %>% 
   group_by(SP, Date) %>% 
-  summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10)) %>% 
+  summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), 
+            air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10)) %>% 
   ungroup()
 
 sum_water <- water %>% 
@@ -236,6 +239,8 @@ water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) +
 ggsave(water_90, file = "plots/iButtons/water_90percentile.pdf", width = 8, height = 6, dpi = 300)
 ggsave(water_90_facet, file = "plots/iButtons/water_90percentile_facet.pdf", width = 8, height = 6, dpi = 300)
 ggsave(air_90, file = "plots/iButtons/air_90percentile.pdf", width = 8, height = 6, dpi = 300)
+
+#Calculate whether the temperatures are significantly different across sites
 
 #Remove all objects----
 rm(nan_tides, cal_tides, sum_air, sum_water, water, air, all_df, all_tides, water_90, air_90, water_90_facet, 
