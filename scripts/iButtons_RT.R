@@ -81,7 +81,7 @@ dates_excl <- c("2019-04-04", "2019-04-05", "2019-04-06", "2019-04-07", "2019-04
                 "2019-08-18", "2019-08-19", "2019-08-20", "2019-08-21", "2019-08-22")
 
 DF_H1 <- DF_H1 %>% 
-  filter(Date != dates_excl)
+  filter(!Date %in% dates_excl)
 
 #Now with Cedar! 
 DF_C1 <- data.frame()	
@@ -100,7 +100,7 @@ DF_C1<- DF_C1 %>%
   setNames(., c("DT" , "Value" , "Temp" , "Date" , "SP"))
 
 DF_C1 <- DF_C1 %>% 
-  filter(Date != dates_excl)
+  filter(!Date %in% dates_excl)
 
 #Merge & export the datasets
 #Start with the Nanaimo datasets & split the DT column into separate date & time columns
@@ -185,7 +185,6 @@ all_tides <- rbind(all_df_cal_tides, all_df_nan_tides) %>%
   select(Date, Obs_date, SP, Temp, TideHeight, slev_m, in.water) %>% 
   mutate(SP = as.factor(SP))
 
-  str(all_tides)
 #Export files to csv for further analysis
 write.csv(all_tides, "data/iButtons/all_tides.csv")
 
@@ -198,16 +197,20 @@ air <- all_tides %>%
 water <- all_tides %>% 
   filter(in.water == 0)
 
-## Summarize values by site & dates
+## Summarize values by site & dates & add a column for region
 sum_air <- air %>% 
   group_by(SP, Date) %>% 
   summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), 
             air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10)) %>% 
+  mutate(region = ifelse(c(SP == "Kwak" | SP == "Pruth"), "Calvert", "Nanaimo"),
+         region = as.factor(region)) %>% 
   ungroup()
 
 sum_water <- water %>% 
   group_by(SP, Date) %>% 
   summarise(avgwater=mean(Temp), maxwater=max(Temp), sdwater=sd(Temp), water90th=quantile(Temp, 0.90), water99th=quantile(Temp, 0.99), water10th=quantile(Temp, 0.10)) %>% 
+  mutate(region = ifelse(c(SP == "Kwak" | SP == "Pruth"), "Calvert", "Nanaimo"),
+         region = as.factor(region)) %>% 
   ungroup()
 
 #Visualize temps----
@@ -240,7 +243,34 @@ ggsave(water_90, file = "plots/iButtons/water_90percentile.pdf", width = 8, heig
 ggsave(water_90_facet, file = "plots/iButtons/water_90percentile_facet.pdf", width = 8, height = 6, dpi = 300)
 ggsave(air_90, file = "plots/iButtons/air_90percentile.pdf", width = 8, height = 6, dpi = 300)
 
-#Calculate whether the temperatures are significantly different across sites
+#Test whether the 90th percentile is significantly different across regions over time----
+#Use an ancova to test difference with time as the covariate (as per https://www.r-bloggers.com/2021/07/how-to-perform-ancova-in-r/)
+#Load the packages required for this at each stage cause they seem to interact weirdly with one another
+library("car")
+
+install.packages(c("compute.es", "effects", "emmeans", "pastecs", "WRS2"))
+
+library('car')
+library('compute.es')
+library('effects')
+library('emmeans')
+library('ggplot2')
+library('multcomp')
+library('pastecs')
+library('WRS2')
+
+ancova_model <- aov(water90th ~ region + Date, data = sum_water)
+Anova(ancova_model, type="III")
+#Both region & Date are very significant
+#Use multi-comp package to figure out which combinations are significant (hopefully all!)
+
+postHoc <- TukeyHSD(ancova_model)
+
+?Tukey.HSD()
+
+postHocs <- glht(ancova_model, linfct = mcp(technique = "Tukey"))
+summary(postHocs)
+
 
 #Remove all objects----
 rm(nan_tides, cal_tides, sum_air, sum_water, water, air, all_df, all_tides, water_90, air_90, water_90_facet, 
