@@ -4,7 +4,7 @@
 
 #Load in necessary packages----
 install.packages("zoo")
-pkgs <- c("janitor", "dplyr", "tidyverse", "ggplot2", "zoo")
+pkgs <- c("janitor", "dplyr", "tidyverse", "ggplot2", "zoo", "lubridate")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -55,4 +55,21 @@ both <- ggplot(lighthouse, aes(date, temp90th, group = station)) +
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 
 ggsave(both, file = "plots/lighthouse/both_lighthouse_stations.pdf", height = 5, width = 9, dpi = 300)
+
+#Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)
+diff <- lighthouse %>% 
+  filter(month == 5 | month == 6 | month == 7 | month == 8 | month == 9) %>% 
+  group_by(station, date) %>% 
+  summarize(mean_90th = mean(temp90th)) %>% 
+  arrange(date) %>% 
+  ungroup() %>% 
+  group_by(date) %>% 
+  mutate(diff = mean_90th - lead(mean_90th, default = first(mean_90th))) %>% 
+  ungroup()
+
+#Remove every even row from diff dataframe, then calculate the mean & sd of the 90th percentile diff
+ind <- seq(1, nrow(diff), by=2)
+diff_sum <- diff[ind, ] %>% 
+  summarize(mean_90th_diff = mean(diff), sd_90th_diff = sd(diff))
+
 
