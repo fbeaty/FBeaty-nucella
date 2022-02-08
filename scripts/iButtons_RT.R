@@ -248,7 +248,7 @@ air_90 <- ggplot(sum_air, aes(Date, air90th, fill = SP)) +
 both_90 <- ggplot(sum_both, aes(Date, both90th, fill = SP)) + 
   geom_line (aes(colour = SP), size = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  theme_bw() + labs(x = "Date", y = "90th percentile temp (°C), air & water") +
+  theme_bw() + labs(x = "Date", y = "90th percentile temp (°C)") +
   my_theme
 
 #Sites faceted
@@ -289,14 +289,12 @@ ancova_nan <-aov(both90th ~ SP + Date, data = sum_both_nan)
 Anova(ancova_nan, type="III")
 visreg(ancova_nan)
 
-summary(anova_nan)
-
 #Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)----
-diff <- sum_water %>% 
+diff <- sum_both %>% 
   mutate(month = month(Date)) %>% 
   filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
   group_by(region, month) %>% 
-  summarize(mean_90th = mean(water90th), meanavg = mean(avgwater)) %>% 
+  summarize(mean_90th = mean(both90th), meanavg = mean(avgboth)) %>% 
   arrange(month) %>% 
   ungroup() %>% 
   group_by(month) %>% 
@@ -310,7 +308,41 @@ diff_sum <- diff[ind, ] %>%
   summarize(mean_90th_diff = mean(diff_90th), sd_90th_diff = sd(diff_90th),
             mean_avg_diff = mean(diff_avg), sd_avg_diff = sd(diff_avg))
 
+#Now calculate the difference for the Calvert & Nanaimo sites
+diff_cal <- sum_both_cal %>% 
+  mutate(month = month(Date)) %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  group_by(SP, month) %>% 
+  summarize(mean_90th = mean(both90th), meanavg = mean(avgboth)) %>% 
+  arrange(month) %>% 
+  ungroup() %>% 
+  group_by(month) %>% 
+  mutate(diff_90th = mean_90th - lead(mean_90th, default = first(mean_90th)),
+         diff_avg = meanavg - lead(meanavg, default = first(meanavg))) %>% 
+  ungroup()
 
+ind <- seq(1, nrow(diff_cal), by=2)
+diff_cal_sum <- diff_cal[ind, ] %>% 
+  summarize(mean_90th_diff = mean(diff_90th), sd_90th_diff = sd(diff_90th),
+            mean_avg_diff = mean(diff_avg), sd_avg_diff = sd(diff_avg))
+
+diff_nan <- sum_both_nan %>% 
+  mutate(month = month(Date)) %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  group_by(SP, month) %>% 
+  summarize(mean_90th = mean(both90th), meanavg = mean(avgboth)) %>% 
+  arrange(month) %>% 
+  ungroup() %>% 
+  group_by(month) %>% 
+  mutate(diff_90th = mean_90th - lead(mean_90th, default = first(mean_90th)),
+         diff_avg = meanavg - lead(meanavg, default = first(meanavg))) %>% 
+  ungroup()
+
+#Remove every even row from diff dataframe, then calculate the mean & sd of the 90th percentile diff
+ind <- seq(1, nrow(diff_nan), by=2)
+diff_nan_sum <- diff_nan[ind, ] %>% 
+  summarize(mean_90th_diff = mean(diff_90th), sd_90th_diff = sd(diff_90th),
+            mean_avg_diff = mean(diff_avg), sd_avg_diff = sd(diff_avg))
 #Remove all objects----
 rm(nan_tides, cal_tides, sum_air, sum_water, water, air, all_df, all_tides, water_90, air_90, water_90_facet, 
    all_df_cal_tides, all_df_corr, all_df_corr_cal, all_df_corr_nan, my_theme)
