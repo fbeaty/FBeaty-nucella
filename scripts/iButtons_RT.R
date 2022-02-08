@@ -162,7 +162,7 @@ all_df_corr <- all_df %>%
   mutate(Obs_date = as.POSIXct(paste(Date, time_corr))) %>% 
   select(SP, Temp, TideHeight, Date, Time, date.time, Obs_date)
 
-#Merge the nan_tides & all_df_nan & assign whether ibutton was: immersed = 0, if slev_m > TideHeight OR emersed = 1, if slev_m <= TideHeight
+#Merge the nan_tides & all_df_nan & assign whether ibutton was: underwater = 0, if slev_m > TideHeight OR emersed = 1, if slev_m <= TideHeight
 #Also clip each regional dataset for the following date range:
 #Calvert = 2019-03-21 - 2019-08-03
 #Nanaimo = 2019-04-11 - 2019-08-12
@@ -170,24 +170,28 @@ all_df_corr <- all_df %>%
 all_df_corr_cal <- all_df_corr %>% 
   filter(SP == "Kwak" | SP == "Pruth")
 
-all_df_cal_tides <- left_join(all_df_corr_cal, cal_tides, by = "Obs_date") %>% 
-  mutate(in.water = ifelse(slev_m > TideHeight, 0, 1)) %>% 
+all_df_cal_tides <- merge(all_df_corr_cal, cal_tides, by = "Obs_date") %>% 
+  mutate(in.water = ifelse(slev_m > TideHeight, 0, 1))%>% 
   filter(Date > "2019-03-21" & Date < "2019-08-03")
 
 all_df_corr_nan <- all_df_corr %>% 
   filter(SP == "Cedar" | SP == "Heron")
 
-all_df_nan_tides <- left_join(all_df_corr_nan, nan_tides, by = "Obs_date") %>% 
+all_df_nan_tides <- merge(all_df_corr_nan, nan_tides, by = "Obs_date") %>% 
   mutate(in.water = ifelse(slev_m > TideHeight, 0, 1)) %>% 
   filter(Date > "2019-04-11" & Date < "2019-08-12")
 
 #Combine into one dataset
 all_tides <- rbind(all_df_cal_tides, all_df_nan_tides) %>% 
-  select(Date, Obs_date, SP, Temp, TideHeight, slev_m, in.water) %>% 
+  select(Date, Time, Obs_date, SP, Temp, TideHeight, slev_m, in.water) %>% 
   mutate(SP = as.factor(SP))
 
 #Export files to csv for further analysis
 write.csv(all_tides, "data/iButtons/all_tides.csv")
+
+#Remove objects that aren't needed going forward
+rm(cal_tides, nan_tides, all_df_cal_tides, all_df_corr, all_df_corr_cal,
+   all_df_corr_nan, all_df_nan_tides, all_df)
 
 #Summarize iButton data ----
 #The code in this section is informed by Alyssa's code in the scripts folder
@@ -209,14 +213,23 @@ sum_air <- air %>%
 
 sum_water <- water %>% 
   group_by(SP, Date) %>% 
-  summarise(avgwater=mean(Temp), maxwater=max(Temp), sdwater=sd(Temp), water90th=quantile(Temp, 0.90), water99th=quantile(Temp, 0.99), water10th=quantile(Temp, 0.10)) %>% 
+  summarise(avgwater=mean(Temp), maxwater=max(Temp), sdwater=sd(Temp), water90th=quantile(Temp, 0.90), 
+            water99th=quantile(Temp, 0.99), water10th=quantile(Temp, 0.10)) %>% 
+  mutate(region = ifelse(c(SP == "Kwak" | SP == "Pruth"), "Calvert", "Nanaimo"),
+         region = as.factor(region)) %>% 
+  ungroup()
+
+sum_both <- all_tides %>% 
+  group_by(SP, Date) %>% 
+  summarize(avgboth=mean(Temp), sdboth=sd(Temp), both90th=quantile(Temp, 0.90)) %>% 
   mutate(region = ifelse(c(SP == "Kwak" | SP == "Pruth"), "Calvert", "Nanaimo"),
          region = as.factor(region)) %>% 
   ungroup()
 
 #Visualize temps----
 my_theme <- theme(axis.title.x = element_text(size = 20), axis.text.x = element_text(size = 18),
-                  axis.title.y = element_text(size = 20), legend.text = element_text(size = 20),
+                  axis.text.y = element_text(size = 18), axis.title.y = element_text(size = 20), 
+                  legend.text = element_text(size = 20),
                   panel.border = element_blank(), panel.grid.major = element_blank(),
                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 
@@ -232,6 +245,12 @@ air_90 <- ggplot(sum_air, aes(Date, air90th, fill = SP)) +
   theme_bw() + labs(x = "Date", y = "90th percentile temperature, air (°C)") +
   my_theme
 
+both_90 <- ggplot(sum_both, aes(Date, both90th, fill = SP)) + 
+  geom_line (aes(colour = SP), size = 0.7) +
+  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+  theme_bw() + labs(x = "Date", y = "90th percentile temp (°C), air & water") +
+  my_theme
+
 #Sites faceted
 water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) + 
   geom_line(aes(colour = SP), size = 0.7) +
@@ -243,28 +262,33 @@ water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) +
 ggsave(water_90, file = "plots/iButtons/water_90percentile.pdf", width = 8, height = 6, dpi = 300)
 ggsave(water_90_facet, file = "plots/iButtons/water_90percentile_facet.pdf", width = 8, height = 6, dpi = 300)
 ggsave(air_90, file = "plots/iButtons/air_90percentile.pdf", width = 8, height = 6, dpi = 300)
+ggsave(both_90, file = "plots/iButtons/both_90percentile.pdf", width = 8, height = 6, dpi = 300)
 
 #Test whether the 90th percentile is significantly different across regions over time----
 #Use an ancova to test difference with time as the covariate (as per https://www.r-bloggers.com/2021/07/how-to-perform-ancova-in-r/)
 #Load the packages required for this at each stage cause they seem to interact weirdly with one another
 
 library('car')
-ancova_model <- aov(avgwater ~ Date + region, data = sum_water)
+ancova_model <- aov(both90th ~ Date + region, data = sum_both)
 Anova(ancova_model, type="III")
 visreg(ancova_model)
 #Both region & Date are very significant, with temp increasing with time & differing between the 2 regions
 
 #Test whether temp significantly differed across sites within each region
-sum_water_cal <- sum_water %>% 
+sum_both_cal <- sum_both %>% 
   filter(SP == "Kwak" | SP == "Pruth")
 
-sum_water_nan <- sum_water %>% 
+sum_both_nan <- sum_both %>% 
   filter(SP == "Cedar" | SP == "Heron")
 
-anova_cal <-aov(avgwater ~ SP, data = sum_water_cal)
-summary(anova_cal)
+ancova_cal <-aov(both90th ~ SP + Date, data = sum_both_cal)
+Anova(ancova_cal, type="III")
+visreg(ancova_cal)
 
-anova_nan <-aov(avgwater ~ SP, data = sum_water_nan)
+ancova_nan <-aov(both90th ~ SP + Date, data = sum_both_nan)
+Anova(ancova_nan, type="III")
+visreg(ancova_nan)
+
 summary(anova_nan)
 
 #Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)----
