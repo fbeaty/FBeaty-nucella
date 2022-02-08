@@ -17,7 +17,7 @@ ysi <- ysi %>%
          Date = paste(year, Date, sep = "-"),
          Treat = ifelse(Tank == 16, "15A", Treat),
          Treat = as.factor(Treat)) %>% 
-  filter(Date > "2018-07-18" & Date <= "2018-09-02") %>% 
+  filter(Date > "2018-07-23" & Date <= "2018-09-02") %>% 
   select(Tank, Treat, Date, Temperature, pH, Salinity)
 
 #Now create new dataframe with the summarized temps/treatment----

@@ -3,7 +3,7 @@
 #Last updated Jan 2022
 
 #Load packages----
-pkgs <- c("plyr", "viridis", "dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2", "purrr", "tidyverse", "stringr", "ggpubr")
+pkgs <- c("viridis", "dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2", "purrr", "tidyverse", "stringr", "ggpubr")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -297,7 +297,7 @@ for (i in 1:length(files)) {
 
 
 #Remove unneeded objects----
-rm(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, files, i)
+rm(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, files, i)
 #Combine dataframes into one----
 all<- do.call("rbind", list(DF_T1, DF_T2, DF_T3, DF_T4, DF_T5, DF_T6, DF_T7, DF_T8, DF_T9,
                               DF_T10, DF_T11, DF_T12, DF_T13, DF_T14, DF_T15, DF_T16, DF_T17, 
@@ -309,10 +309,11 @@ rm(DF_T1, DF_T2, DF_T3, DF_T4, DF_T5, DF_T6, DF_T7, DF_T8, DF_T9,
 
 #Clean dataframe (fix dates, currently year is increasing when day should), make tank a factor, parse date,
 #filter out dates that you removed & measured the iButtons & experiment date range
+#Experimental range (i.e. from when treatments were reached in each tank - end) was July x - Sept 2nd
 #Also create a column with the treatments for each tank
 #Remove tanks where all snails died at the start due to temp malfunction: 3, 5, 6,
 #Also classify Tank 16 (which was supposed to be a 12) as a 15 degree treatment because you could never really bring that tank's temp down due to equipment issues
-#Also remove tanks 22 & 20 because their temp data don't match the daily YSI measurements
+#Also remove tanks 19, 20 & 22 because their temp data don't match the daily YSI measurements
 #Also remove 2018-08-09 from Tank 19 and 2018-08-06 from Tank 9 because of temp outliers that don't match YSI data 
 
 all_cleaned <- all %>%
@@ -324,8 +325,8 @@ all_cleaned <- all %>%
          Month = month(Date),
          Day = day(Date)) %>% 
   filter(Date != "2018-07-31" & Date != "2018-08-13" & Date!= "2018-08-24" & Date != "2018-09-18") %>% 
-  filter(Date > "2018-07-18" & Date <= "2018-09-02",
-         Tank != 3 & Tank != 5 & Tank != 6 & Tank != 20 & Tank != 22) %>% 
+  filter(Date > "2018-07-23" & Date <= "2018-09-02",
+         Tank != 3 & Tank != 5 & Tank != 6 & Tank != 19 & Tank != 20 & Tank != 22) %>% 
   filter(!((Tank == 19 & Date == "2018-08-09" & Value == 30) | (Tank == 19 & Date == "2018-08-09" & Value == 27.0) | 
              (Tank == 9 & Date == "2018-08-06" & Value == 30.5))) %>% 
   mutate(Treat = as.factor(ifelse(Tank == 1, "19A",
@@ -343,11 +344,10 @@ all_cleaned <- all %>%
                                                                                                         ifelse(Tank == 16, "15A",
                                                                                                                ifelse(Tank == 17, "15L",
                                                                                                                      ifelse(Tank == 18, "22L",
-                                                                                                                           ifelse(Tank == 19, "22L",
                                                                                                                                   ifelse(Tank == 21, "15L",
                                                                                                                                         ifelse(Tank == 23, "22L", 
                                                                                                                                              ifelse(Tank == 24, "15L", 
-                                                                                                                                                  NA)))))))))))))))))))))
+                                                                                                                                                  NA))))))))))))))))))))
 
 
 
@@ -362,7 +362,8 @@ all_treat <- all_cleaned %>%
 #Now visualize data across treatments----
 #Set theme aesthetics for font sizes
 my_theme <- theme(axis.title.x = element_text(size = 20), axis.text.x = element_text(size = 18),
-                  axis.title.y = element_text(size = 20), legend.text = element_text(size = 20))
+                  axis.text.y = element_text(size = 18), axis.title.y = element_text(size = 20), 
+                  legend.text = element_text(size = 20))
 
 treat_meso_iButton <- ggplot(all_treat, aes(Date, avgtemp, fill = Treat)) + 
   geom_line (aes(colour = Treat), size = 1) +
@@ -376,7 +377,7 @@ treat_meso_iButton <- ggplot(all_treat, aes(Date, avgtemp, fill = Treat)) +
 
 ggsave(treat_meso_iButton, file = "plots/iButtons/treat_meso_iButton.pdf", height = 5, width = 9, dpi = 300)
 
-#Now create a second set of plots for just the Aug 1 - Sept 2----
+#Now create a second set of plots for just the Aug 1 - Sept 2, which you'll use to calculate the temp averages----
 all_treat_subset <- all_treat %>% 
   filter(Date >= "2018-08-01")
 
@@ -391,7 +392,6 @@ treat_subset<- ggplot(all_treat_subset, aes(Date, avgtemp, fill = Treat)) +
   my_theme
 
 ggsave(treat_subset, file = "plots/iButtons/treat_subset.pdf", height = 5, width = 9, dpi = 300)
-
 
 #Now calculate the average & sd per treatment for you to put into the table
 treat_values <- all_treat %>% 
