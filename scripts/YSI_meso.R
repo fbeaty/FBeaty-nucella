@@ -2,7 +2,7 @@
 
 
 #Load packages----
-pkgs <- c("dplyr", "tidyverse", "tidyr", "viridis", "lubridate", "ggplot2", "purrr", "stringr")
+pkgs <- c("tidyverse", "viridis", "lubridate")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
