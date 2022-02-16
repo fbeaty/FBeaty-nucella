@@ -1,19 +1,25 @@
 #Script to analyze & visualize the snail growth RVs (length, shell thickness etc) from the 2019 Reciprocal Transplant
 
+
 #Load packages----
-pkgs <- c("tidyverse", "viridis", "lubridate", "car", "visreg", "cowplot")
+pkgs <- c("tidyverse", "viridis", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
+          "emmeans")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
 #Load csv and clean it----
 RV_base <- read.csv("data/snail_RVs/RT_2_final.csv")
 
+#Growth Response variables----
 #Convert to dates & factors, and calulate tissue weight based upon the TW & SW columns
 #Note that there are no 'SG' for the initial time periods, so these values are NA
 #Also, due to equipment failure we were unable to measure SW in the 'Mid' timepoint, so those values are also NA
 #I removed the dead ones from the subsequent analyses because I only measured growth on surviving snails (obviously)
+#Finally, remove the IDs for snails you think were ostrina rather than lamellosa
+ID_ostrina <- c("KW15", "KW20", "KW31", "KW22", "PO43", "PO34", "PO49", "PO63", "PO54", "PO07", "PO47", "PO28")
 
 RV_alive <- RV_base %>% 
+  filter(!ID %in% ID_ostrina) %>% 
   filter(!OS == "" & DIED == 0) %>% 
   mutate(Date = as.Date(Date, format = "%m-%d-%Y"),
          Stage = factor(Stage, levels = c("Init", "Mid", "Final")),
@@ -23,9 +29,9 @@ RV_alive <- RV_base %>%
          OS = as.factor(OS),
          Block = as.factor(Block),
          TiW = TW-SW) %>% 
-  select(Date, Stage, SR, SP, OR, OS, Block, ID, L, Th, TW, SW, TiW, SG, DIED, OSTRINA)
+  select(Date, Stage, SR, SP, OR, OS, Block, ID, L, Th, TW, SW, TiW, SG)
 
-#Calculate & visualize the average & SD of growth metrics in the 3 time periods ----
+#Calculate the average & SD of growth metrics in the 3 time periods ----
 RV_sum_block <- RV_alive %>% 
   group_by(Stage, OR, OS, SR, SP, Block) %>% 
   summarize(meanL = mean(L, na.rm = TRUE), sdL = sd(L, na.rm = TRUE),
@@ -313,4 +319,91 @@ xaxistitle_OR <- ggdraw() + draw_label("Outplant Region", fontface = "plain", x 
 RV_combined_OR_SR_title <- plot_grid(RV_combined_OR_SR, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(RV_combined_OR_SR_title, file = "plots/snails/RT/RV_OR_SR.pdf", height = 12, width = 12, dpi = 300)
+
+
+
+#Remove all the unneeded objects for survival
+rm(anova, anova_nan, length_cal_stage, length_combined_stage, length_nan_stage, length_OR_OS_box, length_OR_OS_points,
+   RV_alive, RV_clean, RV_combined_OR_SR, RV_combined_OR_SR_title, RV_combined_stage, RV_combined_stage_title,
+   RV_diff, RV_diff_1, RV_sum_block, RV_sum_cal, RV_sum_nan, RV_sum_OR, RV_sum_OR_SR, RV_survival,
+   SG_cal_stage, SG_nan_stage, SG_OR_OS_box, SG_OR_OS_points, SW_cal_stage, SW_nan_stage, SW_OR_OS_box, SW_OR_OS_points,
+   thick_cal_stage, thick_combined_stage, thick_nan_stage, thick_OR_OS_box, thick_OR_OS_points,
+   TiW_cal_stage, TiW_nan_stage, TiW_OR_OS_box, TiW_OR_OS_points, xaxistitle, xaxistitle_OR)
+
+#Survival data, first clean dataset and organize for survival----
+RV_survival <- RV_base %>% 
+  filter(!ID %in% ID_ostrina) %>% 
+  filter(!OS == "") %>% 
+  mutate(Date = as.Date(Date, format = "%m-%d-%Y"),
+         Stage = factor(Stage, levels = c("Init", "Mid", "Final")),
+         SR = as.factor(SR),
+         SP = as.factor(SP),
+         OR = as.factor(OR),
+         OS = as.factor(OS),
+         Block = as.factor(Block),
+         TiW = TW-SW) %>% 
+  select(Date, Stage, Days_diff, SR, SP, OR, OS, Block, ID, DIED)
+
+#Analyze survival data (based on Alyssa's code from way back when... need to request again!)----
+#make sure you loaded survminer, survival, and dplyr packages 
+
+#survival by SP and OS
+str(RV_survival)
+
+survi <- survfit(Surv(Days_diff, DIED) ~ SP + OS, data = RV_survival)
+survi.coxph <- coxph(Surv(Days_diff, DIED) ~ OS, data = RV_survival)
+summary(survi.coxph)
+
+?survfit()
+
+p1<-ggforest(survi.coxph, data = survi);p1
+
+p4 <- ggsurvplot_facet(survi2, fun = "cumhaz", facet.by = c("OS"), 
+                       risk.table.col = "strata")
+p4
+
+ggsurvplot(survi2, facet.by = "OS", legend.title = "Source population", xlab = "Time, days", size = 1.5, pval = TRUE,
+           censor.shape="+", censor.size = 6, palette = c("red", "red4", "dodgerblue", "blue")) + my_theme
+
+
+#Getting an error here "Error in f(...) : Aesthetics can not vary with a ribbon" Will figure out later! 
+
+####Now test whether there's a difference in survival in Nanaimo across SPs####
+survi3 <- survi1 %>% 
+  subset(OR == "Nanaimo")
+
+survi3.KM <- survfit(Surv(Days_diff, DIED) ~ SP, data = survi3)
+survi3.coxph <- coxph(Surv(Days_diff, DIED) ~ SP + Block, data = survi3)
+summary(survi3.coxph)
+p2 <- ggforest(survi3.coxph, data = survi3)
+p2
+
+#dev.off()
+
+#cumulative hazard by outplant site
+p3 <- ggsurvplot_facet(survi3.KM, data = survi3, fun = "cumhaz", facet.by = c("OS"), conf.int = T, 
+                       risk.table.col = "strata")
+p3
+
+
+#Now test whether there's a diff in mortality in Calvert outplant sites
+survi4 <- survi1 %>% 
+  subset(OR == "Calvert")
+
+survi4.KM <- survfit(Surv(Days_diff, DIED) ~ SP, data = survi4)
+survi4.coxph <- coxph(Surv(Days_diff, DIED) ~ SP + Block, data = survi4)
+summary(survi4.coxph)
+p5 <- ggforest(survi4.coxph, data = survi4)
+p5
+
+#dev.off()
+
+#cumulative hazard by outplant site
+p6 <- ggsurvplot_facet(survi4.KM, data = survi4, fun = "cumhaz", facet.by = c("OS"), conf.int = T, 
+                       risk.table.col = "strata")
+p6
+
+
+#cumulative hazard by treatment
+#ggsurvplot_facet(surv4, data=surv3, facet.by=“tmt”, fun=“cumhaz”, conf.int = T, risk.table.col=“strata”)
 
