@@ -1,16 +1,15 @@
 #Script to analyze & visualize the snail growth RVs (length, shell thickness etc) from the 2019 Reciprocal Transplant
 
-
 #Load packages----
 pkgs <- c("tidyverse", "viridis", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
-          "emmeans")
+          "emmeans", "gtsummary")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
 #Load csv and clean it----
 RV_base <- read.csv("data/snail_RVs/RT_2_final.csv")
 
-#Growth Response variables----
+#Clean datasets & separate growth & survival----
 #Convert to dates & factors, and calulate tissue weight based upon the TW & SW columns
 #Note that there are no 'SG' for the initial time periods, so these values are NA
 #Also, due to equipment failure we were unable to measure SW in the 'Mid' timepoint, so those values are also NA
@@ -31,8 +30,15 @@ RV_alive <- RV_base %>%
          TiW = TW-SW) %>% 
   select(Date, Stage, SR, SP, OR, OS, Block, ID, L, Th, TW, SW, TiW, SG)
 
-#Calculate the average & SD of growth metrics in the 3 time periods ----
-RV_sum_block <- RV_alive %>% 
+RV_survival <- RV_base %>% 
+  filter(!ID %in% ID_ostrina) %>% 
+  filter(!OS == "") %>% 
+  mutate(Date = as.Date(Date, format = "%m-%d-%Y"),
+         Stage = factor(Stage, levels = c("Init", "Mid", "Final"))) %>% 
+  select(Date, Stage, Days_diff, SR, SP, OR, OS, Block, ID, DIED)
+
+#Calculate the average & SD of metrics in the 3 time periods ----
+RV_growth_block <- RV_alive %>% 
   group_by(Stage, OR, OS, SR, SP, Block) %>% 
   summarize(meanL = mean(L, na.rm = TRUE), sdL = sd(L, na.rm = TRUE),
             meanTh = mean(Th, na.rm = TRUE), sdTh = sd(Th, na.rm = TRUE),
@@ -41,7 +47,7 @@ RV_sum_block <- RV_alive %>%
             meanSG = mean(SG, na.rm = TRUE), sdSG = sd(SG, na.rm = TRUE), n = n()) %>% 
   ungroup()
 
-RV_sum_OR <- RV_sum_block %>% 
+RV_growth_OR <- RV_growth_block %>% 
   group_by(Stage, OR, SR, SP) %>% 
   summarize(meanL_OR = mean(meanL, na.rm = TRUE), sdL_OR = sd(meanL, na.rm = TRUE),
             meanTh_OR = mean(meanTh, na.rm = TRUE), sdTh_OR = sd(meanTh, na.rm = TRUE),
@@ -50,149 +56,121 @@ RV_sum_OR <- RV_sum_block %>%
             meanSG_OR = mean(meanSG, na.rm = TRUE), sdSG_OR = sd(meanSG, na.rm = TRUE), n = n()) %>% 
   ungroup()
 
-RV_sum_cal <- RV_sum_OR %>% 
-  filter(OR == "Calvert")
+RV_survival_block <- RV_survival %>% 
+  filter(DIED == 0) %>% 
+  group_by(Stage, OR, OS, SR, SP, Block) %>% 
+  summarize(n_snl = n()) %>% 
+  ungroup()
 
-RV_sum_nan <- RV_sum_OR %>% 
-  filter(OR == "Nanaimo")
+RV_cumsurv_block <- RV_survival_block %>% 
+  arrange(OR, OS, SR, SP, Block, Stage) %>%
+  mutate(cumsurv = ifelse(Stage == "Init", n_snl/n_snl,
+                          ifelse(Stage == "Mid", n_snl/lag(n_snl, default = n_snl[1]), NA)),
+         Stage = factor(Stage, levels = c("Init", "Final", "Mid"))) %>% 
+  arrange(OR, OS, SR, SP, Block, Stage) %>% 
+  mutate(cumsurv = ifelse(Stage == "Final", n_snl/lag(n_snl, defaulr = n_snl[1]), cumsurv),
+         Stage = factor(Stage, levels = c("Init", "Mid", "Final")),
+         cumsurv = 100*cumsurv) %>% 
+  arrange(OR, OS, SR, SP, Block, Stage)
 
-#Visualize the sublethal RVs over time----
-length_cal_stage <- ggplot(RV_sum_cal, aes(Stage, meanL_OR, group = SP, colour = SP)) + 
+RV_cumsurv_OR <- RV_cumsurv_block %>% 
+  group_by(Stage, OR, SR, SP) %>% 
+  summarize(meancumsurv = mean(cumsurv), sdcumsurv = sd(cumsurv), n_bl = n())
+
+RV_sum_OR <- cbind(RV_growth_OR, meancumsurv = RV_cumsurv_OR$meancumsurv, sdcumsurv = RV_cumsurv_OR$sdcumsurv) 
+
+#Visualize the RVs over time----
+length_stage <- ggplot(RV_sum_OR, aes(Stage, meanL_OR, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
   geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
   geom_errorbar(aes(ymin=meanL_OR-sdL_OR, ymax=meanL_OR+sdL_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
-  ylim(22.5, 39) +
+  facet_wrap(~ OR) +
+  labs(colour = "Source Population") +
+  ylim(22.5, 40) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Calvert", y = "SL (mm)") +
-  theme_cowplot(16)
+  labs(y = "SL (mm)") +
+  theme_cowplot(16) + theme(strip.background = element_blank(), strip.text = element_text(size = 16))
 
-length_nan_stage <- ggplot(RV_sum_nan, aes(Stage, meanL_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanL_OR-sdL_OR, ymax=meanL_OR+sdL_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  ylim(22.5, 39) +
-  labs(x = "Stage, Nanaimo", y = "SL (mm)") +
-  theme_cowplot(16)
-
-thick_cal_stage <- ggplot(RV_sum_cal, aes(Stage, meanTh_OR, group = SP, colour = SP)) + 
+thick_stage <- ggplot(RV_sum_OR, aes(Stage, meanTh_OR, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
   geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
   geom_errorbar(aes(ymin=meanTh_OR-sdTh_OR, ymax=meanTh_OR+sdTh_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
+  facet_wrap(~ OR) +
   ylim(0.95, 4.0) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Calvert", y = "ST (mm)") +
-  theme_cowplot(16)
+  labs(y = "ST (mm)") +
+  theme_cowplot(16) + theme(strip.text = element_blank())
 
-thick_nan_stage <- ggplot(RV_sum_nan, aes(Stage, meanTh_OR, group = SP, colour = SP)) + 
+SW_stage <- ggplot(RV_sum_OR, aes(Stage, meanSW_OR, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanTh_OR-sdTh_OR, ymax=meanTh_OR+sdTh_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
-  ylim(0.95, 4.0) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Nanaimo", y = "ST (mm)") +
-  theme_cowplot(16)
-
-SW_cal_stage <- ggplot(RV_sum_cal, aes(Stage, meanSW_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
+  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5, data=RV_sum_OR[!is.na(RV_sum_OR$meanSW_OR),]) +
   geom_errorbar(aes(ymin=meanSW_OR-sdSW_OR, ymax=meanSW_OR+sdSW_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
+  facet_wrap(~ OR) +
   ylim(0.6, 5.1) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Calvert", y = "SW (g)") +
-  theme_cowplot(16)
+  labs(y = "SW (g)") +
+  theme_cowplot(16) + theme(strip.text = element_blank())
 
-SW_nan_stage <- ggplot(RV_sum_nan, aes(Stage, meanSW_OR, group = SP, colour = SP)) + 
+TiW_stage <- ggplot(RV_sum_OR, aes(Stage, meanTiW_OR, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5, data=RV_sum_nan[!is.na(RV_sum_nan$meanSW_OR),]) +
-  geom_errorbar(aes(ymin=meanSW_OR-sdSW_OR, ymax=meanSW_OR+sdSW_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
-  ylim(0.6, 5.1) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Nanaimo", y = "SW (g)") +
-  theme_cowplot(16)
-
-TiW_cal_stage <- ggplot(RV_sum_cal, aes(Stage, meanTiW_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
+  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5, data=RV_sum_OR[!is.na(RV_sum_OR$meanTiW_OR),]) +
   geom_errorbar(aes(ymin=meanTiW_OR-sdTiW_OR, ymax=meanTiW_OR+sdTiW_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
+  facet_wrap(~ OR) +
   ylim(0.85, 4.6) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Calvert", y = "TiW (g)") +
-  theme_cowplot(16)
+  labs(y = "TiW (g)") +
+  theme_cowplot(16) + theme(strip.text = element_blank())
 
-TiW_nan_stage <- ggplot(RV_sum_nan, aes(Stage, meanTiW_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5, data=RV_sum_nan[!is.na(RV_sum_nan$meanSW_OR),]) +
-  geom_errorbar(aes(ymin=meanTiW_OR-sdTiW_OR, ymax=meanTiW_OR+sdTiW_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
-  ylim(0.85, 4.6) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Nanaimo", y = "TiW (g)") +
-  theme_cowplot(16)
-
-SG_cal_stage <- ggplot(RV_sum_cal, aes(Stage, meanSG_OR, group = SP, colour = SP)) + 
+SG_stage <- ggplot(RV_sum_OR, aes(Stage, meanSG_OR, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
   geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
   geom_errorbar(aes(ymin=meanSG_OR-sdSG_OR, ymax=meanSG_OR+sdSG_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
-  ylim(0.5, 43) +
+  facet_wrap(~ OR) +
+  ylim(0.5, 48.5) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Calvert", y = "SG (mm)") +
-  theme_cowplot(16)
+  labs(y = "SG (mm)") +
+  theme_cowplot(16) + theme(strip.text = element_blank())
 
-SG_nan_stage <- ggplot(RV_sum_nan, aes(Stage, meanSG_OR, group = SP, colour = SP)) + 
+surv_stage <- ggplot(RV_sum_OR, aes(Stage, meancumsurv, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
   geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanSG_OR-sdSG_OR, ymax=meanSG_OR+sdSG_OR), width=.2, size = 0.5,
+  geom_errorbar(aes(ymin=meancumsurv-sdcumsurv, ymax=meancumsurv+sdcumsurv), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
-  ylim(0.5, 43) +
+  facet_wrap(~ OR) +
+  scale_y_continuous(breaks = c(0, 20, 40, 60, 80, 100), labels=c(0, 20, 40, 60, 80, 100), limits = c(0, 110)) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Stage, Nanaimo", y = "SG (mm)") +
-  theme_cowplot(16)
+  labs(y = "Cumulative Surv %") +
+  theme_cowplot(16) + theme(strip.text = element_blank())
 
-RV_combined_stage <- plot_grid(length_cal_stage + theme(legend.position = "none", 
-                                                            axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
-                                   length_nan_stage + theme(legend.position = "none",
-                                                            axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(),
-                                                            axis.text.y = element_blank(), axis.ticks.y = element_blank(), axis.title.y = element_blank()), 
-                                   get_legend(length_cal_stage),
-                                   TiW_cal_stage + theme(legend.position = "none", 
-                                                           axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
-                                   TiW_nan_stage + theme(legend.position = "none",
-                                                           axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(),
-                                                           axis.text.y = element_blank(), axis.ticks.y = element_blank(), axis.title.y = element_blank()),
-                                   NULL,
-                                   SW_cal_stage + theme(legend.position = "none", 
-                                                         axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
-                                   SW_nan_stage + theme(legend.position = "none",
-                                                         axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(),
-                                                         axis.text.y = element_blank(), axis.ticks.y = element_blank(), axis.title.y = element_blank()),
-                                   NULL,
-                                   SG_cal_stage + theme(legend.position = "none", 
-                                                           axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
-                                   SG_nan_stage + theme(legend.position = "none",
-                                                           axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(),
-                                                           axis.text.y = element_blank(), axis.ticks.y = element_blank(), axis.title.y = element_blank()),
-                                   NULL,
-                                   thick_cal_stage + theme(legend.position = "none",axis.title.x = element_blank()), 
-                                   thick_nan_stage + theme(legend.position = "none",axis.title.x = element_blank(), 
-                                                           axis.text.y = element_blank(), axis.ticks.y = element_blank(), axis.title.y = element_blank()),
-                                   NULL,
-                               ncol = 3, nrow = 5, axis = "vb", align = "hv", rel_widths = c(1,1,0.2),
-                               labels = c("Calvert", "Nanaimo"), label_size = 16, label_fontface = "plain",
-                               label_x = 0.43, label_y = 1, hjust = 0, vjust = 1.3)
+RV_stage <- plot_grid(length_stage + theme(legend.position = "none",
+                                          axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                     get_legend(length_stage),
+                     TiW_stage + theme(legend.position = "none",
+                                       axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                     NULL,
+                     SW_stage + theme(legend.position = "none",
+                                      axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                     NULL,
+                     SG_stage + theme(legend.position = "none", 
+                                      axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                     NULL,
+                     thick_stage + theme(legend.position = "none", 
+                                         axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                     NULL,
+                     surv_stage + theme(legend.position = "none", axis.title.x = element_blank()), 
+                     NULL,
+                     ncol = 2, nrow = 6, axis = "lb", align = "hv", rel_widths = c(1,0.2))
 
 xaxistitle <- ggdraw() + draw_label("Stage", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-RV_combined_stage_title <- plot_grid(RV_combined_stage, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
+RV_combined_stage_title <- plot_grid(RV_stage, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
 
-ggsave(RV_combined_stage_title, file = "plots/snails/RT/RV_combined_stage.pdf", height = 12, width = 12, dpi = 300)
+#Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
+ggsave(RV_combined_stage_title, file = "plots/snails/RT/RV_stage.pdf", height = 14, width = 12, dpi = 300)
 
 #Test whether there's a significant effect of time (or an interesting one)----
 anova_nan <- aov(meanL_OR ~ SP + Stage, data = RV_sum_nan)
@@ -201,7 +179,7 @@ visreg(anova_nan)
 
 #Calculate & visualize the average & SD of growth metrics clumped by SR & OR----
 #First have to calculate the difference in growth metrics between final & initial
-RV_diff <- RV_sum_block %>% 
+RV_diff <- RV_growth_block %>% 
   subset(Stage != "Mid") %>% 
   arrange(OS, SP, Block, Stage) %>% 
   group_by(Block) %>% 
@@ -210,7 +188,14 @@ RV_diff <- RV_sum_block %>%
          diff_meanSW = meanSW - lag(meanSW, default = meanSW[1]),
          diff_meanTiW = meanTiW - lag(meanTiW, default = meanTiW[1])) %>% 
   subset(Stage == "Final") %>% 
+  arrange(Stage, OR, OS, SR, SP, Block) %>% 
   ungroup()
+
+RV_diff_2 <- RV_cumsurv_block %>% 
+  filter(Stage == "Final") %>% 
+  arrange(Stage, OR, OS, SR, SP, Block)
+
+RV_diff <- cbind(RV_diff, meancumsurv = RV_diff_2$cumsurv)
 
 #Remove the Blue Pruth block at Cedar: high mortality in this block means the calculated difference is very negative
 #Because it just so happened that the only surviving snail was a very small one! 
@@ -225,6 +210,7 @@ RV_sum_OR_SR <- RV_diff %>%
             meanSW_OR_SR = mean(diff_meanSW, na.rm = TRUE), sdSW_OR_SR = sd(diff_meanSW, na.rm = TRUE),
             meanTiW_OR_SR = mean(diff_meanTiW, na.rm = TRUE), sdTiW_OR_SR = sd(diff_meanTiW, na.rm = TRUE),
             meanSG_OR_SR = mean(meanSG, na.rm = TRUE), sdSG_OR_SR = sd(meanSG, na.rm = TRUE),
+            meancumsurv_OR_SR = mean(meancumsurv, na.rm = TRUE), sdcumsurv_OR_SR = sd(meancumsurv, na.rm = TRUE),
             n_OR_SR = n()) %>% 
   ungroup()
 
@@ -240,6 +226,7 @@ length_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meanL_OR_SR, group = SR, col
   geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
   geom_errorbar(aes(ymin=meanL_OR_SR-sdL_OR_SR, ymax=meanL_OR_SR+sdL_OR_SR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
+  labs(colour = "Source Region") +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Change in SL (mm)") +
   theme_cowplot(16)
@@ -304,69 +291,76 @@ SG_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meanSG_OR_SR, group = SR, colour
   labs(x = "Outplant region", y = "SG (mm)") +
   theme_cowplot(16)
 
+CSurv_OR_OS_box <- ggplot(RV_diff, aes(OR, meancumsurv, fill = SR, color = SR)) + 
+  geom_boxplot(color = "grey24", varwidth = TRUE) +
+  scale_fill_manual(values = c("skyblue", "coral")) +
+  labs(x = "Outplant Region", y = "Cumulative Surv (%)") +
+  theme_cowplot(16)
+
+CSurv_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meancumsurv_OR_SR, group = SR, colour = SR)) + 
+  geom_point(size = 3, position=position_dodge(0.3)) +
+  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
+  geom_errorbar(aes(ymin=meancumsurv_OR_SR-sdcumsurv_OR_SR, ymax=meancumsurv_OR_SR+sdcumsurv_OR_SR), width=.2, size = 0.5,
+                position=position_dodge(0.3)) +
+  scale_colour_manual(values = c("skyblue", "coral")) +
+  labs(x = "Outplant region", y = "Cumulative Surv (%)") +
+  theme_cowplot(16)
+
 RV_combined_OR_SR <- plot_grid(length_OR_OS_points + theme(legend.position = "none", 
                                                         axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
-                               get_legend(length_OR_OS_points),
                                TiW_OR_OS_points + theme(legend.position = "none", 
                                                      axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
+                               get_legend(length_OR_OS_points),
                                SW_OR_OS_points + theme(legend.position = "none", 
                                                     axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
                                thick_OR_OS_points + theme(legend.position = "none", axis.title.x = element_blank()), 
+                               NULL,
                                SG_OR_OS_points + theme(legend.position = "none", axis.title.x = element_blank()), 
-                               ncol = 2, nrow = 3, axis = "vb", align = "hv")
+                               CSurv_OR_OS_points + theme(legend.position = "none", axis.title.x = element_blank()), 
+                               ncol = 3, nrow = 3, rel_widths= c(1, 1, 0.3), axis = "lb", align = "hv")
 
 xaxistitle_OR <- ggdraw() + draw_label("Outplant Region", fontface = "plain", x = 0.43, hjust = 0, size = 16)
 RV_combined_OR_SR_title <- plot_grid(RV_combined_OR_SR, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(RV_combined_OR_SR_title, file = "plots/snails/RT/RV_OR_SR.pdf", height = 12, width = 12, dpi = 300)
 
+#Remove all the unneeded objects for survival analysis----
+rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_clean, RV_combined_OR_SR, RV_diff, RV_diff_1, RV_growth_block, RV_sum_cal, RV_sum_nan, RV_sum_OR, RV_sum_OR_SR, 
+   SG_OR_OS_box, SG_OR_OS_points, SW_OR_OS_box, SW_OR_OS_points, CSurv_OR_OS_box, CSurv_OR_OS_points, length_stage,
+   thick_stage, thick_OR_OS_box, thick_OR_OS_points, RV_cumsurv_block, RV_cumsurv_OR, 
+   TiW_stage, TiW_OR_OS_box, TiW_OR_OS_points, xaxistitle, xaxistitle_OR)
 
+#Analyze Survival data----
+#first subset by outplant site
+RV_surv_cal <- RV_survival %>% 
+  filter(OR == "Calvert")
 
-#Remove all the unneeded objects for survival
-rm(anova, anova_nan, length_cal_stage, length_combined_stage, length_nan_stage, length_OR_OS_box, length_OR_OS_points,
-   RV_alive, RV_clean, RV_combined_OR_SR, RV_combined_OR_SR_title, RV_combined_stage, RV_combined_stage_title,
-   RV_diff, RV_diff_1, RV_sum_block, RV_sum_cal, RV_sum_nan, RV_sum_OR, RV_sum_OR_SR, RV_survival,
-   SG_cal_stage, SG_nan_stage, SG_OR_OS_box, SG_OR_OS_points, SW_cal_stage, SW_nan_stage, SW_OR_OS_box, SW_OR_OS_points,
-   thick_cal_stage, thick_combined_stage, thick_nan_stage, thick_OR_OS_box, thick_OR_OS_points,
-   TiW_cal_stage, TiW_nan_stage, TiW_OR_OS_box, TiW_OR_OS_points, xaxistitle, xaxistitle_OR)
+RV_surv_nan <- RV_survival %>% 
+  filter(OR == "Nanaimo")
 
-#Survival data, first clean dataset and organize for survival----
-RV_survival <- RV_base %>% 
-  filter(!ID %in% ID_ostrina) %>% 
-  filter(!OS == "") %>% 
-  mutate(Date = as.Date(Date, format = "%m-%d-%Y"),
-         Stage = factor(Stage, levels = c("Init", "Mid", "Final")),
-         SR = as.factor(SR),
-         SP = as.factor(SP),
-         OR = as.factor(OR),
-         OS = as.factor(OS),
-         Block = as.factor(Block),
-         TiW = TW-SW) %>% 
-  select(Date, Stage, Days_diff, SR, SP, OR, OS, Block, ID, DIED)
+#Analyse whether source region affects survival in the two outplanted regions 
+both <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_survival)
+summary(both)
+ggsurvplot(both, facet.by = "OR", legend.title = "Source Region", xlab = "Time, days", pval = TRUE,
+           palette = c("skyblue", "coral")) 
 
-#Analyze survival data (based on Alyssa's code from way back when... need to request again!)----
-#make sure you loaded survminer, survival, and dplyr packages 
+cal <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_surv_cal)
+summary(cal)
+ggsurvplot(
+  fit = cal, 
+  xlab = "Days", 
+  ylab = "Overall survival probability", pval = TRUE)
+cal_coxph <- coxph(Surv(Days_diff, DIED) ~ SR, data = RV_surv_cal)
+Anova(cal_coxph)
 
-#survival by SP and OS
-str(RV_survival)
-
-survi <- survfit(Surv(Days_diff, DIED) ~ SP + OS, data = RV_survival)
-survi.coxph <- coxph(Surv(Days_diff, DIED) ~ OS, data = RV_survival)
-summary(survi.coxph)
-
-?survfit()
-
-p1<-ggforest(survi.coxph, data = survi);p1
-
-p4 <- ggsurvplot_facet(survi2, fun = "cumhaz", facet.by = c("OS"), 
-                       risk.table.col = "strata")
-p4
-
-ggsurvplot(survi2, facet.by = "OS", legend.title = "Source population", xlab = "Time, days", size = 1.5, pval = TRUE,
-           censor.shape="+", censor.size = 6, palette = c("red", "red4", "dodgerblue", "blue")) + my_theme
-
-
-#Getting an error here "Error in f(...) : Aesthetics can not vary with a ribbon" Will figure out later! 
+nan <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_surv_nan)
+summary(nan)
+ggsurvplot(
+  fit = nan, 
+  xlab = "Days", 
+  ylab = "Overall survival probability")
+nan_coxph <- coxph(Surv(Days_diff, DIED) ~ SR, data = RV_surv_nan)
+Anova(nan_coxph)
 
 ####Now test whether there's a difference in survival in Nanaimo across SPs####
 survi3 <- survi1 %>% 
