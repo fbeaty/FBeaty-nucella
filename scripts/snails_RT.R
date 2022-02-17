@@ -325,10 +325,11 @@ RV_combined_OR_SR_title <- plot_grid(RV_combined_OR_SR, xaxistitle_OR, ncol = 1,
 ggsave(RV_combined_OR_SR_title, file = "plots/snails/RT/RV_OR_SR.pdf", height = 12, width = 12, dpi = 300)
 
 #Remove all the unneeded objects for survival analysis----
-rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_clean, RV_combined_OR_SR, RV_diff, RV_diff_1, RV_growth_block, RV_sum_cal, RV_sum_nan, RV_sum_OR, RV_sum_OR_SR, 
+rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_combined_OR_SR, RV_diff, RV_growth_block, RV_sum_OR, RV_sum_OR_SR, 
    SG_OR_OS_box, SG_OR_OS_points, SW_OR_OS_box, SW_OR_OS_points, CSurv_OR_OS_box, CSurv_OR_OS_points, length_stage,
    thick_stage, thick_OR_OS_box, thick_OR_OS_points, RV_cumsurv_block, RV_cumsurv_OR, 
-   TiW_stage, TiW_OR_OS_box, TiW_OR_OS_points, xaxistitle, xaxistitle_OR)
+   TiW_stage, TiW_OR_OS_box, TiW_OR_OS_points, xaxistitle, xaxistitle_OR, RV_diff_2, RV_combined_stage_title,
+   RV_growth_OR, RV_stage, RV_survival_block, SG_stage, surv_stage, SW_stage, RV_combined_OR_SR_title)
 
 #Analyze Survival data----
 #first subset by outplant site
@@ -341,8 +342,11 @@ RV_surv_nan <- RV_survival %>%
 #Analyse whether source region affects survival in the two outplanted regions 
 both <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_survival)
 summary(both)
-ggsurvplot(both, facet.by = "OR", legend.title = "Source Region", xlab = "Time, days", pval = TRUE,
+survanalysis <- ggsurvplot(both, facet.by = "OR", legend.title = "Source Region", xlab = "Time, days", pval = TRUE,
            palette = c("skyblue", "coral")) 
+
+ggsave(survanalysis, file = "plots/snails/RT/survanalysis.pdf", height = 4, width = 8, dpi = 300)
+
 
 cal <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_surv_cal)
 summary(cal)
@@ -361,43 +365,4 @@ ggsurvplot(
   ylab = "Overall survival probability")
 nan_coxph <- coxph(Surv(Days_diff, DIED) ~ SR, data = RV_surv_nan)
 Anova(nan_coxph)
-
-####Now test whether there's a difference in survival in Nanaimo across SPs####
-survi3 <- survi1 %>% 
-  subset(OR == "Nanaimo")
-
-survi3.KM <- survfit(Surv(Days_diff, DIED) ~ SP, data = survi3)
-survi3.coxph <- coxph(Surv(Days_diff, DIED) ~ SP + Block, data = survi3)
-summary(survi3.coxph)
-p2 <- ggforest(survi3.coxph, data = survi3)
-p2
-
-#dev.off()
-
-#cumulative hazard by outplant site
-p3 <- ggsurvplot_facet(survi3.KM, data = survi3, fun = "cumhaz", facet.by = c("OS"), conf.int = T, 
-                       risk.table.col = "strata")
-p3
-
-
-#Now test whether there's a diff in mortality in Calvert outplant sites
-survi4 <- survi1 %>% 
-  subset(OR == "Calvert")
-
-survi4.KM <- survfit(Surv(Days_diff, DIED) ~ SP, data = survi4)
-survi4.coxph <- coxph(Surv(Days_diff, DIED) ~ SP + Block, data = survi4)
-summary(survi4.coxph)
-p5 <- ggforest(survi4.coxph, data = survi4)
-p5
-
-#dev.off()
-
-#cumulative hazard by outplant site
-p6 <- ggsurvplot_facet(survi4.KM, data = survi4, fun = "cumhaz", facet.by = c("OS"), conf.int = T, 
-                       risk.table.col = "strata")
-p6
-
-
-#cumulative hazard by treatment
-#ggsurvplot_facet(surv4, data=surv3, facet.by=“tmt”, fun=“cumhaz”, conf.int = T, risk.table.col=“strata”)
 
