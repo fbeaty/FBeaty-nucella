@@ -10,12 +10,35 @@ rm(pkgs)
 RV_base <- read.csv("data/snail_RVs/RT_2_final.csv")
 
 #Clean datasets & separate growth & survival----
-#Convert to dates & factors, and calulate tissue weight based upon the TW & SW columns
+#Convert to dates & factors
 #Note that there are no 'SG' for the initial time periods, so these values are NA
 #Also, due to equipment failure we were unable to measure SW in the 'Mid' timepoint, so those values are also NA
 #I removed the dead ones from the subsequent analyses because I only measured growth on surviving snails (obviously)
-#Finally, remove the IDs for snails you think were ostrina rather than lamellosa
+#Remove the IDs for snails you think were ostrina rather than lamellosa
+#Estimate shell weight (ShW) based on the following submerged regressions for each population where x is SW (submerged weight):
+#Pruth	y = 1.5889x + 0.1392
+#Kwakshua	y = 1.5958x + 0.0646
+#Cedar	y = 1.61x + 0.0266
+#Heron	y = 1.6104x - .1292
+#Calculate TiW (tissue weight) based on Shell weight and Total weight
+
 ID_ostrina <- c("KW15", "KW20", "KW31", "KW22", "PO43", "PO34", "PO49", "PO63", "PO54", "PO07", "PO47", "PO28")
+pruth_reg <- function(x){
+  ShW <- 1.5889*x + 0.1392
+  return(ShW)
+}
+kwak_reg <- function(x){
+  ShW <- 1.5958*x + 0.0646
+  return(ShW)
+}
+cedar_reg <- function(x){
+  ShW <- 1.61*x + 0.0266
+  return(ShW)
+}
+heron_reg <- function(x){
+  ShW <- 1.6104*x - .1292
+  return(ShW)
+}
 
 RV_alive <- RV_base %>% 
   filter(!ID %in% ID_ostrina) %>% 
@@ -27,8 +50,12 @@ RV_alive <- RV_base %>%
          OR = as.factor(OR),
          OS = as.factor(OS),
          Block = as.factor(Block),
-         TiW = TW-SW) %>% 
-  select(Date, Stage, SR, SP, OR, OS, Block, ID, L, Th, TW, SW, TiW, SG)
+         ShW = ifelse(SP == "CEDAR", cedar_reg(SW), 
+                      ifelse(SP == "HERON", heron_reg(SW),
+                             ifelse(SP == "KWAK", kwak_reg(SW),
+                                    ifelse(SP == "PRUTH", pruth_reg(SW), NA)))),
+         TiW = TW-ShW) %>% 
+  select(Date, Stage, SR, SP, OR, OS, Block, ID, L, Th, ShW, TiW, SG)
 
 RV_survival <- RV_base %>% 
   filter(!ID %in% ID_ostrina) %>% 
@@ -42,7 +69,7 @@ RV_growth_block <- RV_alive %>%
   group_by(Stage, OR, OS, SR, SP, Block) %>% 
   summarize(meanL = mean(L, na.rm = TRUE), sdL = sd(L, na.rm = TRUE),
             meanTh = mean(Th, na.rm = TRUE), sdTh = sd(Th, na.rm = TRUE),
-            meanSW = mean(SW, na.rm = TRUE), sdSW = sd(SW, na.rm = TRUE),
+            meanShW = mean(ShW, na.rm = TRUE), sdShW = sd(ShW, na.rm = TRUE),
             meanTiW = mean(TiW, na.rm = TRUE), sdTiW = sd(TiW, na.rm = TRUE),
             meanSG = mean(SG, na.rm = TRUE), sdSG = sd(SG, na.rm = TRUE), n = n()) %>% 
   ungroup()
@@ -51,7 +78,7 @@ RV_growth_OR <- RV_growth_block %>%
   group_by(Stage, OR, SR, SP) %>% 
   summarize(meanL_OR = mean(meanL, na.rm = TRUE), sdL_OR = sd(meanL, na.rm = TRUE),
             meanTh_OR = mean(meanTh, na.rm = TRUE), sdTh_OR = sd(meanTh, na.rm = TRUE),
-            meanSW_OR = mean(meanSW, na.rm = TRUE), sdSW_OR = sd(meanSW, na.rm = TRUE),
+            meanShW_OR = mean(meanShW, na.rm = TRUE), sdShW_OR = sd(meanShW, na.rm = TRUE),
             meanTiW_OR = mean(meanTiW, na.rm = TRUE), sdTiW_OR = sd(meanTiW, na.rm = TRUE),
             meanSG_OR = mean(meanSG, na.rm = TRUE), sdSG_OR = sd(meanSG, na.rm = TRUE), n = n()) %>% 
   ungroup()
@@ -103,15 +130,15 @@ thick_stage <- ggplot(RV_sum_OR, aes(Stage, meanTh_OR, group = SP, colour = SP))
   labs(y = "ST (mm)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-SW_stage <- ggplot(RV_sum_OR, aes(Stage, meanSW_OR, group = SP, colour = SP)) + 
+ShW_stage <- ggplot(RV_sum_OR, aes(Stage, meanShW_OR, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5, data=RV_sum_OR[!is.na(RV_sum_OR$meanSW_OR),]) +
-  geom_errorbar(aes(ymin=meanSW_OR-sdSW_OR, ymax=meanSW_OR+sdSW_OR), width=.2, size = 0.5,
+  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5, data=RV_sum_OR[!is.na(RV_sum_OR$meanShW_OR),]) +
+  geom_errorbar(aes(ymin=meanShW_OR-sdShW_OR, ymax=meanShW_OR+sdShW_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
   ylim(0.6, 5.1) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(y = "SW (g)") +
+  labs(y = "ShW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
 TiW_stage <- ggplot(RV_sum_OR, aes(Stage, meanTiW_OR, group = SP, colour = SP)) + 
@@ -153,7 +180,7 @@ RV_stage <- plot_grid(length_stage + theme(legend.position = "none",
                      TiW_stage + theme(legend.position = "none",
                                        axis.text.x = element_blank(), axis.title.x = element_blank()), 
                      NULL,
-                     SW_stage + theme(legend.position = "none",
+                     ShW_stage + theme(legend.position = "none",
                                       axis.text.x = element_blank(), axis.title.x = element_blank()), 
                      NULL,
                      SG_stage + theme(legend.position = "none", 
@@ -180,7 +207,7 @@ RV_diff <- RV_growth_block %>%
   group_by(Block) %>% 
   mutate(diff_meanl = meanL - lag(meanL, default= meanL[1]),
          diff_meanTh = meanTh - lag(meanTh, default = meanTh[1]),
-         diff_meanSW = meanSW - lag(meanSW, default = meanSW[1]),
+         diff_meanShW = meanShW - lag(meanShW, default = meanShW[1]),
          diff_meanTiW = meanTiW - lag(meanTiW, default = meanTiW[1])) %>% 
   subset(Stage == "Final") %>% 
   arrange(Stage, OR, OS, SR, SP, Block) %>% 
@@ -203,7 +230,7 @@ RV_sum_OR_SR <- RV_diff %>%
   group_by(OR, SR) %>% 
   summarize(meanL_OR_SR = mean(diff_meanl, na.rm = TRUE), sdL_OR_SR = sd(diff_meanl, na.rm = TRUE),
             meanTh_OR_SR = mean(diff_meanTh, na.rm = TRUE), sdTh_OR_SR = sd(diff_meanTh, na.rm = TRUE),
-            meanSW_OR_SR = mean(diff_meanSW, na.rm = TRUE), sdSW_OR_SR = sd(diff_meanSW, na.rm = TRUE),
+            meanShW_OR_SR = mean(diff_meanShW, na.rm = TRUE), sdShW_OR_SR = sd(diff_meanShW, na.rm = TRUE),
             meanTiW_OR_SR = mean(diff_meanTiW, na.rm = TRUE), sdTiW_OR_SR = sd(diff_meanTiW, na.rm = TRUE),
             meanSG_OR_SR = mean(meanSG, na.rm = TRUE), sdSG_OR_SR = sd(meanSG, na.rm = TRUE),
             meancumsurv_OR_SR = mean(meancumsurv, na.rm = TRUE), sdcumsurv_OR_SR = sd(meancumsurv, na.rm = TRUE),
@@ -244,14 +271,14 @@ thick_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanTh, group = SR, colour = 
   labs(x = "Outplant region", y = "Change in ST (mm)") +
   theme_cowplot(16)
 
-SW_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanSW, group = SR, colour = SR)) +
+ShW_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanShW, group = SR, colour = SR)) +
   geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
   stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
   stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
   stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
                position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant region", y = "Change in SW (mm)") +
+  labs(x = "Outplant region", y = "Change in ShW (mm)") +
   theme_cowplot(16)
 
 TiW_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanTiW, group = SR, colour = SR)) +
@@ -287,7 +314,7 @@ CSurv_OR_OS_points <- ggplot(RV_diff, aes(OR, meancumsurv, group = SR, colour = 
 RV_combined_OR_SR <- plot_grid(length_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
                                TiW_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
                                get_legend(length_OR_OS_points),
-                               SW_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                               ShW_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
                                thick_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
                                NULL,
                                SG_OR_OS_points + theme(legend.position = "none", axis.title.x = element_blank()), 
@@ -303,10 +330,10 @@ ggsave(RV_combined_OR_SR_title, file = "plots/snails/RT/RV_OR_SR.pdf", height = 
 RV_lm_df <- RV_growth_block %>% 
   subset(Stage == "Init") %>% 
   arrange(Stage, OR, OS, SR, SP, Block) %>% 
-  select(Stage, OR, OS, SR, SP, Block, initL = meanL, initTh = meanTh, initSW = meanSW, initTiW = meanTiW) %>%
+  select(Stage, OR, OS, SR, SP, Block, initL = meanL, initTh = meanTh, initShW = meanShW, initTiW = meanTiW) %>%
   unite(comb_ID, c(OS, SP, Block), sep = "_", remove = FALSE) %>% 
   filter(!comb_ID == "Cedar_PRUTH_B") %>% 
-  select(comb_ID, initL, initTh, initSW, initTiW) 
+  select(comb_ID, initL, initTh, initShW, initTiW) 
 
 RV_diff <- RV_diff %>% 
   unite(comb_ID, c(OS, SP, Block), sep = "_", remove = FALSE)
@@ -315,7 +342,7 @@ RV_diff <- RV_diff %>%
 RV_lm_df <- left_join(RV_diff, RV_lm_df, by = "comb_ID") %>% 
   unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) %>% 
   mutate(OS_block = as.factor(OS_block)) %>% 
-  select(OR, OS, SR, SP, Block, OS_block, n, initL, initTh, initSW, initTiW, meanSG, diff_meanl, diff_meanTh, diff_meanSW, 
+  select(OR, OS, SR, SP, Block, OS_block, n, initL, initTh, initShW, initTiW, meanSG, diff_meanl, diff_meanTh, diff_meanShW, 
          diff_meanTiW, meancumsurv) 
 
 #Analyze growth data using mixed effects linear models----
@@ -350,12 +377,12 @@ Anova(lmer_TiW)
 grpMeans_TiW <- emmeans(lmer_TiW, c("OR", "SR"), data = RV_lm_df)
 pairs(grpMeans_TiW)
 
-lmer_SW <- lmer(diff_meanSW ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
-summary(lmer_SW)
-Anova(lmer_SW)
+lmer_ShW <- lmer(diff_meanShW ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+summary(lmer_ShW)
+Anova(lmer_ShW)
 #Do Tukey posthoc test with emmeans, with kenward-roger df method
-grpMeans_SW <- emmeans(lmer_SW, c("OR", "SR"), data = RV_lm_df)
-pairs(grpMeans_SW)
+grpMeans_ShW <- emmeans(lmer_ShW, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_ShW)
 
 lmer_SG <- lmer(meanSG ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
 summary(lmer_SG)
@@ -393,7 +420,7 @@ plot(lmer_length_1)
 #Residuals look relatively evenly spread out along the line, although they definitly spread out with higher fitted values
 plot(lmer_thick)
 plot(lmer_TiW)
-plot(lmer_SW)
+plot(lmer_ShW)
 plot(lmer_SG)
 plot(lmer_CSurv)
 #2: Test for normal distribution of residuals via a qq-plot or histogram
@@ -415,11 +442,11 @@ lm_length_emm <- emmeans(lm_length, c("SR", "OR"), data = RV_lm_df)
 lm_length_emm
 
 #Remove all the unneeded objects for survival analysis----
-rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_combined_OR_SR, RV_diff, RV_growth_block, RV_sum_OR, RV_sum_OR_SR, 
-   SG_OR_OS_box, SG_OR_OS_points, SW_OR_OS_box, SW_OR_OS_points, CSurv_OR_OS_box, CSurv_OR_OS_points, length_stage,
-   thick_stage, thick_OR_OS_box, thick_OR_OS_points, RV_cumsurv_block, RV_cumsurv_OR, 
+rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_combined_OR_SR, RV_diff, 
+   RV_growth_block, RV_sum_OR, RV_sum_OR_SR, SG_OR_OS_points, ShW_OR_OS_points, 
+   CSurv_OR_OS_points, length_stage, thick_stage, thick_OR_OS_points, RV_cumsurv_block, RV_cumsurv_OR, 
    TiW_stage, TiW_OR_OS_box, TiW_OR_OS_points, xaxistitle, xaxistitle_OR, RV_diff_2, RV_combined_stage_title,
-   RV_growth_OR, RV_stage, RV_survival_block, SG_stage, surv_stage, SW_stage, RV_combined_OR_SR_title)
+   RV_growth_OR, RV_stage, RV_survival_block, SG_stage, surv_stage, ShW_stage, RV_combined_OR_SR_title)
 
 #Analyze Survival data----
 #first subset by outplant site
