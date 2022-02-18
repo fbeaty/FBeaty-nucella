@@ -327,9 +327,14 @@ RV_lm_df <- left_join(RV_diff, RV_lm_df, by = "comb_ID") %>%
 lmer_length <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
 summary(lmer_length)
 Anova(lmer_length)
+
+lmer_length_1 <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block) + (1|SR/SP), data = RV_lm_df)
+summary(lmer_length_1)
+Anova(lmer_length_1)
+
 #Do Tukey posthoc test with emmeans, with kenward-roger df method
-grpMeans_length <- emmeans(lmer_length, c("OR", "SR"), data = RV_lm_df)
-pairs(grpMeans_length)
+grpMeans_length_1 <- emmeans(lmer_length_1, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_length_1)
 
 lmer_thick <- lmer(diff_meanTh ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
 summary(lmer_thick)
@@ -367,7 +372,6 @@ grpMeans_CSurv <- emmeans(lmer_CSurv, c("OR", "SR"), data = RV_lm_df)
 pairs(grpMeans_CSurv)
 
 #Alternative models:
-#lmer_length_1 <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block) + (1|SR/SP), data = RV_lm_df)
 #lmer_length_2 <- lmer(diff_meanl ~ SP + OS + SP:OS + (1|OS/Block), data = RV_lm_df)
 #lmer_length_3 <- lmer(diff_meanl ~ SR + OR + SP + OS + SR:OR + (1|OS/Block), data = RV_lm_df)
 #Merp - they give quite diff results! Need to figure out which one is best to pick.
@@ -385,7 +389,7 @@ anova(lme_length_var, lme_length)
 
 #Check assumptions of the model as per Zuur Ch 2 pgs 23-27
 #1: Test for homogeneity of variance by plotting residuals versus fitted
-plot(lmer_length)
+plot(lmer_length_1)
 #Residuals look relatively evenly spread out along the line, although they definitly spread out with higher fitted values
 plot(lmer_thick)
 plot(lmer_TiW)
@@ -393,13 +397,13 @@ plot(lmer_SW)
 plot(lmer_SG)
 plot(lmer_CSurv)
 #2: Test for normal distribution of residuals via a qq-plot or histogram
-qqnorm(resid(lm_length))
-hist(resid(lm_length), xlab = "Residuals", main = "")
+qqnorm(resid(lmer_length_1))
+hist(resid(lmer_length_1), xlab = "Residuals", main = "")
 #Looks like a good qq distribution, some deviation but pretty minimal
 #Histogram has a small right tail
 #3: Test for independence by checking residuals against each explanatory value
-plot(RV_lm_df$OR, resid(lm_length), xlab = "OR", ylab = "Residuals")
-plot(RV_lm_df$SR, resid(lm_length), xlab = "SR", ylab = "Residuals")
+plot(RV_lm_df$OR, resid(lmer_length_1), xlab = "OR", ylab = "Residuals")
+plot(RV_lm_df$SR, resid(lmer_length_1), xlab = "SR", ylab = "Residuals")
 
 #Spread of residuals is very similar between OR & SR --> good to go here
 plot(RV_lm_df$OS, resid(lm_length), xlab = "OS", ylab = "Residuals")
