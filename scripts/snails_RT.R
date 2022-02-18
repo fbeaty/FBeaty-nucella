@@ -2,7 +2,7 @@
 
 #Load packages----
 pkgs <- c("tidyverse", "viridis", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
-          "emmeans", "gtsummary")
+          "emmeans", "gtsummary", "lme4")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -172,11 +172,6 @@ RV_combined_stage_title <- plot_grid(RV_stage, xaxistitle, ncol = 1, rel_heights
 #Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
 ggsave(RV_combined_stage_title, file = "plots/snails/RT/RV_stage.pdf", height = 14, width = 12, dpi = 300)
 
-#Test whether there's a significant effect of time (or an interesting one)----
-anova_nan <- aov(meanL_OR ~ SP + Stage, data = RV_sum_nan)
-Anova(anova_nan, type="II")
-visreg(anova_nan)
-
 #Calculate & visualize the average & SD of growth metrics clumped by SR & OR----
 #First have to calculate the difference in growth metrics between final & initial
 RV_diff <- RV_growth_block %>% 
@@ -202,6 +197,7 @@ RV_diff <- cbind(RV_diff, meancumsurv = RV_diff_2$cumsurv)
 RV_diff <- RV_diff %>% 
   filter(!OS == "Cedar" | !SP == "PRUTH" | !Block == "B")
 
+## Feb 17 update: This line is no longer necessary with new ggplot, but I'll keep it in for the moment.
 #Then summarize the mean difference grouped by OR & SR: there should be n = 16 for each grouping, and only 4 groupings
 RV_sum_OR_SR <- RV_diff %>% 
   group_by(OR, SR) %>% 
@@ -214,106 +210,85 @@ RV_sum_OR_SR <- RV_diff %>%
             n_OR_SR = n()) %>% 
   ungroup()
 
-#Visualize the RVs grouped by OR & SR----
-length_OR_OS_box <- ggplot(RV_diff, aes(OR, diff_meanl, fill = SR, color = SR)) + 
-  geom_boxplot(color = "grey24", varwidth = TRUE) +
-  scale_fill_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant Region", y = "Change in SL (mm)") +
+#Visualize the growth & var across blocks by SR----
+ggplot(RV_diff, aes(Block, diff_meanl, group = SR, colour = SR)) +
+  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
+  facet_wrap(~ OR) +
+  labs(colour = "Source Region") +
+  scale_colour_manual(values = c("skyblue", "coral")) +
+  labs(x = "Block", y = "Change in SL (mm)") +
   theme_cowplot(16)
 
-length_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meanL_OR_SR, group = SR, colour = SR)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanL_OR_SR-sdL_OR_SR, ymax=meanL_OR_SR+sdL_OR_SR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+#Visualize the RVs grouped by OR & SR----
+length_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanl, group = SR, colour = SR)) +
+  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   labs(colour = "Source Region") +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Change in SL (mm)") +
   theme_cowplot(16)
 
-thick_OR_OS_box <- ggplot(RV_diff, aes(OR, diff_meanTh, fill = SR, color = SR)) + 
-  geom_boxplot(color = "grey24", varwidth = TRUE) +
-  scale_fill_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant Region", y = "Change in ST (mm)") +
-  theme_cowplot(16)
-
-thick_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meanTh_OR_SR, group = SR, colour = SR)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanTh_OR_SR-sdTh_OR_SR, ymax=meanTh_OR_SR+sdTh_OR_SR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+thick_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanTh, group = SR, colour = SR)) +
+  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Change in ST (mm)") +
   theme_cowplot(16)
 
-SW_OR_OS_box <- ggplot(RV_diff, aes(OR, diff_meanSW, fill = SR, color = SR)) + 
-  geom_boxplot(color = "grey24", varwidth = TRUE) +
-  scale_fill_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant Region", y = "Change in SW (g)") +
-  theme_cowplot(16)
-
-SW_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meanSW_OR_SR, group = SR, colour = SR)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanSW_OR_SR-sdSW_OR_SR, ymax=meanSW_OR_SR+sdSW_OR_SR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+SW_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanSW, group = SR, colour = SR)) +
+  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant region", y = "Change in SW (g)") +
+  labs(x = "Outplant region", y = "Change in SW (mm)") +
   theme_cowplot(16)
 
-TiW_OR_OS_box <- ggplot(RV_diff, aes(OR, diff_meanTiW, fill = SR, color = SR)) + 
-  geom_boxplot(color = "grey24", varwidth = TRUE) +
-  scale_fill_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant Region", y = "Change in TiW (g)") +
-  theme_cowplot(16)
-
-TiW_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meanTiW_OR_SR, group = SR, colour = SR)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanTiW_OR_SR-sdTiW_OR_SR, ymax=meanTiW_OR_SR+sdTiW_OR_SR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+TiW_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanTiW, group = SR, colour = SR)) +
+  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Change in TiW (g)") +
   theme_cowplot(16)
 
-SG_OR_OS_box <- ggplot(RV_diff, aes(OR, diff_meanSG, fill = SR, color = SR)) + 
-  geom_boxplot(color = "grey24", varwidth = TRUE) +
-  scale_fill_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant Region", y = "SG (mm)") +
-  theme_cowplot(16)
-
-SG_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meanSG_OR_SR, group = SR, colour = SR)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanSG_OR_SR-sdSG_OR_SR, ymax=meanSG_OR_SR+sdSG_OR_SR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+SG_OR_OS_points <- ggplot(RV_diff, aes(OR, meanSG, group = SR, colour = SR)) +
+  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant region", y = "SG (mm)") +
+  labs(x = "Outplant region", y = "Change in SG (g)") +
   theme_cowplot(16)
 
-CSurv_OR_OS_box <- ggplot(RV_diff, aes(OR, meancumsurv, fill = SR, color = SR)) + 
-  geom_boxplot(color = "grey24", varwidth = TRUE) +
-  scale_fill_manual(values = c("skyblue", "coral")) +
-  labs(x = "Outplant Region", y = "Cumulative Surv (%)") +
-  theme_cowplot(16)
-
-CSurv_OR_OS_points <- ggplot(RV_sum_OR_SR, aes(OR, meancumsurv_OR_SR, group = SR, colour = SR)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meancumsurv_OR_SR-sdcumsurv_OR_SR, ymax=meancumsurv_OR_SR+sdcumsurv_OR_SR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+CSurv_OR_OS_points <- ggplot(RV_diff, aes(OR, meancumsurv, group = SR, colour = SR)) +
+  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Cumulative Surv (%)") +
   theme_cowplot(16)
 
-RV_combined_OR_SR <- plot_grid(length_OR_OS_points + theme(legend.position = "none", 
-                                                        axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
-                               TiW_OR_OS_points + theme(legend.position = "none", 
-                                                     axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
+RV_combined_OR_SR <- plot_grid(length_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                               TiW_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
                                get_legend(length_OR_OS_points),
-                               SW_OR_OS_points + theme(legend.position = "none", 
-                                                    axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()), 
-                               thick_OR_OS_points + theme(legend.position = "none", axis.title.x = element_blank()), 
+                               SW_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                               thick_OR_OS_points + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
                                NULL,
                                SG_OR_OS_points + theme(legend.position = "none", axis.title.x = element_blank()), 
                                CSurv_OR_OS_points + theme(legend.position = "none", axis.title.x = element_blank()), 
@@ -323,6 +298,117 @@ xaxistitle_OR <- ggdraw() + draw_label("Outplant Region", fontface = "plain", x 
 RV_combined_OR_SR_title <- plot_grid(RV_combined_OR_SR, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(RV_combined_OR_SR_title, file = "plots/snails/RT/RV_OR_SR.pdf", height = 12, width = 12, dpi = 300)
+
+#Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects----
+RV_lm_df <- RV_growth_block %>% 
+  subset(Stage == "Init") %>% 
+  arrange(Stage, OR, OS, SR, SP, Block) %>% 
+  select(Stage, OR, OS, SR, SP, Block, initL = meanL, initTh = meanTh, initSW = meanSW, initTiW = meanTiW) %>%
+  unite(comb_ID, c(OS, SP, Block), sep = "_", remove = FALSE) %>% 
+  filter(!comb_ID == "Cedar_PRUTH_B") %>% 
+  select(comb_ID, initL, initTh, initSW, initTiW) 
+
+RV_diff <- RV_diff %>% 
+  unite(comb_ID, c(OS, SP, Block), sep = "_", remove = FALSE)
+
+#I'm keeping comb_ID and converting it to a factor as this ensures that each of my replicates has a unique ID, as per Schielzeth and Nakagawa 2013
+RV_lm_df <- left_join(RV_diff, RV_lm_df, by = "comb_ID") %>% 
+  unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) %>% 
+  mutate(OS_block = as.factor(OS_block)) %>% 
+  select(OR, OS, SR, SP, Block, OS_block, n, initL, initTh, initSW, initTiW, meanSG, diff_meanl, diff_meanTh, diff_meanSW, 
+         diff_meanTiW, meancumsurv) 
+
+#Analyze growth data using mixed effects linear models----
+#I have included the following terms in my models:
+#Fixed effects: SR, OR, and the interaction between SR & OR
+#Covariate: initRV (I included it in the models, but it was non-significant and the models without it had lower AICs so dropped from model)
+#Random effects: Block (I only want the intercept to vary, hence 1|Block notation). Block is nested in OS
+#I also included SP nested within SR as a random effect, since it will contribute variance toward the results
+lmer_length <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+summary(lmer_length)
+Anova(lmer_length)
+#Do Tukey posthoc test with emmeans, with kenward-roger df method
+grpMeans_length <- emmeans(lmer_length, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_length)
+
+lmer_thick <- lmer(diff_meanTh ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+summary(lmer_thick)
+Anova(lmer_thick)
+#Do Tukey posthoc test with emmeans, with kenward-roger df method
+grpMeans_thick <- emmeans(lmer_thick, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_thick)
+
+lmer_TiW <- lmer(diff_meanTiW ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+summary(lmer_TiW)
+Anova(lmer_TiW)
+#Do Tukey posthoc test with emmeans, with kenward-roger df method
+grpMeans_TiW <- emmeans(lmer_TiW, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_TiW)
+
+lmer_SW <- lmer(diff_meanSW ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+summary(lmer_SW)
+Anova(lmer_SW)
+#Do Tukey posthoc test with emmeans, with kenward-roger df method
+grpMeans_SW <- emmeans(lmer_SW, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_SW)
+
+lmer_SG <- lmer(meanSG ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+summary(lmer_SG)
+Anova(lmer_SG)
+#Do Tukey posthoc test with emmeans, with kenward-roger df method
+grpMeans_SG <- emmeans(lmer_SG, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_SG)
+
+lmer_CSurv <- lmer(meancumsurv ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+summary(lmer_CSurv)
+Anova(lmer_CSurv)
+#Do Tukey posthoc test with emmeans, with kenward-roger df method
+grpMeans_CSurv <- emmeans(lmer_CSurv, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_CSurv)
+
+#Alternative models:
+#lmer_length_1 <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block) + (1|SR/SP), data = RV_lm_df)
+#lmer_length_2 <- lmer(diff_meanl ~ SP + OS + SP:OS + (1|OS/Block), data = RV_lm_df)
+#lmer_length_3 <- lmer(diff_meanl ~ SR + OR + SP + OS + SR:OR + (1|OS/Block), data = RV_lm_df)
+#Merp - they give quite diff results! Need to figure out which one is best to pick.
+#AIC(lmer_length, lmer_length_1, lmer_length_2, lmer_length_3)
+#lmer_length_2 is best fit, but it doesn't include the SR or OR terms, which is what I'm interested at the end of the day
+
+#I tried to incorporate some residual variance structures, but they didn't seem to make any difference... not sure what I'm doing wrong!
+lme_length_var <- lme(diff_meanl ~ SP + OS + SP:OS, random = ~1|OS/Block, 
+                     weights = varIdent(~1|SP*OS), data = RV_lm_df)
+lme_length <- lme(diff_meanl ~ SP + OS + SP:OS, random = ~1|OS/Block, 
+                  data = RV_lm_df)
+AIC(lme_length_var, lme_length)
+anova(lme_length_var, lme_length)
+#There's no difference between these models...
+
+#Check assumptions of the model as per Zuur Ch 2 pgs 23-27
+#1: Test for homogeneity of variance by plotting residuals versus fitted
+plot(lmer_length)
+#Residuals look relatively evenly spread out along the line, although they definitly spread out with higher fitted values
+plot(lmer_thick)
+plot(lmer_TiW)
+plot(lmer_SW)
+plot(lmer_SG)
+plot(lmer_CSurv)
+#2: Test for normal distribution of residuals via a qq-plot or histogram
+qqnorm(resid(lm_length))
+hist(resid(lm_length), xlab = "Residuals", main = "")
+#Looks like a good qq distribution, some deviation but pretty minimal
+#Histogram has a small right tail
+#3: Test for independence by checking residuals against each explanatory value
+plot(RV_lm_df$OR, resid(lm_length), xlab = "OR", ylab = "Residuals")
+plot(RV_lm_df$SR, resid(lm_length), xlab = "SR", ylab = "Residuals")
+
+#Spread of residuals is very similar between OR & SR --> good to go here
+plot(RV_lm_df$OS, resid(lm_length), xlab = "OS", ylab = "Residuals")
+plot(RV_lm_df$Block, resid(lm_length), xlab = "Block", ylab = "Residuals")
+
+
+#Use emmeans to calculate effect sizes
+lm_length_emm <- emmeans(lm_length, c("SR", "OR"), data = RV_lm_df)
+lm_length_emm
 
 #Remove all the unneeded objects for survival analysis----
 rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_combined_OR_SR, RV_diff, RV_growth_block, RV_sum_OR, RV_sum_OR_SR, 
@@ -346,7 +432,6 @@ survanalysis <- ggsurvplot(both, facet.by = "OR", legend.title = "Source Region"
            palette = c("skyblue", "coral")) 
 
 ggsave(survanalysis, file = "plots/snails/RT/survanalysis.pdf", height = 4, width = 8, dpi = 300)
-
 
 cal <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_surv_cal)
 summary(cal)
