@@ -1,8 +1,8 @@
 #Script to analyze & visualize the snail growth RVs (length, shell thickness etc) from the 2019 Reciprocal Transplant
 
 #Load packages----
-pkgs <- c("tidyverse", "viridis", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
-          "emmeans", "gtsummary", "lme4")
+pkgs <- c("tidyverse", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
+          "emmeans", "lme4")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -57,6 +57,8 @@ RV_alive <- RV_base %>%
          TiW = TW-ShW) %>% 
   select(Date, Stage, SR, SP, OR, OS, Block, ID, L, Th, ShW, TiW, SG)
 
+rm(cedar_reg, heron_reg, pruth_reg, kwak_reg)
+
 RV_survival <- RV_base %>% 
   filter(!ID %in% ID_ostrina) %>% 
   filter(!OS == "") %>% 
@@ -83,12 +85,16 @@ RV_growth_OR <- RV_growth_block %>%
             meanSG_OR = mean(meanSG, na.rm = TRUE), sdSG_OR = sd(meanSG, na.rm = TRUE), n = n()) %>% 
   ungroup()
 
+#Calculate the cumulative survival over time by selecting only the surviving snails, and then
+#calculating the proportion survived in the mid & final time point
 RV_survival_block <- RV_survival %>% 
   filter(DIED == 0) %>% 
   group_by(Stage, OR, OS, SR, SP, Block) %>% 
   summarize(n_snl = n()) %>% 
   ungroup()
 
+#Awkward code below: I had to switch around the order of the stage factor to use the 'lag' command
+#to calculate proportion survived in each stage :\ 
 RV_cumsurv_block <- RV_survival_block %>% 
   arrange(OR, OS, SR, SP, Block, Stage) %>%
   mutate(cumsurv = ifelse(Stage == "Init", n_snl/n_snl,
@@ -102,7 +108,8 @@ RV_cumsurv_block <- RV_survival_block %>%
 
 RV_cumsurv_OR <- RV_cumsurv_block %>% 
   group_by(Stage, OR, SR, SP) %>% 
-  summarize(meancumsurv = mean(cumsurv), sdcumsurv = sd(cumsurv), n_bl = n())
+  summarize(meancumsurv = mean(cumsurv), sdcumsurv = sd(cumsurv), n_bl = n()) %>% 
+  ungroup()
 
 RV_sum_OR <- cbind(RV_growth_OR, meancumsurv = RV_cumsurv_OR$meancumsurv, sdcumsurv = RV_cumsurv_OR$sdcumsurv) 
 
@@ -114,7 +121,6 @@ length_stage <- ggplot(RV_sum_OR, aes(Stage, meanL_OR, group = SP, colour = SP))
                 position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
   labs(colour = "Source Population") +
-  ylim(22.5, 40) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "SL (mm)") +
   theme_cowplot(16) + theme(strip.background = element_blank(), strip.text = element_text(size = 16))
@@ -125,7 +131,6 @@ thick_stage <- ggplot(RV_sum_OR, aes(Stage, meanTh_OR, group = SP, colour = SP))
   geom_errorbar(aes(ymin=meanTh_OR-sdTh_OR, ymax=meanTh_OR+sdTh_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
-  ylim(0.95, 4.0) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "ST (mm)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
@@ -136,7 +141,6 @@ ShW_stage <- ggplot(RV_sum_OR, aes(Stage, meanShW_OR, group = SP, colour = SP)) 
   geom_errorbar(aes(ymin=meanShW_OR-sdShW_OR, ymax=meanShW_OR+sdShW_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
-  ylim(0.6, 5.1) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "ShW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
@@ -147,7 +151,6 @@ TiW_stage <- ggplot(RV_sum_OR, aes(Stage, meanTiW_OR, group = SP, colour = SP)) 
   geom_errorbar(aes(ymin=meanTiW_OR-sdTiW_OR, ymax=meanTiW_OR+sdTiW_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
-  ylim(0.85, 4.6) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "TiW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
@@ -158,7 +161,6 @@ SG_stage <- ggplot(RV_sum_OR, aes(Stage, meanSG_OR, group = SP, colour = SP)) +
   geom_errorbar(aes(ymin=meanSG_OR-sdSG_OR, ymax=meanSG_OR+sdSG_OR), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
-  ylim(0.5, 48.5) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "SG (mm)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
@@ -226,16 +228,16 @@ RV_diff <- RV_diff %>%
 
 ## Feb 17 update: This line is no longer necessary with new ggplot, but I'll keep it in for the moment.
 #Then summarize the mean difference grouped by OR & SR: there should be n = 16 for each grouping, and only 4 groupings
-RV_sum_OR_SR <- RV_diff %>% 
-  group_by(OR, SR) %>% 
-  summarize(meanL_OR_SR = mean(diff_meanl, na.rm = TRUE), sdL_OR_SR = sd(diff_meanl, na.rm = TRUE),
-            meanTh_OR_SR = mean(diff_meanTh, na.rm = TRUE), sdTh_OR_SR = sd(diff_meanTh, na.rm = TRUE),
-            meanShW_OR_SR = mean(diff_meanShW, na.rm = TRUE), sdShW_OR_SR = sd(diff_meanShW, na.rm = TRUE),
-            meanTiW_OR_SR = mean(diff_meanTiW, na.rm = TRUE), sdTiW_OR_SR = sd(diff_meanTiW, na.rm = TRUE),
-            meanSG_OR_SR = mean(meanSG, na.rm = TRUE), sdSG_OR_SR = sd(meanSG, na.rm = TRUE),
-            meancumsurv_OR_SR = mean(meancumsurv, na.rm = TRUE), sdcumsurv_OR_SR = sd(meancumsurv, na.rm = TRUE),
-            n_OR_SR = n()) %>% 
-  ungroup()
+#RV_sum_OR_SR <- RV_diff %>% 
+#  group_by(OR, SR) %>% 
+#  summarize(meanL_OR_SR = mean(diff_meanl, na.rm = TRUE), sdL_OR_SR = sd(diff_meanl, na.rm = TRUE),
+#            meanTh_OR_SR = mean(diff_meanTh, na.rm = TRUE), sdTh_OR_SR = sd(diff_meanTh, na.rm = TRUE),
+#            meanShW_OR_SR = mean(diff_meanShW, na.rm = TRUE), sdShW_OR_SR = sd(diff_meanShW, na.rm = TRUE),
+#            meanTiW_OR_SR = mean(diff_meanTiW, na.rm = TRUE), sdTiW_OR_SR = sd(diff_meanTiW, na.rm = TRUE),
+#            meanSG_OR_SR = mean(meanSG, na.rm = TRUE), sdSG_OR_SR = sd(meanSG, na.rm = TRUE),
+#            meancumsurv_OR_SR = mean(meancumsurv, na.rm = TRUE), sdcumsurv_OR_SR = sd(meancumsurv, na.rm = TRUE),
+#            n_OR_SR = n()) %>% 
+#  ungroup()
 
 #Visualize the growth & var across blocks by SR----
 ggplot(RV_diff, aes(Block, diff_meanl, group = SR, colour = SR)) +
@@ -338,7 +340,6 @@ RV_lm_df <- RV_growth_block %>%
 RV_diff <- RV_diff %>% 
   unite(comb_ID, c(OS, SP, Block), sep = "_", remove = FALSE)
 
-#I'm keeping comb_ID and converting it to a factor as this ensures that each of my replicates has a unique ID, as per Schielzeth and Nakagawa 2013
 RV_lm_df <- left_join(RV_diff, RV_lm_df, by = "comb_ID") %>% 
   unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) %>% 
   mutate(OS_block = as.factor(OS_block)) %>% 
@@ -348,60 +349,71 @@ RV_lm_df <- left_join(RV_diff, RV_lm_df, by = "comb_ID") %>%
 #Analyze growth data using mixed effects linear models----
 #I have included the following terms in my models:
 #Fixed effects: SR, OR, and the interaction between SR & OR
-#Covariate: initRV (I included it in the models, but it was non-significant and the models without it had lower AICs so dropped from model)
 #Random effects: Block (I only want the intercept to vary, hence 1|Block notation). Block is nested in OS
 #I also included SP nested within SR as a random effect, since it will contribute variance toward the results
-lmer_length <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
-summary(lmer_length)
-Anova(lmer_length)
+#I think this is the best model for me
 
-lmer_length_1 <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block) + (1|SR/SP), data = RV_lm_df)
+head(RV_lm_df)
+lmer_length_1 <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
+lmer_length_2 <- lmer(diff_meanl ~ SR + OR + initL + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
+
 summary(lmer_length_1)
+summary(lmer_length_2)
 Anova(lmer_length_1)
+Anova(lmer_length_2)
+plot(lmer_length_1)
+qqnorm(resid(lmer_length_1))
+visreg(lmer_length_1)
+visreg(lmer_length_2, "initL", by = "OR", overlay = TRUE)
 
 #Do Tukey posthoc test with emmeans, with kenward-roger df method
 grpMeans_length_1 <- emmeans(lmer_length_1, c("OR", "SR"), data = RV_lm_df)
 pairs(grpMeans_length_1)
 
-lmer_thick <- lmer(diff_meanTh ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+lmer_thick <- lmer(diff_meanTh ~ SR + OR + SR:OR + (1|OS/Block)+ (1|SP), data = RV_lm_df)
 summary(lmer_thick)
 Anova(lmer_thick)
-#Do Tukey posthoc test with emmeans, with kenward-roger df method
 grpMeans_thick <- emmeans(lmer_thick, c("OR", "SR"), data = RV_lm_df)
 pairs(grpMeans_thick)
 
-lmer_TiW <- lmer(diff_meanTiW ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+lmer_TiW <- lmer(diff_meanTiW ~ SR + OR + SR:OR + (1|OS/Block)+ (1|SP), data = RV_lm_df)
+lmer_TiW_dropped <- lmer(diff_meanTiW ~ SR + OR + SR:OR + (1|OS), data = RV_lm_df)
+
+#warning: boundary (singular) fit <- you get this message when the random effects are very small --> can I re-specify the model without these effects?
 summary(lmer_TiW)
+summary(lmer_TiW_dropped)
 Anova(lmer_TiW)
-#Do Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_TiW_dropped)
 grpMeans_TiW <- emmeans(lmer_TiW, c("OR", "SR"), data = RV_lm_df)
 pairs(grpMeans_TiW)
 
-lmer_ShW <- lmer(diff_meanShW ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+lmer_ShW <- lmer(diff_meanShW ~ SR + OR + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
+#warning: boundary (singular) fit, SP was close to zero, so I removed SP in this one
+lmer_ShW_dropped <- lmer(diff_meanShW ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
 summary(lmer_ShW)
+summary(lmer_ShW_dropped)
 Anova(lmer_ShW)
-#Do Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_ShW_dropped)
 grpMeans_ShW <- emmeans(lmer_ShW, c("OR", "SR"), data = RV_lm_df)
 pairs(grpMeans_ShW)
 
-lmer_SG <- lmer(meanSG ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+lmer_SG <- lmer(meanSG ~ SR + OR + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
 summary(lmer_SG)
 Anova(lmer_SG)
-#Do Tukey posthoc test with emmeans, with kenward-roger df method
 grpMeans_SG <- emmeans(lmer_SG, c("OR", "SR"), data = RV_lm_df)
 pairs(grpMeans_SG)
 
-lmer_CSurv <- lmer(meancumsurv ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
+lmer_CSurv <- lmer(meancumsurv ~ SR + OR + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
+#warning: boundary(singular) fit
 summary(lmer_CSurv)
 Anova(lmer_CSurv)
-#Do Tukey posthoc test with emmeans, with kenward-roger df method
 grpMeans_CSurv <- emmeans(lmer_CSurv, c("OR", "SR"), data = RV_lm_df)
 pairs(grpMeans_CSurv)
 
 #Alternative models:
 #lmer_length_2 <- lmer(diff_meanl ~ SP + OS + SP:OS + (1|OS/Block), data = RV_lm_df)
 #lmer_length_3 <- lmer(diff_meanl ~ SR + OR + SP + OS + SR:OR + (1|OS/Block), data = RV_lm_df)
-#Merp - they give quite diff results! Need to figure out which one is best to pick.
+
 #AIC(lmer_length, lmer_length_1, lmer_length_2, lmer_length_3)
 #lmer_length_2 is best fit, but it doesn't include the SR or OR terms, which is what I'm interested at the end of the day
 
@@ -457,10 +469,18 @@ RV_surv_nan <- RV_survival %>%
   filter(OR == "Nanaimo")
 
 #Analyse whether source region affects survival in the two outplanted regions 
+RV_survival <- RV_survival %>% 
+  mutate(SR = as.factor(SR),
+         OR = as.factor(OR))
+
 both <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_survival)
+both_1 <- survfit(Surv(Days_diff, DIED) ~ SR + OR, data = RV_survival)
+
 summary(both)
+summary(both_1)
 survanalysis <- ggsurvplot(both, facet.by = "OR", legend.title = "Source Region", xlab = "Time, days", pval = TRUE,
            palette = c("skyblue", "coral")) 
+
 
 ggsave(survanalysis, file = "plots/snails/RT/survanalysis.pdf", height = 4, width = 8, dpi = 300)
 
