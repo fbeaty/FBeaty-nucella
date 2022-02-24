@@ -7,6 +7,9 @@ lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
 #Load csv and clean it----
+#NOTE: on Feb 23 2022 I cleaned this csv directly in the csv (there were a few data typos). SO: from this point on make sure you only use this csv and not the excel in your RV_2 folder
+#PO26 Mid TiW was off due to SW typo fixed in csv
+#CG81 init ST was off due to typo fixed in csv
 RV_base <- read.csv("data/snail_RVs/RT_2_final.csv")
 
 #Clean datasets & separate growth & survival----
@@ -90,6 +93,41 @@ RV_growth_OR <- RV_growth_block %>%
             meanSG_OR = mean(meanSG, na.rm = TRUE), sdSG_OR = sd(meanSG, na.rm = TRUE), n = n()) %>% 
   ungroup()
 
+#Remove the following outliers due to high mortality causing outliers in data
+#Blue Pruth outplanted at Cedar because only 1 survived and it was very small --> pulls balance down
+#Blue KWAK at Heron in mid and final, because n = 1
+remove <- c("Cedar_PRUTH_B_Final", "Heron_KWAK_B_Final", "Heron_KWAK_B_Mid")
+
+RV_growth_block_1 <- RV_growth_block %>% 
+  unite(comb_ID, c(OS, SP, Block, Stage), sep = "_", remove = FALSE) %>% 
+  filter(!comb_ID %in% remove)
+
+RV_growth_OR_1 <- RV_growth_block_1 %>% 
+  group_by(Stage, OR, SR, SP) %>% 
+  summarize(meanL_OR = mean(meanL, na.rm = TRUE), sdL_OR = sd(meanL, na.rm = TRUE),
+            meanTh_OR = mean(meanTh, na.rm = TRUE), sdTh_OR = sd(meanTh, na.rm = TRUE),
+            meanShW_OR = mean(meanShW, na.rm = TRUE), sdShW_OR = sd(meanShW, na.rm = TRUE),
+            meanTiW_OR = mean(meanTiW, na.rm = TRUE), sdTiW_OR = sd(meanTiW, na.rm = TRUE),
+            meanSG_OR = mean(meanSG, na.rm = TRUE), sdSG_OR = sd(meanSG, na.rm = TRUE), n = n()) %>% 
+  ungroup()
+  
+
+test <- RV_growth_block %>% 
+  filter(SP == "PRUTH") %>% 
+  filter(OR == "Calvert") %>% 
+  arrange(OS, SP, Block, Stage)
+
+#Red PRUTH at Kwak is very low in mid, typo?
+#Blue PRUTH at Cedar is very low in final compared to mid, because death --> n = 1, and it was a very small one
+
+#PRUTH at Pruth during mid are lower in O R & Y than the final points... 
+
+test_2 <- RV_alive %>% 
+  filter(SP == "PRUTH") %>% 
+  filter(OS == "Pruth") %>% 
+  filter(Block == "Y") %>% 
+  arrange(ID, Stage)
+
 #Calculate the cumulative survival over time by selecting only the surviving snails, and then
 #calculating the proportion survived in the mid & final time point
 RV_survival_block <- RV_survival %>% 
@@ -119,7 +157,7 @@ RV_cumsurv_OR <- RV_cumsurv_block %>%
 RV_sum_OR <- cbind(RV_growth_OR, meancumsurv = RV_cumsurv_OR$meancumsurv, sdcumsurv = RV_cumsurv_OR$sdcumsurv) 
 
 #Visualize the RVs over time----
-length_stage <- ggplot(RV_sum_OR, aes(Stage, meanL_OR, group = SP, colour = SP)) + 
+length_stage <- ggplot(RV_growth_OR_1, aes(Stage, meanL_OR, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
   geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
   geom_errorbar(aes(ymin=meanL_OR-sdL_OR, ymax=meanL_OR+sdL_OR), width=.2, size = 0.5,
@@ -228,8 +266,8 @@ RV_diff <- cbind(RV_diff, meancumsurv = RV_diff_2$cumsurv)
 
 #Remove the Blue Pruth block at Cedar: high mortality in this block means the calculated difference is very negative
 #Because it just so happened that the only surviving snail was a very small one! 
-RV_diff <- RV_diff %>% 
-  filter(!OS == "Cedar" | !SP == "PRUTH" | !Block == "B")
+RV_diff_1 <- RV_diff %>% 
+  filter(!OS == "Cedar" | !SP == "PRUTH" | !Block == "B") 
 
 ## Feb 17 update: This line is no longer necessary with new ggplot, but I'll keep it in for the moment.
 #Then summarize the mean difference grouped by OR & SR: there should be n = 16 for each grouping, and only 4 groupings
