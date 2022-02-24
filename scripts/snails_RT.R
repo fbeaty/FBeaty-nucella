@@ -2,7 +2,7 @@
 
 #Load packages----
 pkgs <- c("tidyverse", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
-          "emmeans", "lme4")
+          "emmeans", "lme4", "RVAideMemoire")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -63,10 +63,15 @@ RV_survival <- RV_base %>%
   filter(!ID %in% ID_ostrina) %>% 
   filter(!OS == "") %>% 
   mutate(Date = as.Date(Date, format = "%m-%d-%Y"),
-         Stage = factor(Stage, levels = c("Init", "Mid", "Final"))) %>% 
-  select(Date, Stage, Days_diff, SR, SP, OR, OS, Block, ID, DIED)
+         Stage = factor(Stage, levels = c("Init", "Mid", "Final")),
+         SR = as.factor(SR),
+         SP = as.factor(SP),
+         OR = as.factor(OR),
+         OS = as.factor(OS),
+         Block = as.factor(Block)) %>% 
+  select(Date, Stage, SR, SP, OR, OS, Block, ID, DIED)
 
-#Calculate the average & SD of metrics in the 3 time periods ----
+#Calculate the average & SD of metrics to visualize across the 3 time periods ----
 RV_growth_block <- RV_alive %>% 
   group_by(Stage, OR, OS, SR, SP, Block) %>% 
   summarize(meanL = mean(L, na.rm = TRUE), sdL = sd(L, na.rm = TRUE),
@@ -201,7 +206,7 @@ RV_combined_stage_title <- plot_grid(RV_stage, xaxistitle, ncol = 1, rel_heights
 #Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
 ggsave(RV_combined_stage_title, file = "plots/snails/RT/RV_stage.pdf", height = 14, width = 12, dpi = 300)
 
-#Calculate & visualize the average & SD of growth metrics clumped by SR & OR----
+#Calculate & visualize the average & SD of change in growth metrics clumped by SR & OR----
 #First have to calculate the difference in growth metrics between final & initial
 RV_diff <- RV_growth_block %>% 
   subset(Stage != "Mid") %>% 
@@ -328,7 +333,31 @@ RV_combined_OR_SR_title <- plot_grid(RV_combined_OR_SR, xaxistitle_OR, ncol = 1,
 
 ggsave(RV_combined_OR_SR_title, file = "plots/snails/RT/RV_OR_SR.pdf", height = 12, width = 12, dpi = 300)
 
-#Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects----
+#Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects for every snail----
+#Calculate the difference in growth (this time by ID rather than block, as in previous code), and change labels to initL etc
+RV_lm <- RV_alive %>% 
+  subset(Stage != "Mid") %>% 
+  arrange(ID, Stage) %>% 
+  group_by(ID) %>% 
+  mutate(diff_l = L - lag(L, default= L[1]),
+         diff_Th = Th - lag(Th, default = Th[1]),
+         diff_ShW = ShW - lag(ShW, default = ShW[1]),
+         diff_TiW = TiW - lag(TiW, default = TiW[1])) %>% 
+  subset(Stage == "Final") %>% 
+  unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) %>% 
+  mutate(OS_block = as.factor(OS_block)) %>% 
+  select(Stage, OR, OS, SR, SP, Block, OS_block, ID, SG, diff_l, diff_Th, diff_ShW, diff_TiW) %>%
+  ungroup()
+
+#Gather initial sizes for covariates in models
+RV_lm_init <- RV_alive %>% 
+  subset(Stage == "Init") %>% 
+  select(ID, initL = L, initTh = Th, initShW = ShW, initTiW = TiW)
+
+#Merge RV_lm and RV_lm_init by ID
+RV_lm <- left_join(RV_lm, RV_lm_init, by = "ID")
+
+#The original dataframe I created for the linear models summarized growth by block, but then I realized that was incorrect. Keeping this code for now though.
 RV_lm_df <- RV_growth_block %>% 
   subset(Stage == "Init") %>% 
   arrange(Stage, OR, OS, SR, SP, Block) %>% 
@@ -349,109 +378,78 @@ RV_lm_df <- left_join(RV_diff, RV_lm_df, by = "comb_ID") %>%
 #Analyze growth data using mixed effects linear models----
 #I have included the following terms in my models:
 #Fixed effects: SR, OR, and the interaction between SR & OR
-#Random effects: Block (I only want the intercept to vary, hence 1|Block notation). Block is nested in OS
-#I also included SP nested within SR as a random effect, since it will contribute variance toward the results
-#I think this is the best model for me
+#Random effects: Block (I only want the intercept to vary, hence 1|Block notation). Block is nested in OS.
+#Note: As per Schielzeth and Nakagawa, I created a unique red ID for each SP by combining Block & OS, so that each SP will have 16 reps rather than 4 groups of 4 identical reps
+#OS_Block is used as Block, nested within OS.
+#I also included SP as a random effect, since it will contribute variance toward the results. 
 
-head(RV_lm_df)
-lmer_length_1 <- lmer(diff_meanl ~ SR + OR + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
-lmer_length_2 <- lmer(diff_meanl ~ SR + OR + initL + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
+#I think this is the best model for me, but it has a kind of wacky residuals fit... check with Alyssa
+lmer_length_2 <- lmer(diff_l ~ SR + OR + initL + SR:OR + (1|OS/OS_block) + (1|SP), data = RV_lm)
 
-summary(lmer_length_1)
 summary(lmer_length_2)
-Anova(lmer_length_1)
 Anova(lmer_length_2)
-plot(lmer_length_1)
-qqnorm(resid(lmer_length_1))
+
+plot(lmer_length_2)
+plotresid(lmer_length_2)
+qqnorm(resid(lmer_length_2))
 visreg(lmer_length_1)
+visreg(lmer_length_2)
 visreg(lmer_length_2, "initL", by = "OR", overlay = TRUE)
 
 #Do Tukey posthoc test with emmeans, with kenward-roger df method
-grpMeans_length_1 <- emmeans(lmer_length_1, c("OR", "SR"), data = RV_lm_df)
-pairs(grpMeans_length_1)
+grpMeans_length_2 <- emmeans(lmer_length_2, c("OR", "SR"), data = RV_lm_df)
+pairs(grpMeans_length_2)
 
-lmer_thick <- lmer(diff_meanTh ~ SR + OR + SR:OR + (1|OS/Block)+ (1|SP), data = RV_lm_df)
-summary(lmer_thick)
-Anova(lmer_thick)
-grpMeans_thick <- emmeans(lmer_thick, c("OR", "SR"), data = RV_lm_df)
-pairs(grpMeans_thick)
+#Shell thickness: note for this model I received a singular fit when OS_block was nested within OS, where OS variance = 0 --> removed OS from model as per Matuschek
+lmer_thick <- lmer(diff_meanTh ~ SR + OR + initTh + SR:OR + (1|OS/Block)+ (1|SP), data = RV_lm_df)
+lmer_thick_1 <- lmer(diff_Th ~ SR + OR + initTh + SR:OR + (1|OS_block) + (1|SP), data = RV_lm)
 
-lmer_TiW <- lmer(diff_meanTiW ~ SR + OR + SR:OR + (1|OS/Block)+ (1|SP), data = RV_lm_df)
-lmer_TiW_dropped <- lmer(diff_meanTiW ~ SR + OR + SR:OR + (1|OS), data = RV_lm_df)
+summary(lmer_thick_1)
+Anova(lmer_thick_1)
+visreg(lmer_thick_1)
+visreg(lmer_thick_1, "initTh", by = "OR", overlay = TRUE)
+plot(lmer_thick_1)
+plotresid(lmer_thick_1)
 
-#warning: boundary (singular) fit <- you get this message when the random effects are very small --> can I re-specify the model without these effects?
+grpMeans_thick_1 <- emmeans(lmer_thick_1, c("OR", "SR"), data = RV_lm)
+pairs(grpMeans_thick_1)
+
+#Tissue weight: no errors or warnings
+lmer_TiW <- lmer(diff_meanTiW ~ SR + OR + SR:OR + (1|OS/OS_block)+ (1|SP), data = RV_lm_df)
+lmer_TiW_1 <- lmer(diff_TiW ~ SR + OR + initTiW + SR:OR + (1|OS/OS_block)+ (1|SP), data = RV_lm)
+
 summary(lmer_TiW)
-summary(lmer_TiW_dropped)
+summary(lmer_TiW_1)
 Anova(lmer_TiW)
-Anova(lmer_TiW_dropped)
-grpMeans_TiW <- emmeans(lmer_TiW, c("OR", "SR"), data = RV_lm_df)
-pairs(grpMeans_TiW)
+Anova(lmer_TiW_1)
+grpMeans_TiW_1 <- emmeans(lmer_TiW_1, c("OR", "SR"), data = RV_lm)
+pairs(grpMeans_TiW_1)
+plotresid(lmer_TiW_1)
+visreg(lmer_TiW_1)
 
+#Shell weight: no errors or warnings, could perhaps drop covariate
 lmer_ShW <- lmer(diff_meanShW ~ SR + OR + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
-#warning: boundary (singular) fit, SP was close to zero, so I removed SP in this one
-lmer_ShW_dropped <- lmer(diff_meanShW ~ SR + OR + SR:OR + (1|OS/Block), data = RV_lm_df)
-summary(lmer_ShW)
-summary(lmer_ShW_dropped)
-Anova(lmer_ShW)
-Anova(lmer_ShW_dropped)
-grpMeans_ShW <- emmeans(lmer_ShW, c("OR", "SR"), data = RV_lm_df)
-pairs(grpMeans_ShW)
+lmer_ShW_1 <- lmer(diff_ShW ~ SR + OR + initShW + SR:OR + (1|OS/OS_block) + (1|SP), data = RV_lm)
 
-lmer_SG <- lmer(meanSG ~ SR + OR + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
-summary(lmer_SG)
+summary(lmer_ShW_1)
+Anova(lmer_ShW_1)
+plotresid(lmer_ShW_1)
+
+grpMeans_ShW_1 <- emmeans(lmer_ShW_1, c("OR", "SR"), data = RV_lm)
+pairs(grpMeans_ShW_1)
+
+#Shell growth (note that there is no covariate here): no errors or warnings
+lmer_SG <- lmer(SG ~ SR + OR + initL + SR:OR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+
+summary(lmer_SG_1)
 Anova(lmer_SG)
-grpMeans_SG <- emmeans(lmer_SG, c("OR", "SR"), data = RV_lm_df)
-pairs(grpMeans_SG)
+plotresid(lmer_SG_1)
+grpMeans_SG_1 <- emmeans(lmer_SG_1, c("OR", "SR"), data = RV_lm)
+pairs(grpMeans_SG_1)
 
-lmer_CSurv <- lmer(meancumsurv ~ SR + OR + SR:OR + (1|OS/Block) + (1|SP), data = RV_lm_df)
-#warning: boundary(singular) fit
-summary(lmer_CSurv)
-Anova(lmer_CSurv)
-grpMeans_CSurv <- emmeans(lmer_CSurv, c("OR", "SR"), data = RV_lm_df)
-pairs(grpMeans_CSurv)
+#I don't analyze survival because data is not in the correct structure (I guess I could use a binomial structure? But I think I'll just go with the survival analysis)
+#Create glm for this
 
-#Alternative models:
-#lmer_length_2 <- lmer(diff_meanl ~ SP + OS + SP:OS + (1|OS/Block), data = RV_lm_df)
-#lmer_length_3 <- lmer(diff_meanl ~ SR + OR + SP + OS + SR:OR + (1|OS/Block), data = RV_lm_df)
-
-#AIC(lmer_length, lmer_length_1, lmer_length_2, lmer_length_3)
-#lmer_length_2 is best fit, but it doesn't include the SR or OR terms, which is what I'm interested at the end of the day
-
-#I tried to incorporate some residual variance structures, but they didn't seem to make any difference... not sure what I'm doing wrong!
-lme_length_var <- lme(diff_meanl ~ SP + OS + SP:OS, random = ~1|OS/Block, 
-                     weights = varIdent(~1|SP*OS), data = RV_lm_df)
-lme_length <- lme(diff_meanl ~ SP + OS + SP:OS, random = ~1|OS/Block, 
-                  data = RV_lm_df)
-AIC(lme_length_var, lme_length)
-anova(lme_length_var, lme_length)
-#There's no difference between these models...
-
-#Check assumptions of the model as per Zuur Ch 2 pgs 23-27
-#1: Test for homogeneity of variance by plotting residuals versus fitted
-plot(lmer_length_1)
-#Residuals look relatively evenly spread out along the line, although they definitly spread out with higher fitted values
-plot(lmer_thick)
-plot(lmer_TiW)
-plot(lmer_ShW)
-plot(lmer_SG)
-plot(lmer_CSurv)
-#2: Test for normal distribution of residuals via a qq-plot or histogram
-qqnorm(resid(lmer_length_1))
-hist(resid(lmer_length_1), xlab = "Residuals", main = "")
-#Looks like a good qq distribution, some deviation but pretty minimal
-#Histogram has a small right tail
-#3: Test for independence by checking residuals against each explanatory value
-plot(RV_lm_df$OR, resid(lmer_length_1), xlab = "OR", ylab = "Residuals")
-plot(RV_lm_df$SR, resid(lmer_length_1), xlab = "SR", ylab = "Residuals")
-
-#Spread of residuals is very similar between OR & SR --> good to go here
-plot(RV_lm_df$OS, resid(lm_length), xlab = "OS", ylab = "Residuals")
-plot(RV_lm_df$Block, resid(lm_length), xlab = "Block", ylab = "Residuals")
-
-
-#Use emmeans to calculate effect sizes
-lm_length_emm <- emmeans(lm_length, c("SR", "OR"), data = RV_lm_df)
-lm_length_emm
 
 #Remove all the unneeded objects for survival analysis----
 rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_combined_OR_SR, RV_diff, 
@@ -461,44 +459,56 @@ rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_combined_OR_SR, RV_diff,
    RV_growth_OR, RV_stage, RV_survival_block, SG_stage, surv_stage, ShW_stage, RV_combined_OR_SR_title)
 
 #Analyze Survival data----
-#first subset by outplant site
-RV_surv_cal <- RV_survival %>% 
-  filter(OR == "Calvert")
+#First create a column that calculates the number of days between each measurement date
+#Inport the dates you took measurements
+dates_df <- read.csv("data/snail_RVs/RT_2_V1_Aug_dates.csv")
+dates_df <- dates_df %>% 
+  mutate(init_date = as.Date(Init, '%m-%d-%Y'),
+         mid_date = as.Date(Mid, '%m-%d-%Y'),
+         final_date = as.Date(Final, '%m-%d-%Y'),
+         diff_mid_init = mid_date - init_date,
+         diff_final_init = final_date - init_date)
 
-RV_surv_nan <- RV_survival %>% 
-  filter(OR == "Nanaimo")
-
-#Analyse whether source region affects survival in the two outplanted regions 
+#Create a column with the days between the initial, middle, and end measurements, and change font of SR to all caps
 RV_survival <- RV_survival %>% 
-  mutate(SR = as.factor(SR),
-         OR = as.factor(OR))
+  mutate(days_diff = ifelse(Stage == "Init" & OS == "Kwak", 0,
+                            ifelse(Stage == "Mid" & OS == "Kwak", 78,
+                                   ifelse(Stage == "Final" & OS == "Kwak", 138, 
+                                          ifelse(Stage == "Init" & OS == "Pruth", 0,
+                                                 ifelse(Stage == "Mid" & OS == "Pruth", 77,
+                                                        ifelse(Stage == "Final" & OS == "Pruth", 136, 
+                                                               ifelse(Stage == "Init" & OR == "Nanaimo", 0,
+                                                                      ifelse(Stage == "Mid" & OR == "Nanaimo", 69,
+                                                                             ifelse(Stage == "Final" & OR == "Nanaimo", 125, NA)))))))))) %>% 
+  mutate(SR = ifelse(SR == "Calvert", "CALVERT", "NANAIMO"))
 
-both <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_survival)
-both_1 <- survfit(Surv(Days_diff, DIED) ~ SR + OR, data = RV_survival)
+  
+#Analyse whether source region affects survival in the two outplanted regions 
+#Based code upon https://bioconnector.github.io/workshops/r-survival.html
 
-summary(both)
-summary(both_1)
-survanalysis <- ggsurvplot(both, facet.by = "OR", legend.title = "Source Region", xlab = "Time, days", pval = TRUE,
-           palette = c("skyblue", "coral")) 
+sfit <- survfit(Surv(days_diff, DIED) ~ SR + OR, data = RV_survival)
+summary(sfit)
+survdiff(Surv(days_diff, DIED) ~ SR + OR, data = RV_survival)
+surv_pvalue(sfit)
+
+#I don't think it's interesting to show the survival analysis, given that the cumulative survival shows
+#the same information in a more visually intuitive way. Instead, I think I'll share the outputs of the coxph test in my text or a table
+cph <- coxph(Surv(days_diff, DIED) ~ SR + OR, data = RV_survival)
+cph.int <- coxph(Surv(days_diff, DIED) ~ SR * OR, data = RV_survival)
+#When I include the interaction in the cph, some of the summary estimates become 0 & inf. The Anova output remains largely the same though,
+#I would like to test the interactive effect, but not sure how within this type of analysis
+summary(cph)
+summary(cph.int)
+Anova(cph)
+Anova(cph.int)
+summary(cph)$sctest[3]
+round(summary(cph)$sctest[3], digits = 9) == round(surv_pvalue(sfit)[,2], digits = 9)
 
 
-ggsave(survanalysis, file = "plots/snails/RT/survanalysis.pdf", height = 4, width = 8, dpi = 300)
+ggsurvplot(sfit2, legend.title = "Outplant Region", xlab = "Time, days", pval = TRUE,
+          data = RV_survival)
 
-cal <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_surv_cal)
-summary(cal)
-ggsurvplot(
-  fit = cal, 
-  xlab = "Days", 
-  ylab = "Overall survival probability", pval = TRUE)
-cal_coxph <- coxph(Surv(Days_diff, DIED) ~ SR, data = RV_surv_cal)
-Anova(cal_coxph)
 
-nan <- survfit(Surv(Days_diff, DIED) ~ SR, data = RV_surv_nan)
-summary(nan)
-ggsurvplot(
-  fit = nan, 
-  xlab = "Days", 
-  ylab = "Overall survival probability")
-nan_coxph <- coxph(Surv(Days_diff, DIED) ~ SR, data = RV_surv_nan)
-Anova(nan_coxph)
+ggsurvplot(sfit2, facet.by = "OR", legend.title = "Source Region", xlab = "Time, days", pval = TRUE,
+           palette = c("skyblue", "coral"), data = RV_survival)
 
