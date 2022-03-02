@@ -271,7 +271,7 @@ length_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanl, group = SR, colour = 
   geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
   stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
   stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
                position=position_dodge(0.3)) +
   labs(colour = "Source Region") +
   scale_colour_manual(values = c("skyblue", "coral")) +
@@ -282,7 +282,7 @@ thick_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanTh, group = SR, colour = 
   geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
   stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
   stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
                position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Change in ST (mm)") +
@@ -292,7 +292,7 @@ ShW_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanShW, group = SR, colour = S
   geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
   stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
   stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
                position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Change in ShW (mm)") +
@@ -302,7 +302,7 @@ TiW_OR_OS_points <- ggplot(RV_diff, aes(OR, diff_meanTiW, group = SR, colour = S
   geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
   stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
   stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
                position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Change in TiW (g)") +
@@ -312,7 +312,7 @@ SG_OR_OS_points <- ggplot(RV_diff, aes(OR, meanSG, group = SR, colour = SR)) +
   geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
   stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
   stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
                position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Change in LSG (g)") +
@@ -322,7 +322,7 @@ CSurv_OR_OS_points <- ggplot(RV_diff_1, aes(OR, cumsurv, group = SR, colour = SR
   geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
   stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
   stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
                position=position_dodge(0.3)) +
   scale_colour_manual(values = c("skyblue", "coral")) +
   labs(x = "Outplant region", y = "Cumulative Surv (%)") +
@@ -488,10 +488,10 @@ grpMeans_surv <- emmeans(glm_surv, ~ OR*SR, data = RV_survival)
 pairs(grpMeans_surv, simple = list("OR", "SR"))
 
 #Remove all the unneeded objects for survival analysis----
-rm(length_OR_OS_box, length_OR_OS_points, RV_alive, RV_combined_OR_SR, RV_diff, 
-   RV_growth_block, RV_sum_OR, RV_sum_OR_SR, SG_OR_OS_points, ShW_OR_OS_points, 
+rm(length_OR_OS_points, RV_alive, RV_combined_OR_SR, RV_diff, test,
+   RV_growth_block, RV_sum_OR, SG_OR_OS_points, ShW_OR_OS_points, 
    CSurv_OR_OS_points, length_stage, thick_stage, thick_OR_OS_points, RV_cumsurv_block, RV_cumsurv_OR, 
-   TiW_stage, TiW_OR_OS_box, TiW_OR_OS_points, xaxistitle, xaxistitle_OR, RV_diff_2, RV_combined_stage_title,
+   TiW_stage, TiW_OR_OS_points, xaxistitle, xaxistitle_OR, RV_combined_stage_title,
    RV_growth_OR, RV_stage, RV_survival_block, SG_stage, surv_stage, ShW_stage, RV_combined_OR_SR_title)
 
 #Analyze Survival data----
@@ -547,3 +547,6 @@ ggsurvplot(sfit2, legend.title = "Outplant Region", xlab = "Time, days", pval = 
 ggsurvplot(sfit2, facet.by = "OR", legend.title = "Source Region", xlab = "Time, days", pval = TRUE,
            palette = c("skyblue", "coral"), data = RV_survival)
 
+
+#Remove all final variables----
+rm(lmer_length, lmer_length_1, lmer_length_2, RV_base, RV_diff_1, RV_lm, RV_lm_init, RV_survival, RV_survival_glm, ID_ostrina, remove)
