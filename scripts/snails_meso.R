@@ -117,72 +117,61 @@ meso_growth_tank <- meso_clean %>%
 #Final Calvert Pruth 2 only has 1 snail --> no SD
 #Final Calvert Pruth 22 only has 1 snail --> no SD
 
-meso_growth_treat <- meso_growth_tank %>% 
-  group_by(Stage, SP, Treat) %>% 
-  summarize(meanL_Tr = mean(meanL, na.rm = TRUE), sdL_Tr = sd(meanL, na.rm = TRUE),
-            meanTh_Tr = mean(meanTh, na.rm = TRUE), sdTh_Tr = sd(meanTh, na.rm = TRUE),
-            meanShW_Tr = mean(meanShW, na.rm = TRUE), sdShW_Tr = sd(meanShW, na.rm = TRUE),
-            meanTiW_Tr = mean(meanTiW, na.rm = TRUE), sdTiW_Tr = sd(meanTiW, na.rm = TRUE),
-            meanSG_Tr = mean(meanSG, na.rm = TRUE), sdSG_Tr = sd(meanSG, na.rm = TRUE), n = n()) %>% 
-  ungroup()
-
-#Final Calvert Pruth 22 only has 1 tank --> no SD
-
 #Subset temp & factorial exps
-meso_growth_treat_temp <- meso_growth_treat %>% 
+meso_growth_treat_temp <- meso_growth_tank %>% 
   filter(Treat == "12A" | Treat == "15A" | Treat == "19A" | Treat == "22A")
-meso_growth_treat_fact <- meso_growth_treat %>% 
+meso_growth_treat_fact <- meso_growth_tank %>% 
   filter(Treat == "15A" | Treat == "15L" | Treat == "22A" | Treat == "22L")
 
 #May have to create new code for adding survival to this dataframe
 
 #Visualize the RVs over time for temp exp----
-length_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanL_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanL_Tr-sdL_Tr, ymax=meanL_Tr+sdL_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+length_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanL, group = SP, colour = SP)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   labs(colour = "Source Population") +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(y = "SL (mm)") +
+  labs(y = "Change in SL (mm)") +
   theme_cowplot(16) + theme(strip.background = element_blank(), strip.text = element_text(size = 16))
 
-thick_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanTh_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanTh_Tr-sdTh_Tr, ymax=meanTh_Tr+sdTh_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+thick_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanTh, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "ST (mm)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-ShW_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanShW_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanShW_Tr-sdShW_Tr, ymax=meanShW_Tr+sdShW_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+ShW_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanShW, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "ShW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-TiW_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanTiW_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanTiW_Tr-sdTiW_Tr, ymax=meanTiW_Tr+sdTiW_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+TiW_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanTiW, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "TiW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-SG_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanSG_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanSG_Tr-sdSG_Tr, ymax=meanSG_Tr+sdSG_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+SG_stage_temp <- ggplot(meso_growth_treat_temp, aes(Stage, meanSG, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "LSG (mm)") +
@@ -211,52 +200,52 @@ meso_growth_temp_comb <- plot_grid(meso_stage_temp, xaxistitle, ncol = 1, rel_he
 ggsave(meso_growth_temp_comb, file = "plots/snails/meso/meso_stage_temp.pdf", height = 14, width = 12, dpi = 300)
 
 #Visualize the RVs over time for fact exp----
-length_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanL_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanL_Tr-sdL_Tr, ymax=meanL_Tr+sdL_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+length_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanL, group = SP, colour = SP)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   labs(colour = "Source Population") +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(y = "SL (mm)") +
+  labs(y = "Change in SL (mm)") +
   theme_cowplot(16) + theme(strip.background = element_blank(), strip.text = element_text(size = 16))
 
-thick_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanTh_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanTh_Tr-sdTh_Tr, ymax=meanTh_Tr+sdTh_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+thick_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanTh, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "ST (mm)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-ShW_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanShW_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanShW_Tr-sdShW_Tr, ymax=meanShW_Tr+sdShW_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+ShW_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanShW, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "ShW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-TiW_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanTiW_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanTiW_Tr-sdTiW_Tr, ymax=meanTiW_Tr+sdTiW_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+TiW_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanTiW, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "TiW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-SG_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanSG_Tr, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanSG_Tr-sdSG_Tr, ymax=meanSG_Tr+sdSG_Tr), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+SG_stage_fact <- ggplot(meso_growth_treat_fact, aes(Stage, meanSG, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ Treat, ncol = 4) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "LSG (mm)") +
@@ -279,10 +268,10 @@ meso_stage_fact <- plot_grid(length_stage_fact + theme(legend.position = "none",
                              ncol = 2, nrow = 5, axis = "lb", align = "hv", rel_widths = c(1,0.2))
 
 xaxistitle <- ggdraw() + draw_label("Stage", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_growth_fact_comb <- plot_grid(meso_stage_fact, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
+meso_growth_temp_comb <- plot_grid(meso_stage_temp, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
 
 #Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
-ggsave(meso_growth_fact_comb, file = "plots/snails/meso/meso_stage_fact.pdf", height = 14, width = 12, dpi = 300)
+ggsave(meso_growth_temp_comb, file = "plots/snails/meso/meso_stage_temp.pdf", height = 14, width = 12, dpi = 300)
 
 
 #Create a new df with the change in growth metrics. Group by ID then summarize by tank----

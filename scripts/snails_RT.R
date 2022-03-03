@@ -80,25 +80,16 @@ RV_survival <- RV_base %>%
 #Blue Pruth outplanted at Cedar because only 1 survived and it was very small --> pulls balance down
 #Blue KWAK at Heron in mid and final, because n = 1
 remove <- c("Cedar_PRUTH_B_Final", "Heron_KWAK_B_Final", "Heron_KWAK_B_Mid")
+#unite(comb_ID, c(OS, SP, Block, Stage), sep = "_", remove = FALSE) %>% 
+#  filter(!comb_ID %in% remove) %>% 
 
 RV_growth_block <- RV_alive %>% 
-  unite(comb_ID, c(OS, SP, Block, Stage), sep = "_", remove = FALSE) %>% 
-  filter(!comb_ID %in% remove) %>% 
   group_by(Stage, OR, OS, SR, SP, Block) %>% 
   summarize(meanL = mean(L, na.rm = TRUE), sdL = sd(L, na.rm = TRUE),
             meanTh = mean(Th, na.rm = TRUE), sdTh = sd(Th, na.rm = TRUE),
             meanShW = mean(ShW, na.rm = TRUE), sdShW = sd(ShW, na.rm = TRUE),
             meanTiW = mean(TiW, na.rm = TRUE), sdTiW = sd(TiW, na.rm = TRUE),
             meanSG = mean(SG, na.rm = TRUE), sdSG = sd(SG, na.rm = TRUE), n = n()) %>% 
-  ungroup()
-
-RV_growth_OR <- RV_growth_block %>% 
-  group_by(Stage, OR, SR, SP) %>% 
-  summarize(meanL_OR = mean(meanL, na.rm = TRUE), sdL_OR = sd(meanL, na.rm = TRUE),
-            meanTh_OR = mean(meanTh, na.rm = TRUE), sdTh_OR = sd(meanTh, na.rm = TRUE),
-            meanShW_OR = mean(meanShW, na.rm = TRUE), sdShW_OR = sd(meanShW, na.rm = TRUE),
-            meanTiW_OR = mean(meanTiW, na.rm = TRUE), sdTiW_OR = sd(meanTiW, na.rm = TRUE),
-            meanSG_OR = mean(meanSG, na.rm = TRUE), sdSG_OR = sd(meanSG, na.rm = TRUE), n = n()) %>% 
   ungroup()
 
 #Calculate the cumulative survival over time by selecting only the surviving snails, and then
@@ -124,67 +115,67 @@ RV_cumsurv_block <- RV_survival_block %>%
 
 RV_cumsurv_OR <- RV_cumsurv_block %>% 
   group_by(Stage, OR, SR, SP) %>% 
-  summarize(meancumsurv = mean(cumsurv), sdcumsurv = sd(cumsurv), n_bl = n()) %>% 
+  summarize(meancumsurv = mean(cumsurv), sdcumsurv = sd(cumsurv), se=sd(cumsurv)/sqrt(n()), n_bl = n()) %>% 
   ungroup()
 
-RV_sum_OR <- cbind(RV_growth_OR, meancumsurv = RV_cumsurv_OR$meancumsurv, sdcumsurv = RV_cumsurv_OR$sdcumsurv) 
+RV_sum_block <- cbind(RV_growth_block, cumsurv = RV_cumsurv_block$cumsurv) 
 
 #Visualize the RVs over time----
-length_stage <- ggplot(RV_sum_OR, aes(Stage, meanL_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanL_OR-sdL_OR, ymax=meanL_OR+sdL_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+length_stage <- ggplot(RV_sum_block, aes(Stage, meanL, group = SP, colour = SP)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
   labs(colour = "Source Population") +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(y = "SL (mm)") +
+  labs(y = "Change in SL (mm)") +
   theme_cowplot(16) + theme(strip.background = element_blank(), strip.text = element_text(size = 16))
 
-thick_stage <- ggplot(RV_sum_OR, aes(Stage, meanTh_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanTh_OR-sdTh_OR, ymax=meanTh_OR+sdTh_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+thick_stage <- ggplot(RV_sum_block, aes(Stage, meanTh, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "ST (mm)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-ShW_stage <- ggplot(RV_sum_OR, aes(Stage, meanShW_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5, data=RV_sum_OR[!is.na(RV_sum_OR$meanShW_OR),]) +
-  geom_errorbar(aes(ymin=meanShW_OR-sdShW_OR, ymax=meanShW_OR+sdShW_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+ShW_stage <- ggplot(RV_sum_block, aes(Stage, meanShW, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "ShW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-TiW_stage <- ggplot(RV_sum_OR, aes(Stage, meanTiW_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5, data=RV_sum_OR[!is.na(RV_sum_OR$meanTiW_OR),]) +
-  geom_errorbar(aes(ymin=meanTiW_OR-sdTiW_OR, ymax=meanTiW_OR+sdTiW_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
-  facet_wrap(~ OR) +
+TiW_stage <- ggplot(RV_sum_block, aes(Stage, meanTiW, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
+   facet_wrap(~ OR) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "TiW (g)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-SG_stage <- ggplot(RV_sum_OR, aes(Stage, meanSG_OR, group = SP, colour = SP)) + 
-  geom_point(size = 3, position=position_dodge(0.3)) +
-  geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meanSG_OR-sdSG_OR, ymax=meanSG_OR+sdSG_OR), width=.2, size = 0.5,
-                position=position_dodge(0.3)) +
+SG_stage <- ggplot(RV_sum_block, aes(Stage, meanSG, group = SP, colour = SP)) + 
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(y = "LSG (mm)") +
   theme_cowplot(16) + theme(strip.text = element_blank())
 
-surv_stage <- ggplot(RV_sum_OR, aes(Stage, meancumsurv, group = SP, colour = SP)) + 
+surv_stage <- ggplot(RV_cumsurv_OR, aes(Stage, meancumsurv, group = SP, colour = SP)) + 
   geom_point(size = 3, position=position_dodge(0.3)) +
   geom_line(size = 0.8, position = position_dodge(0.3), alpha = 0.5) +
-  geom_errorbar(aes(ymin=meancumsurv-sdcumsurv, ymax=meancumsurv+sdcumsurv), width=.2, size = 0.5,
+  geom_errorbar(aes(ymin=meancumsurv-se, ymax=meancumsurv+se), width=.2, size = 0.5,
                 position=position_dodge(0.3)) +
   facet_wrap(~ OR) +
   scale_y_continuous(breaks = c(0, 20, 40, 60, 80, 100), labels=c(0, 20, 40, 60, 80, 100), limits = c(0, 110)) +
@@ -405,7 +396,7 @@ RV_survival_glm <- RV_survival %>%
 #I think this is the best model for me
 #I chose to model the interactions w/ initL when there was a significant interaction between initL & SR or OR, so I created a multiple regression model
 #according to https://stats.stackexchange.com/questions/281528/dealing-with-model-assumption-violation-homogeneity-of-regression-coefficients
-lmer_length <- lmer(diff_l ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_length <- lmer(diff_l ~ OR*SR+ initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
 summary(lmer_length)
 
 #Verify assumptions of model
@@ -416,9 +407,10 @@ visreg(lmer_length, "initL", by = "OR", overlay = TRUE)
 visreg(lmer_length, "initL", by = "SR", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_length)
+Anova(lmer_length, type = "III")
+aov(lmer_length)
 #Since there are positive interactions, use the following notation for the Tukey posthoc
-grpMeans_length <- emmeans(lmer_length, ~ SR*OR + initL*SR, data = RV_lm)
+grpMeans_length <- emmeans(lmer_length, ~ OR*SR + initL*SR, data = RV_lm)
 pairs(grpMeans_length, simple = list("OR", "SR"))
 
 #Shell thickness: note for this model I received a singular fit when OS_block was nested within OS, where OS variance = 0 --> removed OS from model as per Matuschek
@@ -433,12 +425,12 @@ visreg(lmer_thick)
 visreg(lmer_thick, "initTh", by = "OR", overlay = TRUE)
 visreg(lmer_thick, "initTh", by = "SR", overlay = TRUE)
 
-Anova(lmer_thick)
+Anova(lmer_thick, type = "III")
 grpMeans_thick <- emmeans(lmer_thick, ~ SR*OR + initTh*SR, data = RV_lm)
 pairs(grpMeans_thick, simple = list("OR", "SR"))
 
 #Tissue weight
-lmer_TiW <- lmer(diff_TiW ~ OR*SR + initTiW + (1|OS/OS_block)+ (1|SP), data = RV_lm)
+lmer_TiW <- lmer(diff_TiW ~ OR*SR + initTiW*SR + (1|OS/OS_block)+ (1|SP), data = RV_lm)
 summary(lmer_TiW)
 
 plotresid(lmer_TiW)
@@ -446,7 +438,7 @@ visreg(lmer_TiW)
 visreg(lmer_TiW, "initTiW", by = "OR", overlay = TRUE)
 visreg(lmer_TiW, "initTiW", by = "SR", overlay = TRUE)
 
-Anova(lmer_TiW)
+Anova(lmer_TiW, type = "III")
 grpMeans_TiW <- emmeans(lmer_TiW, ~ SR*OR + initTiW, data = RV_lm)
 pairs(grpMeans_TiW, simple = list("OR", "SR"))
 
@@ -459,7 +451,7 @@ visreg(lmer_ShW)
 visreg(lmer_ShW, "initShW", by = "OR", overlay = TRUE)
 visreg(lmer_ShW, "initShW", by = "SR", overlay = TRUE)
 
-Anova(lmer_ShW)
+Anova(lmer_ShW, type = "III")
 grpMeans_ShW <- emmeans(lmer_ShW, ~ SR*OR + initShW*SR, data = RV_lm)
 pairs(grpMeans_ShW, simple = list("OR", "SR"))
 
@@ -472,18 +464,17 @@ visreg(lmer_SG)
 visreg(lmer_SG, "initL", by = "OR", overlay = TRUE)
 visreg(lmer_SG, "initL", by = "SR", overlay = TRUE)
 
-Anova(lmer_SG)
+Anova(lmer_SG, type = "III")
 grpMeans_SG <- emmeans(lmer_SG, ~ OR*SR + initL*SR, data = RV_lm)
 pairs(grpMeans_SG, simple = list("OR", "SR"))
 
 #Survival: since these data are binomial, you have to run a generalized mixed-effects model, with the RV_survival df
 glm_surv <- glmer(Died_fin ~ OR*SR + (1|OS/OS_block), family = binomial(link = "logit"), data = RV_survival_glm)
 summary(glm_surv)
-Anova(glm_surv)
+Anova(glm_surv, type = "III")
 
 # Visualize fit 
 visreg(glm_surv, "OR", by = "SR")
-
 grpMeans_surv <- emmeans(glm_surv, ~ OR*SR, data = RV_survival)
 pairs(grpMeans_surv, simple = list("OR", "SR"))
 
@@ -549,4 +540,4 @@ ggsurvplot(sfit2, facet.by = "OR", legend.title = "Source Region", xlab = "Time,
 
 
 #Remove all final variables----
-rm(lmer_length, lmer_length_1, lmer_length_2, RV_base, RV_diff_1, RV_lm, RV_lm_init, RV_survival, RV_survival_glm, ID_ostrina, remove)
+rm(lmer_length, RV_base, RV_diff_1, RV_lm, RV_lm_init, RV_survival, RV_survival_glm, ID_ostrina, remove)
