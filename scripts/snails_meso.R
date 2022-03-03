@@ -4,10 +4,6 @@
 #August 2nd (mid): submerged weight, total weight
 #Sept 2nd (final): length, thickness, total weight, submerged weight
 
-#Note: remember that when you visualize the change in growth metrics, you remove the tanks where there's only one snail left at the 
-#end because they mess with the overall visualization. BUT: when you analyze the data, you keep these in the model (i.e. calculate
-#the difference according to snail ID rather than average within each tank)
-
 #Load packages----
 pkgs <- c("tidyverse", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
           "emmeans", "lme4", "RVAideMemoire")
@@ -73,8 +69,6 @@ meso_clean <- meso_base %>%
   filter_at(vars(L,Th, SG, ShW, TiW), any_vars(!is.na(.))) %>% 
   select(Stage, SR, SP, Tank, Treat, ID, L, Th, ShW, TiW, SG)
 
-rm(cedar_reg, heron_reg, pruth_reg, kwak_reg, tanks_remove)
-
 #You have to add the TiW & ShW values for each ID to the init ID so that you only have 1 row/snail (otherwise it messes up the sample sizes later
 meso_clean_1 <- meso_clean %>% 
   filter(Stage == "Init") %>% 
@@ -89,7 +83,7 @@ meso_clean <- left_join(meso_clean_1, meso_clean_2, by = "ID") %>%
   rbind(meso_clean_3) %>% 
   mutate(Stage = factor(Stage, levels = c("Init", "Final")))
 
-##Change the 'Mid' label to 'Init', since you will be comparing those TiW & ShW measurements to the final ones in the same way as the L & thickness init to final)
+rm(cedar_reg, heron_reg, pruth_reg, kwak_reg, tanks_remove, meso_clean_1, meso_clean_2, meso_clean_3)
 
 #Create code for cleaning the survival data, but maybe in a different section? 
 
@@ -112,6 +106,9 @@ meso_growth_tank <- meso_clean %>%
             meanTiW = mean(TiW, na.rm = TRUE), sdTiW = sd(TiW, na.rm = TRUE),
             meanSG = mean(SG, na.rm = TRUE), sdSG = sd(SG, na.rm = TRUE), n = n()) %>% 
   ungroup()
+
+test <- meso_clean %>% 
+  filter(SP == "Pruth" & Stage == "Init" & Treat == "12A")
 
 #Mid Calvert Pruth 22 only has 1 snail --> no SD
 #Final Calvert Pruth 2 only has 1 snail --> no SD
@@ -434,3 +431,146 @@ xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0
 meso_treat_fact_comb_title <- plot_grid(meso_treat_fact_comb, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(meso_treat_fact_comb_title, file = "plots/snails/meso/meso_treat_fact.pdf", height = 8, width = 17, dpi = 300)
+
+
+#Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects for every snail----
+#Calculate the difference in growth (this time by ID rather than block, as in previous code), and change labels to initL etc
+meso_lm <- meso_clean %>% 
+  arrange(ID, Stage) %>% 
+  group_by(ID) %>% 
+  mutate(diff_l = L - lag(L, default= L[1]),
+         diff_Th = Th - lag(Th, default = Th[1]),
+         diff_ShW = ShW - lag(ShW, default = ShW[1]),
+         diff_TiW = TiW - lag(TiW, default = TiW[1])) %>% 
+  subset(Stage == "Final") %>% 
+  select(Stage, SR, SP, Treat, Tank, ID, SG, diff_l, diff_Th, diff_ShW, diff_TiW) %>%
+  ungroup()
+
+#Gather initial sizes for covariates in models
+meso_lm_init <- meso_clean %>% 
+  subset(Stage == "Init") %>% 
+  select(ID, initL = L, initTh = Th, initShW = ShW, initTiW = TiW)
+
+#Merge 2 datasets by ID
+meso_lm <- left_join(meso_lm, meso_lm_init, by = "ID")
+
+#Create a temp & fact set
+meso_lm_temp <- meso_lm %>% 
+  filter(Treat == "12A"|Treat=="15A"|Treat=="19A"|Treat=="22A")
+meso_lm_fact <- meso_lm %>% 
+  filter(Treat == "15A"|Treat=="15L"|Treat=="22A"|Treat=="22L")
+
+#Make another df for the survival data
+
+#Build linear mixed effects models----
+#Fixed effects: SP, Treat & intxn, init size (and potential interactions)
+#Random effects: Tank (1|Tank)
+
+#OR: 
+#Fixed effects: SR, Treat & intxn
+#Random effects: Tank & Sp (1|Tank), (1|SP)
+
+lmer_length <- lmer(diff_l ~ SP*Treat + (1|Tank), data = meso_lm_temp)
+lmer_length_1 <- lmer(diff_l ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
+lmer_length_2 <- lmer(diff_l ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm_temp)
+lmer_length_3 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
+lmer_length_4 <- lmer(diff_l ~ SR + SP + Treat + initL + (1|Tank), data = meso_lm_temp)
+
+summary(lmer_length)
+summary(lmer_length_1)
+summary(lmer_length_2)
+summary(lmer_length_3)
+summary(lmer_length_4)
+
+Anova(lmer_length, type = "III")
+Anova(lmer_length_1, type = "III")
+Anova(lmer_length_2, type = "III")
+Anova(lmer_length_3, type = "III")
+
+Anova(lmer_length)
+Anova(lmer_length_1)
+Anova(lmer_length_2)
+Anova(lmer_length_3)
+Anova(lmer_length_4)
+
+AIC(lmer_length, lmer_length_1, lmer_length_2, lmer_length_3)
+
+#Verify assumptions of model
+plot(lmer_length)
+plotresid(lmer_length)
+visreg(lmer_length)
+visreg(lmer_length, "initL", by = "OR", overlay = TRUE)
+visreg(lmer_length, "initL", by = "SR", overlay = TRUE)
+
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_length, type = "III")
+aov(lmer_length)
+#Since there are positive interactions, use the following notation for the Tukey posthoc
+grpMeans_length <- emmeans(lmer_length, ~ OR*SR + initL*SR, data = RV_lm)
+pairs(grpMeans_length, simple = list("OR", "SR"))
+
+#Shell thickness: note for this model I received a singular fit when OS_block was nested within OS, where OS variance = 0 --> removed OS from model as per Matuschek
+lmer_thick <- lmer(diff_Th ~ OR*SR + initTh*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+summary(lmer_thick)
+
+#Verify assumptions
+plot(lmer_thick)
+plotresid(lmer_thick)
+qqnorm(resid(lmer_length))
+visreg(lmer_thick)
+visreg(lmer_thick, "initTh", by = "OR", overlay = TRUE)
+visreg(lmer_thick, "initTh", by = "SR", overlay = TRUE)
+
+Anova(lmer_thick, type = "III")
+grpMeans_thick <- emmeans(lmer_thick, ~ SR*OR + initTh*SR, data = RV_lm)
+pairs(grpMeans_thick, simple = list("OR", "SR"))
+
+#Tissue weight
+lmer_TiW <- lmer(diff_TiW ~ OR*SR + initTiW*SR + (1|OS/OS_block)+ (1|SP), data = RV_lm)
+summary(lmer_TiW)
+
+plotresid(lmer_TiW)
+visreg(lmer_TiW)
+visreg(lmer_TiW, "initTiW", by = "OR", overlay = TRUE)
+visreg(lmer_TiW, "initTiW", by = "SR", overlay = TRUE)
+
+Anova(lmer_TiW, type = "III")
+grpMeans_TiW <- emmeans(lmer_TiW, ~ SR*OR + initTiW, data = RV_lm)
+pairs(grpMeans_TiW, simple = list("OR", "SR"))
+
+#Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
+lmer_ShW <- lmer(diff_ShW ~ OR*SR + initShW*SR + (1|OS/OS_block), data = RV_lm)
+summary(lmer_ShW)
+
+plotresid(lmer_ShW)
+visreg(lmer_ShW)
+visreg(lmer_ShW, "initShW", by = "OR", overlay = TRUE)
+visreg(lmer_ShW, "initShW", by = "SR", overlay = TRUE)
+
+Anova(lmer_ShW, type = "III")
+grpMeans_ShW <- emmeans(lmer_ShW, ~ SR*OR + initShW*SR, data = RV_lm)
+pairs(grpMeans_ShW, simple = list("OR", "SR"))
+
+#Shell growth: included initL as covariate as it improves fit of model
+lmer_SG <- lmer(SG ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+summary(lmer_SG)
+
+plotresid(lmer_SG)
+visreg(lmer_SG)
+visreg(lmer_SG, "initL", by = "OR", overlay = TRUE)
+visreg(lmer_SG, "initL", by = "SR", overlay = TRUE)
+
+Anova(lmer_SG, type = "III")
+grpMeans_SG <- emmeans(lmer_SG, ~ OR*SR + initL*SR, data = RV_lm)
+pairs(grpMeans_SG, simple = list("OR", "SR"))
+
+#Survival: since these data are binomial, you have to run a generalized mixed-effects model, with the RV_survival df
+glm_surv <- glmer(Died_fin ~ OR*SR + (1|OS/OS_block), family = binomial(link = "logit"), data = RV_survival_glm)
+summary(glm_surv)
+Anova(glm_surv, type = "III")
+
+# Visualize fit 
+visreg(glm_surv, "OR", by = "SR")
+grpMeans_surv <- emmeans(glm_surv, ~ OR*SR, data = RV_survival)
+pairs(grpMeans_surv, simple = list("OR", "SR"))
+
