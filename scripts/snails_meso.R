@@ -285,7 +285,7 @@ meso_diff <- meso_clean %>%
 
 #Summarize by tank so that you can visualize the n/treatment
 meso_diff_tank <- meso_diff %>% 
-  group_by(SP, Treat, Tank) %>% 
+  group_by(SR, SP, Treat, Tank) %>% 
   summarize(meanL_treat = mean(diff_l, na.rm = TRUE), sdL_treat = sd(diff_l, na.rm = TRUE),
                         meanTh_treat = mean(diff_Th, na.rm = TRUE), sdTh_treat = sd(diff_Th, na.rm = TRUE),
                         meanShW_treat= mean(diff_ShW, na.rm = TRUE), sdShW_treat = sd(diff_ShW, na.rm = TRUE),
@@ -298,139 +298,117 @@ meso_diff_temp <- meso_diff_tank %>%
   filter(Treat == "12A" | Treat == "15A" | Treat == "19A" | Treat == "22A")
 meso_diff_fact <- meso_diff_tank %>% 
   filter(Treat == "15A" | Treat == "15L" | Treat == "22A" | Treat == "22L") %>% 
-  mutate(grp = ifelse(Treat == "15A" | Treat == "15L", "15", "22"))
+  mutate(temp = ifelse(Treat == "15A" | Treat == "15L", "15", "22"))
 
 #Visualize change in growth across treatments grouped by SP for temp exp----
 #The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
-length_treat_temp <- ggplot(meso_diff_temp, aes(Treat, meanL_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  labs(colour = "Source Population") +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in SL (mm)") +
-  theme_cowplot(16)
+plot_temp <- function(df, x, y, grp, clr.values, lbl.y){
+  temp_SR_plot <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
+    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+                 position=position_dodge(0.3)) +
+    scale_colour_manual(values = clr.values) +
+    labs(x = "Treatment", y = lbl.y) +
+    theme_cowplot(16)
+  return(temp_SR_plot)
+}
 
-thick_treat_temp <- ggplot(meso_diff_temp, aes(Treat, meanTh_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in ST (mm)") +
-  theme_cowplot(16)
+length_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanL_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
+thick_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanTh_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanShW_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanTiW_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanSG_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
 
-ShW_treat_temp <- ggplot(meso_diff_temp, aes(Treat, meanShW_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in ShW (g)") +
-  theme_cowplot(16)
-
-TiW_treat_temp <- ggplot(meso_diff_temp, aes(Treat, meanTiW_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in TiW (g)") +
-  theme_cowplot(16)
-
-SG_treat_temp <- ggplot(meso_diff_temp, aes(Treat, meanSG_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in LSG (mm)") +
-  theme_cowplot(16)
-
-meso_treat_temp_comb <- plot_grid(length_treat_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                               thick_treat_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                               get_legend(length_treat_temp),
-                               SG_treat_temp + theme(legend.position = "none", axis.title.x = element_blank()),
-                               ShW_treat_temp + theme(legend.position = "none", axis.title.x = element_blank()), 
-                               TiW_treat_temp + theme(legend.position = "none", axis.title.x = element_blank()),
+meso_treat_temp_comb_SP <- plot_grid(length_treat_temp_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                               thick_treat_temp_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                               get_legend(length_treat_temp_SP),
+                               SG_treat_temp_SP + theme(legend.position = "none", axis.title.x = element_blank()),
+                               ShW_treat_temp_SP + theme(legend.position = "none", axis.title.x = element_blank()), 
+                               TiW_treat_temp_SP + theme(legend.position = "none", axis.title.x = element_blank()),
                                ncol = 3, nrow = 2, axis = "lb", align = "hv")
 
 xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_treat_temp_comb_title <- plot_grid(meso_treat_temp_comb, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+meso_treat_temp_comb_title_SP <- plot_grid(meso_treat_temp_comb_SP, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
-ggsave(meso_treat_temp_comb_title, file = "plots/snails/meso/meso_treat_temp.pdf", height = 8, width = 17, dpi = 300)
+ggsave(meso_treat_temp_comb_title_SP, file = "plots/snails/meso/meso_treat_temp_SP.pdf", height = 8, width = 17, dpi = 300)
 
 #Visualize change in growth across treatments grouped by SP for fact exp----
 #The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
-length_treat_fact <- ggplot(meso_diff_fact, aes(Treat, meanL_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction(grp, SP))) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  labs(colour = "Source Population") +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in SL (mm)") +
-  theme_cowplot(16)
+plot_fact <- function(df, x, y, grp, temp, clr.values, lbl.y) {
+  plot_fact <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
+    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction(temp, {{grp}}))) +
+    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+                 position=position_dodge(0.3)) +
+    scale_colour_manual(values = clr.values) +
+    labs(x = "Treatment", y = lbl.y) +
+    theme_cowplot(16)
+  return(plot_fact)
+}
 
-thick_treat_fact <- ggplot(meso_diff_fact, aes(Treat, meanTh_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction(grp, SP))) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in ST (mm)") +
-  theme_cowplot(16)
+length_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanL_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
+thick_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanTh_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanShW_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanTiW_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanSG_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
 
-ShW_treat_fact <- ggplot(meso_diff_fact, aes(Treat, meanShW_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction(grp, SP))) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in ShW (g)") +
-  theme_cowplot(16)
-
-TiW_treat_fact <- ggplot(meso_diff_fact, aes(Treat, meanTiW_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction(grp, SP))) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in TiW (g)") +
-  theme_cowplot(16)
-
-SG_treat_fact <- ggplot(meso_diff_fact, aes(Treat, meanSG_treat, group = SP, colour = SP)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction(grp, SP))) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Treatment", y = "Change in LSG (mm)") +
-  theme_cowplot(16)
-
-meso_treat_fact_comb <- plot_grid(length_treat_fact + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  thick_treat_fact + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                  get_legend(length_treat_fact),
-                                  SG_treat_fact + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ShW_treat_fact + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                  TiW_treat_fact + theme(legend.position = "none", axis.title.x = element_blank()),
+meso_treat_fact_comb_SP <- plot_grid(length_treat_fact_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_treat_fact_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  get_legend(length_treat_fact_SP),
+                                  SG_treat_fact_SP + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ShW_treat_fact_SP + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_treat_fact_SP + theme(legend.position = "none", axis.title.x = element_blank()),
                                   ncol = 3, nrow = 2, axis = "lb", align = "hv")
 
 xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_treat_fact_comb_title <- plot_grid(meso_treat_fact_comb, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+meso_treat_fact_comb_title_SP <- plot_grid(meso_treat_fact_comb_SP, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
-ggsave(meso_treat_fact_comb_title, file = "plots/snails/meso/meso_treat_fact.pdf", height = 8, width = 17, dpi = 300)
+ggsave(meso_treat_fact_comb_title_SP, file = "plots/snails/meso/meso_treat_fact_SP.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize change in growth across treatments grouped by SR for temp exp----
+#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
+length_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanL_treat, SR, c("skyblue", "coral"), "Change in SL (mm)") + labs(colour = "Source Region")
+thick_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanTh_treat, SR, c("skyblue", "coral"), "Change in ST (mm)")
+ShW_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanShW_treat, SR, c("skyblue", "coral"), "Change in ShW (g)")
+TiW_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanTiW_treat, SR, c("skyblue", "coral"), "Change in TiW (g)")
+SG_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanSG_treat, SR, c("skyblue", "coral"), "Change in LSG (mm)")
+
+meso_treat_temp_comb_SR <- plot_grid(length_treat_temp_SR + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_treat_temp_SR + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  get_legend(length_treat_temp),
+                                  SG_treat_temp_SR + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ShW_treat_temp_SR + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_treat_temp_SR + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ncol = 3, nrow = 2, axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+meso_treat_temp_comb_title_SR <- plot_grid(meso_treat_temp_comb_SR, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_treat_temp_comb_title_SR, file = "plots/snails/meso/meso_treat_temp_SR.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize change in growth across treatments grouped by SR for fact exp----
+#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
+length_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanL_treat, SR, temp, c("skyblue", "coral"), "Change in SL (mm)") + labs(colour = "Source Region")
+thick_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanTh_treat, SR, temp, c("skyblue", "coral"), "Change in ST (mm)")
+ShW_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanShW_treat, SR, temp, c("skyblue", "coral"), "Change in ShW (g)")
+TiW_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanTiW_treat, SR, temp, c("skyblue", "coral"), "Change in TiW (g)")
+SG_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanSG_treat, SR, temp, c("skyblue", "coral"), "Change in LSG (mm)")
+
+meso_treat_fact_comb_SR <- plot_grid(length_treat_fact_SR + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                     thick_treat_fact_SR + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                     get_legend(length_treat_fact),
+                                     SG_treat_fact_SR + theme(legend.position = "none", axis.title.x = element_blank()),
+                                     ShW_treat_fact_SR + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                     TiW_treat_fact_SR + theme(legend.position = "none", axis.title.x = element_blank()),
+                                     ncol = 3, nrow = 2, axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+meso_treat_fact_comb_title_SR <- plot_grid(meso_treat_fact_comb_SR, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_treat_fact_comb_title_SR, file = "plots/snails/meso/meso_treat_fact_SR.pdf", height = 8, width = 17, dpi = 300)
 
 
 #Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects for every snail----
@@ -474,7 +452,7 @@ lmer_length <- lmer(diff_l ~ SP*Treat + (1|Tank), data = meso_lm_temp)
 lmer_length_1 <- lmer(diff_l ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
 lmer_length_2 <- lmer(diff_l ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm_temp)
 lmer_length_3 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
-lmer_length_4 <- lmer(diff_l ~ SR + SP + Treat + initL + (1|Tank), data = meso_lm_temp)
+lmer_length_5 <- lmer(diff_l ~ SR + SP + Treat + initL + (1|Tank), data = meso_lm_temp)
 
 summary(lmer_length)
 summary(lmer_length_1)
@@ -486,14 +464,19 @@ Anova(lmer_length, type = "III")
 Anova(lmer_length_1, type = "III")
 Anova(lmer_length_2, type = "III")
 Anova(lmer_length_3, type = "III")
+Anova(lmer_length_4, type = "III")
 
 Anova(lmer_length)
 Anova(lmer_length_1)
 Anova(lmer_length_2)
 Anova(lmer_length_3)
 Anova(lmer_length_4)
+Anova(lmer_length_5)
 
-AIC(lmer_length, lmer_length_1, lmer_length_2, lmer_length_3)
+visreg(lmer_length_4)
+visreg(lmer_length_4, "initL", by = "SP", overlay = TRUE)
+
+AIC(lmer_length, lmer_length_1, lmer_length_2, lmer_length_3, lmer_length_4)
 
 #Verify assumptions of model
 plot(lmer_length)
