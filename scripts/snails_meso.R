@@ -440,55 +440,43 @@ meso_lm_fact <- meso_lm %>%
 
 #Make another df for the survival data
 
-#Build linear mixed effects models----
-#Fixed effects: SP, Treat & intxn, init size (and potential interactions)
-#Random effects: Tank (1|Tank)
+#Test whether initial size differs across tanks
+initL_aov <- lm(initL ~ Tank + Treat, data = meso_lm_temp)
+Anova(initL_aov)
+initTh_aov <- lm(initTh ~ Tank + Treat, data = meso_lm_temp)
+Anova(initTh_aov)
+initTiW_aov <- lm(initTiW ~ Tank + Treat, data = meso_lm_temp)
+Anova(initTiW_aov)
+initShW_aov <- lm(initShW ~ Tank + Treat, data = meso_lm_temp)
+Anova(initShW_aov)
 
-#OR: 
+#There is no significant difference in starting size across tanks or treatment
+
+#Build linear mixed effects models----
 #Fixed effects: SR, Treat & intxn
 #Random effects: Tank & Sp (1|Tank), (1|SP)
 
-lmer_length <- lmer(diff_l ~ SP*Treat + (1|Tank), data = meso_lm_temp)
+lmer_length <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
 lmer_length_1 <- lmer(diff_l ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
-lmer_length_2 <- lmer(diff_l ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm_temp)
-lmer_length_3 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
-lmer_length_5 <- lmer(diff_l ~ SR + SP + Treat + initL + (1|Tank), data = meso_lm_temp)
 
 summary(lmer_length)
 summary(lmer_length_1)
-summary(lmer_length_2)
-summary(lmer_length_3)
-summary(lmer_length_4)
-
-Anova(lmer_length, type = "III")
-Anova(lmer_length_1, type = "III")
-Anova(lmer_length_2, type = "III")
-Anova(lmer_length_3, type = "III")
-Anova(lmer_length_4, type = "III")
-
-Anova(lmer_length)
-Anova(lmer_length_1)
-Anova(lmer_length_2)
-Anova(lmer_length_3)
-Anova(lmer_length_4)
-Anova(lmer_length_5)
-
-visreg(lmer_length_4)
-visreg(lmer_length_4, "initL", by = "SP", overlay = TRUE)
-
-AIC(lmer_length, lmer_length_1, lmer_length_2, lmer_length_3, lmer_length_4)
 
 #Verify assumptions of model
 plot(lmer_length)
 plotresid(lmer_length)
 visreg(lmer_length)
-visreg(lmer_length, "initL", by = "OR", overlay = TRUE)
 visreg(lmer_length, "initL", by = "SR", overlay = TRUE)
+visreg(lmer_length, "initL", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_length, type = "III")
-aov(lmer_length)
-#Since there are positive interactions, use the following notation for the Tukey posthoc
+Anova(lmer_length_1, type = "III")
+
+Anova(lmer_length)
+Anova(lmer_length_1)
+
+#Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_length <- emmeans(lmer_length, ~ OR*SR + initL*SR, data = RV_lm)
 pairs(grpMeans_length, simple = list("OR", "SR"))
 
