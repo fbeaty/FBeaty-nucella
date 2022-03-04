@@ -450,6 +450,8 @@ Anova(initTiW_aov)
 initShW_aov <- lm(initShW ~ Tank + Treat, data = meso_lm_temp)
 Anova(initShW_aov)
 
+rm(initL_aov, initTh_aov, initTiW_aov, initShW_aov)
+
 #There is no significant difference in starting size across tanks or treatment
 
 #Build linear mixed effects models----
@@ -457,15 +459,18 @@ Anova(initShW_aov)
 #Random effects: Tank & Sp (1|Tank), (1|SP)
 
 lmer_length <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
-lmer_length_1 <- lmer(diff_l ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
+lmer_length_1 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (0+ SR|SP), data = meso_lm_temp)
+lmer_length_2 <- lmer(diff_l ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
 
 summary(lmer_length)
 summary(lmer_length_1)
 
+visreg(lmer_length_1, "SP", by = "SR")
+
 #Verify assumptions of model
 plot(lmer_length)
 plotresid(lmer_length)
-visreg(lmer_length)
+visreg(lmer_length_1, re.form = (~1|SR/SP))
 visreg(lmer_length, "initL", by = "SR", overlay = TRUE)
 visreg(lmer_length, "initL", by = "Treat", overlay = TRUE)
 
