@@ -448,7 +448,7 @@ meso_lm <- meso_clean %>%
          diff_ShW = ShW - lag(ShW, default = ShW[1]),
          diff_TiW = TiW - lag(TiW, default = TiW[1])) %>% 
   subset(Stage == "Final") %>% 
-  select(Stage, SR, SP, Treat, Tank, ID, SG, diff_l, diff_Th, diff_ShW, diff_TiW) %>%
+  select(Stage, SR, SP, Treat, Temp, pH, Tank, ID, SG, diff_l, diff_Th, diff_ShW, diff_TiW) %>%
   ungroup()
 
 #Gather initial sizes for covariates in models
@@ -461,36 +461,41 @@ meso_lm <- left_join(meso_lm, meso_lm_init, by = "ID")
 
 #Create a temp & fact set
 meso_lm_temp <- meso_lm %>% 
-  filter(Treat == "12A"|Treat=="15A"|Treat=="19A"|Treat=="22A")
+  filter(pH == "A") %>% 
+  droplevels
 meso_lm_fact <- meso_lm %>% 
-  filter(Treat == "15A"|Treat=="15L"|Treat=="22A"|Treat=="22L")
+  filter(Temp == 15 | Temp == 22) %>% 
+  droplevels
 
 #Make another df for the survival data
 
-#Test whether initial size differs across tanks
-initL_aov <- lm(initL ~ Tank + Treat, data = meso_lm_temp)
+#Test whether initial size differs across tanks----
+initL_aov <- lm(initL ~ Tank + Temp, data = meso_lm_temp)
 Anova(initL_aov)
-initTh_aov <- lm(initTh ~ Tank + Treat, data = meso_lm_temp)
+initTh_aov <- lm(initTh ~ Tank + Temp, data = meso_lm_temp)
 Anova(initTh_aov)
-initTiW_aov <- lm(initTiW ~ Tank + Treat, data = meso_lm_temp)
+initTiW_aov <- lm(initTiW ~ Tank + Temp, data = meso_lm_temp)
 Anova(initTiW_aov)
-initShW_aov <- lm(initShW ~ Tank + Treat, data = meso_lm_temp)
+initShW_aov <- lm(initShW ~ Tank + Temp, data = meso_lm_temp)
 Anova(initShW_aov)
 
 rm(initL_aov, initTh_aov, initTiW_aov, initShW_aov)
 
 #There is no significant difference in starting size across tanks or treatment
 
-#Build linear mixed effects models----
+#Build linear mixed effects models & glm for survival----
 #Fixed effects: SR, Treat & intxn
 #Random effects: Tank & Sp (1|Tank), (1|SP)
 
-lmer_length <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
-lmer_length_1 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (0+ SR|SP), data = meso_lm_temp)
-lmer_length_2 <- lmer(diff_l ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
+lmer_length_1 <- lmer(diff_l ~ SR*Temp + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
+lmer_length_nested <- lmer(diff_l ~ SR*Temp + initL + (1|Tank) + (0+ SR|SP), data = meso_lm_temp)
 
-summary(lmer_length)
+lmer_length_2 <- lmer(diff_l ~ SP*Temp + initL + (1|Tank), data = meso_lm_temp)
+
 summary(lmer_length_1)
+summary(lmer_length_2)
+
+AIC(lmer_length_1, lmer_length_2, lmer_length_3)
 
 visreg(lmer_length_1, "SP", by = "SR")
 
@@ -502,8 +507,9 @@ visreg(lmer_length, "initL", by = "SR", overlay = TRUE)
 visreg(lmer_length, "initL", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_length, type = "III")
 Anova(lmer_length_1, type = "III")
+Anova(lmer_length_nested, type = "III")
+Anova(lmer_length_2, type = "III")
 
 Anova(lmer_length)
 Anova(lmer_length_1)
@@ -570,16 +576,16 @@ pairs(grpMeans_SG, simple = list("OR", "SR"))
 lmer_length <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
 
 #Survival: since these data are binomial, you have to run a generalized mixed-effects model, with the RV_survival df
-glm_surv_temp <- glmer(Dead ~ SP*Temp + (1|Tank), family = binomial(link = "logit"), data = meso_surv_temp)
-summary(glm_surv_temp)
-Anova(glm_surv_temp, type = "III")
+glm_surv_temp_1 <- glmer(Dead ~ SR*Temp + (1|Tank), family = binomial(link = "logit"), data = meso_surv_temp)
+glm_surv_temp_2 <- glmer(Dead ~ SP*Temp + (1|Tank), family = binomial(link = "logit"), data = meso_surv_temp)
+summary(glm_surv_temp_1)
+Anova(glm_surv_temp_1, type = "III")
+Anova(glm_surv_temp_2, type = "III")
 
 # Visualize fit 
 visreg(glm_surv_temp)
 grpMeans_surv <- emmeans(glm_surv, ~ OR*SR, data = RV_survival)
 pairs(grpMeans_surv, simple = list("OR", "SR"))
-
-
 
 rm(cedar_reg, heron_reg, pruth_reg, kwak_reg, tanks_remove, meso_clean_1, meso_clean_2, meso_clean_3)
 

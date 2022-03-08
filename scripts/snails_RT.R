@@ -396,22 +396,29 @@ RV_survival_glm <- RV_survival %>%
 #I think this is the best model for me
 #I chose to model the interactions w/ initL when there was a significant interaction between initL & SR or OR, so I created a multiple regression model
 #according to https://stats.stackexchange.com/questions/281528/dealing-with-model-assumption-violation-homogeneity-of-regression-coefficients
-lmer_length <- lmer(diff_l ~ OR*SR+ initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-summary(lmer_length)
+lmer_length_1 <- lmer(diff_l ~ OR*SR+ initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_length_2 <- lmer(diff_l ~ OS*SP + initL + (1|OS_block), data = RV_lm)
+
+Anova(lmer_length_2, type = "III")
+
+AIC(lmer_length_1, lmer_length_2)
+
+summary(lmer_length_1)
+summary(lmer_length_2)
 
 #Verify assumptions of model
-plot(lmer_length)
-plotresid(lmer_length)
-visreg(lmer_length)
-visreg(lmer_length, "initL", by = "OR", overlay = TRUE)
-visreg(lmer_length, "initL", by = "SR", overlay = TRUE)
+plot(lmer_length_1)
+plotresid(lmer_length_1)
+visreg(lmer_length_1)
+visreg(lmer_length_1, "initL", by = "OR", overlay = TRUE)
+visreg(lmer_length_1, "initL", by = "SR", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_length, type = "III")
-aov(lmer_length)
+Anova(lmer_length_1, type = "III")
+aov(lmer_length_1)
 #Since there are positive interactions, use the following notation for the Tukey posthoc
-grpMeans_length <- emmeans(lmer_length, ~ OR*SR + initL*SR, data = RV_lm)
-pairs(grpMeans_length, simple = list("OR", "SR"))
+grpMeans_length <- emmeans(lmer_length_1, ~ OR*SR + initL*SR, data = RV_lm)
+pairs(grpMeans_length_1, simple = list("OR", "SR"))
 
 #Shell thickness: note for this model I received a singular fit when OS_block was nested within OS, where OS variance = 0 --> removed OS from model as per Matuschek
 lmer_thick <- lmer(diff_Th ~ OR*SR + initTh*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
