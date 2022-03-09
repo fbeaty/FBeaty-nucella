@@ -393,11 +393,13 @@ RV_survival_glm <- RV_survival %>%
 #OS_Block is used as Block, nested within OS.
 #I also included SP as a random effect, since it will contribute variance toward the results. 
 
+#Use this resource for the nesting notation: https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html
+
 #I think this is the best model for me
 #I chose to model the interactions w/ initL when there was a significant interaction between initL & SR or OR, so I created a multiple regression model
 #according to https://stats.stackexchange.com/questions/281528/dealing-with-model-assumption-violation-homogeneity-of-regression-coefficients
 lmer_length_1 <- lmer(diff_l ~ OR*SR+ initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_length_2 <- lmer(diff_l ~ OS*SP + initL + (1|OS_block), data = RV_lm)
+lmer_length_2 <- lmer(diff_l ~ OS*SP + initL + (1|OS:OS_block), data = RV_lm)
 
 Anova(lmer_length_2, type = "III")
 

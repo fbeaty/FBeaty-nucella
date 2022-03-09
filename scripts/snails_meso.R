@@ -576,14 +576,31 @@ pairs(grpMeans_SG, simple = list("OR", "SR"))
 lmer_length <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
 
 #Survival: since these data are binomial, you have to run a generalized mixed-effects model, with the RV_survival df
-glm_surv_temp_1 <- glmer(Dead ~ SR*Temp + (1|Tank), family = binomial(link = "logit"), data = meso_surv_temp)
-glm_surv_temp_2 <- glmer(Dead ~ SP*Temp + (1|Tank), family = binomial(link = "logit"), data = meso_surv_temp)
+glm_surv_temp_1 <- lmer(days_diff ~ SR*Temp + (1|Tank), data = meso_surv_temp)
+summary(glm_surv_temp_1)
+visreg(glm_surv_temp_1)
+plotresid(glm_surv_temp_1)
+
+#Double check that there aren't any duplicate IDs
+
+#Change structure of datasheet
+#Analysis will be repeated measures, and unit of measurement is individual by tank + (1|Tank/ID) <- intercepts vary by tank and by ID within Tank
+#Need time as a predictor variable also
+#Need continuous 0 and 1 (i.e. for any point that you measured record whether it was alive or dead)
+
+glm_surv_temp <- glmer(Dead ~ days_diff + SP*Temp + (1|Tank/ID), family = binomial(link = "logit"), data = meso_surv_temp)
+
+
 summary(glm_surv_temp_1)
 Anova(glm_surv_temp_1, type = "III")
 Anova(glm_surv_temp_2, type = "III")
 
 # Visualize fit 
-visreg(glm_surv_temp)
+visreg(glm_surv_temp_1)
+visreg(glm_surv_temp_1, "Temp", by = "SR", overlay = TRUE)
+plotresid(glm_surv_temp_1)
+
+
 grpMeans_surv <- emmeans(glm_surv, ~ OR*SR, data = RV_survival)
 pairs(grpMeans_surv, simple = list("OR", "SR"))
 
@@ -603,6 +620,9 @@ sfit <- survfit(Surv(days_diff, Dead) ~ SR + Temp, data = meso_surv_temp)
 summary(sfit)
 survdiff(Surv(days_diff, Dead) ~ SR + Temp, data = meso_surv_temp)
 surv_pvalue(sfit)
+print(sfit, rmean = 49)
+
+#Have to plot these results, rmean calculates the area under the curve for each treatment, can select the time if I have a biologically meaningful duration (e.g. a month) to estimate survival times for each population
 
 #Importantly, there was no mortality in the 12 treatments --> cox model is not good fit b/c infinite values introduced
 #https://ramaanathan.github.io/SurvivalAnalysis/
@@ -612,13 +632,19 @@ meso_surv_temp_2 <- meso_surv_temp %>%
   filter(Temp == 15 | Temp == 19 | Temp == 22) %>% 
   droplevels
 
-str(meso_surv_temp_2)
-
 cph <- coxph(Surv(days_diff, Dead) ~ SR + Temp, data = meso_surv_temp)
+cph_2 <- coxph(Surv(days_diff, Dead) ~ SR + Temp, data = meso_surv_temp_2)
+
 ggforest(cph, data = meso_surv_temp)
 summary(cph)
-cox.zph(cph)
+
+#Tests assumptions of proportional hazards across treatments
+test <- cox.zph(cph)
+plot(test)
+#The fact that the global model is significant means that I violated the assumption of proportional hazards --> cannot use cph
+
 cph.int <- coxph(Surv(days_diff, DIED) ~ SR * OR, data = RV_surv)
+
 #When I include the interaction in the cph, some of the summary estimates become 0 & inf. The Anova output remains largely the same though, so I'll just go with the cph model
 #I would like to test the interactive effect, but not sure how within this type of analysis
 summary(cph)
@@ -629,6 +655,5 @@ summary(cph)$sctest[3]
 round(summary(cph)$sctest[3], digits = 9) == round(surv_pvalue(sfit)[,2], digits = 9)
 
 
-ggsurvplot(sfit, legend.title = "Source Region", xlab = "Time, days", pval = TRUE,
-           data = meso_surv_temp_1)
+ggsurvplot(sfit, legend.title = "Source Region", xlab = "Time, days", data = meso_surv_temp)
 
