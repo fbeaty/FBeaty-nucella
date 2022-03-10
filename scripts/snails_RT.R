@@ -3,6 +3,8 @@
 #Load packages----
 pkgs <- c("tidyverse", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
           "emmeans", "lme4", "RVAideMemoire")
+pkgs <- c("tidyverse", "lubridate", "visreg", "cowplot", "survminer", "survival",
+          "lmerTest")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -401,7 +403,16 @@ RV_survival_glm <- RV_survival %>%
 lmer_length_1 <- lmer(diff_l ~ OR*SR+ initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
 lmer_length_2 <- lmer(diff_l ~ OS*SP + initL + (1|OS:OS_block), data = RV_lm)
 
+library(car)
+
+Anova(lmer_length_1, type = "III", test.statistic = "F")
+Anova(lmer_length_1, type = "III")
 Anova(lmer_length_2, type = "III")
+
+library(lmerTest)
+anova(lmer_length_1)
+
+?lmerTest::anova
 
 AIC(lmer_length_1, lmer_length_2)
 

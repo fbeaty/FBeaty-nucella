@@ -172,16 +172,68 @@ meso_surv <- meso_survival_clean %>%
                                                                                                                                                    ifelse(Date == "2018-08-29", 44,
                                                                                                                                                           ifelse(Date == "2018-09-03", 49, NA)))))))))))))))))))))
 
+#Now create a new dataset with daily observations of death or survival (i.e. for any snails that died, make sure that they have a 1 for every day after until the end of the experiment)
+#First remove CO14 from Tank 18 because it was a typo (that snail was never in that tank...)
+meso_surv_1 <- meso_surv %>% 
+  mutate(unique_ID = paste(ID, Tank, sep = "_")) %>% 
+  filter(unique_ID != "CO14_18") %>% 
+  select(!unique_ID)
+
 #Remove the days_diff == 0, because that takes away the double event for each ID
-meso_surv <- meso_surv %>% 
+meso_surv_1 <- meso_surv_1 %>% 
   filter(!days_diff == 0)
 
-meso_surv_temp <- meso_surv %>% 
+#Create a new datasframe that duplicates this one 49 times
+meso_surv_2 <- meso_surv_1 %>% 
+  slice(rep(1:n(), each = 49)) %>% 
+  arrange(ID)
+
+meso_surv_2 <- meso_surv_2 %>% 
+  group_by(ID) %>% 
+  mutate(day_exp = c(1:49)) %>% 
+  mutate(dead_repeat = ifelse(days_diff == 49, 0,
+                              ifelse(day_exp >= days_diff, 1, 0)))
+
+meso_surv_temp <- meso_surv_2 %>% 
   filter(pH == "A") %>% 
   droplevels
 meso_surv_fact <- meso_surv %>% 
   filter(Temp == 15 | Temp == 22) %>% 
   droplevels
+
+
+#Survival: since these data are binomial, you have to run a generalized mixed-effects model, with the RV_survival df
+
+#Double check that there aren't any duplicate IDs
+
+#Change structure of datasheet
+#Analysis will be repeated measures, and unit of measurement is individual by tank + (1|Tank/ID) <- intercepts vary by tank and by ID within Tank
+#Need time as a predictor variable also
+#Need continuous 0 and 1 (i.e. for any point that you measured record whether it was alive or dead)
+
+glm_surv_temp <- glmer(dead_repeat ~ day_exp + SP + Temp + (1|Tank/ID), family = binomial, data = meso_surv_temp)
+summary(glm_surv_temp)
+visreg(glm_surv_temp)
+
+
+summary(glm_surv_temp_1)
+Anova(glm_surv_temp, type = "III")
+Anova(glm_surv_temp_2, type = "III")
+
+# Visualize fit 
+visreg(glm_surv_temp_1)
+visreg(glm_surv_temp_1, "Temp", by = "SR", overlay = TRUE)
+plotresid(glm_surv_temp_1)
+
+
+ggplot(meso_surv_temp, aes(day_exp, dead_repeat)) + 
+  geom_point(size = 2, col = "firebrick") + 
+  geom_smooth(method = "loess", size = 1, col = "black", span = 0.8) +
+  theme_classic()
+
+grpMeans_surv <- emmeans(glm_surv_temp, ~ SP*Temp, data = meso_surv_temp)
+pairs(grpMeans_surv, simple = list("SP", "Temp"))
+
 
 #Calculate the average & SD of metrics to visualize across the 2 time periods ----
 #Note: Because submerged weight was only collected in the middle of the experiment, changes to tissue & shell weight are only reflective of
@@ -467,7 +519,6 @@ meso_lm_fact <- meso_lm %>%
   filter(Temp == 15 | Temp == 22) %>% 
   droplevels
 
-#Make another df for the survival data
 
 #Test whether initial size differs across tanks----
 initL_aov <- lm(initL ~ Tank + Temp, data = meso_lm_temp)
@@ -495,9 +546,9 @@ lmer_length_2 <- lmer(diff_l ~ SP*Temp + initL + (1|Tank), data = meso_lm_temp)
 summary(lmer_length_1)
 summary(lmer_length_2)
 
-AIC(lmer_length_1, lmer_length_2, lmer_length_3)
+AIC(lmer_length_1, lmer_length_2)
 
-visreg(lmer_length_1, "SP", by = "SR")
+visreg(lmer_length_1, "SR", by = "Temp")
 
 #Verify assumptions of model
 plot(lmer_length)
