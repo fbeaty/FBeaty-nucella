@@ -194,7 +194,7 @@ meso_surv_2 <- meso_surv_2 %>%
   mutate(dead_repeat = ifelse(days_diff == 49, 0,
                               ifelse(day_exp >= days_diff, 1, 0)))
 
-meso_surv_temp <- meso_surv_2 %>% 
+meso_surv_temp <- meso_surv_1 %>% 
   filter(pH == "A") %>% 
   droplevels
 meso_surv_fact <- meso_surv %>% 
