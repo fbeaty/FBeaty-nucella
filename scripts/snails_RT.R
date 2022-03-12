@@ -426,9 +426,27 @@ tes <- ggplot(RV_lm, aes(initL, diff_l, fill = SP, colour = SP)) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(x = "Initial length", y = "Change in Length (mm)") +
   facet_wrap(~OS) +
-  theme_cowplot(16)
+  theme_cowplot(16) + theme(strip.background = element_blank())
 
-ggsave(tes, file = "plots/snails/RT/initL_OS_SP.pdf", height = 8, width = 8, dpi = 300)
+tes2 <- ggplot(RV_lm, aes(initL, diff_l_i, fill = SP, colour = SP)) + 
+  geom_point () + geom_smooth(method = lm, se = FALSE) +
+  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+  labs(x = "Initial length", y = "S change in Length (mm)") +
+  facet_wrap(~OS) +
+  theme_cowplot(16) + theme(strip.background = element_blank())
+
+ggsave(tes, file = "plots/snails/RT/initL_diffL_OS_SP.pdf", height = 8, width = 8, dpi = 300)
+ggsave(tes2, file = "plots/snails/RT/initL_diffLi_OS_SP.pdf", height = 8, width = 8, dpi = 300)
+
+#Test for the effects of initial size across SP & OS----
+length_ced <- RV_lm %>% 
+  filter(SP == "CEDAR")
+
+length_size <- lm(initL ~ OS, data = length_ced)
+Anova(length_size)
+
+grpMeans <- emmeans(length_size, ~ OS, data = length_ced)
+pairs(grpMeans)
 
 
 #Build linear mixed effects models----
@@ -440,11 +458,11 @@ ggsave(tes, file = "plots/snails/RT/initL_OS_SP.pdf", height = 8, width = 8, dpi
 
 #Use this resource for the nesting notation: https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html
 
-#I think this is the best model for me
 #I chose to model the interactions w/ initL when there was a significant interaction between initL & SR or OR, so I created a multiple regression model
 #according to https://stats.stackexchange.com/questions/281528/dealing-with-model-assumption-violation-homogeneity-of-regression-coefficients
-lmer_length_1 <- lmer(diff_l_i ~ OR*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_length_2 <- lmer(diff_l_i ~ OS*SP + (1|OS:OS_block), data = RV_lm)
+#If initL or interactions were non-significant (e.g. lmer_length_2), I dropped those terms from the model
+lmer_length_1 <- lmer(diff_l ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_length_2 <- lmer(diff_l ~ OS*SP + (1|OS:OS_block), data = RV_lm)
 summary(lmer_length_1)
 summary(lmer_length_2)
 
@@ -465,8 +483,9 @@ grpMeans_length_2 <- emmeans(lmer_length_2, ~ OS*SP, data = RV_lm)
 pairs(grpMeans_length_2, simple = list("OS", "SP"))
 
 #Shell thickness: 
-lmer_thick_1 <- lmer(diff_Th_i ~ OR*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_thick_2 <- lmer(diff_Th_i ~ OS*SP + (1|OS:OS_block), data = RV_lm)
+lmer_thick_1 <- lmer(diff_Th ~ OR*SR + initTh*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_thick_2 <- lmer(diff_Th ~ OS*SP + initTh*OS + (1|OS:OS_block), data = RV_lm)
+
 summary(lmer_thick_1)
 summary(lmer_thick_2)
 
@@ -487,8 +506,8 @@ grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ OS*SP, data = RV_lm)
 pairs(grpMeans_thick_2, simple = list("OS", "SP"))
 
 #Tissue weight
-lmer_TiW_1 <- lmer(diff_TiW_i ~ OR*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_TiW_2 <- lmer(diff_TiW_i ~ OS*SP + (1|OS:OS_block), data = RV_lm)
+lmer_TiW_1 <- lmer(diff_TiW ~ OR*SR + initTiW*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_TiW_2 <- lmer(diff_TiW ~ OS*SP + initTiW + (1|OS:OS_block), data = RV_lm)
 summary(lmer_TiW_1)
 summary(lmer_TiW_2)
 
@@ -509,8 +528,8 @@ grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ OS*SP, data = RV_lm)
 pairs(grpMeans_TiW_2, simple = list("OS", "SP"))
 
 #Shell weight: 
-lmer_ShW_1 <- lmer(diff_ShW_i ~ OR*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_ShW_2 <- lmer(diff_ShW_i ~ OS*SP + (1|OS:OS_block), data = RV_lm)
+lmer_ShW_1 <- lmer(diff_ShW ~ OR*SR + initShW*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_ShW_2 <- lmer(diff_ShW ~ OS*SP + (1|OS:OS_block), data = RV_lm)
 summary(lmer_ShW_1)
 summary(lmer_ShW_2)
 
@@ -531,8 +550,8 @@ grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ OS*SP, data = RV_lm)
 pairs(grpMeans_ShW_2, simple = list("OS", "SP"))
 
 #Shell growth: included initL as covariate as it improves fit of model
-lmer_SG_1 <- lmer(SG_i ~ OR*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_SG_2 <- lmer(SG_i ~ OS*SP + (1|OS:OS_block), data = RV_lm)
+lmer_SG_1 <- lmer(SG ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_SG_2 <- lmer(SG ~ OS*SP + (1|OS:OS_block), data = RV_lm)
 summary(lmer_SG_1)
 summary(lmer_SG_2)
 
