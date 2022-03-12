@@ -12,11 +12,12 @@ rm(pkgs)
 
 #Load csv and clean it----
 #March 2nd: I saved the meso_collated from the Mesocosm folder into the CH 2 Analysis folder as a csv. If you make any changes to the base df, replace the one in git folder
+#March 12th: CO24 was outlier, typo in raw datasheet, changed fmor 3.42 to 2.42 in csv
 #March 4th: I saved the survival datasheet
 meso_base <- read.csv("data/snail_RVs/meso_collated.csv")
 meso_survival <- read.csv("data/snail_RVs/meso_collated_survival.csv")
 
-#Clean growth dataframe----
+#Clean growth & survival dataframes----
 #Add a Source Region column
 #Ensure that all treatments line up with the correct tank
 #Classify Tank 16 (which was supposed to be a 12) as a 15 degree treatment because you could never really bring that tank's temp down due to equipment issues
@@ -113,7 +114,8 @@ meso_clean_surv <- meso_clean_surv %>%
                           ifelse(Stage == "Final", n_snl/lag(n_snl, default = n_snl[1]), NA)),
          cumsurv = 100*cumsurv) %>% 
   separate(Treat, c("Temp", "pH"), remove = FALSE) %>% 
-  arrange(SR, SP, Treat, Tank, Stage)
+  arrange(SR, SP, Treat, Tank, Stage) %>% 
+  filter(Stage == "Final")
 
 meso_clean_surv_temp <- meso_clean_surv %>% 
   filter(pH == "A") %>% 
@@ -121,119 +123,6 @@ meso_clean_surv_temp <- meso_clean_surv %>%
 meso_clean_surv_fact <- meso_clean_surv %>% 
   filter(Temp == 15 | Temp == 22) %>% 
   droplevels
-
-#Clean the survival data----
-#Remove the failed tanks (3, 5, 6) and assign the correct tank treatments, separate treat into temp & pH columns
-meso_survival_clean <- meso_survival[, c(1:7)] %>% 
-  filter(!Tank %in% tanks_remove) %>% 
-  mutate(Treat = as.factor(ifelse(Tank == 9 | Tank == 12, "12.A",
-                                  ifelse(Tank == 4 | Tank == 7 | Tank == 11 | Tank == 14 | Tank == 16, "15.A",
-                                         ifelse(Tank == 17 |  Tank == 20 | Tank == 21 | Tank == 24, "15.L",
-                                                ifelse(Tank == 1 | Tank == 10 | Tank == 13, "19.A",
-                                                       ifelse(Tank == 2 | Tank == 8 | Tank == 15, "22.A",
-                                                              ifelse(Tank == 18 | Tank == 19 | Tank == 22 | Tank == 23, "22.L", NA)))))))) %>% 
-  separate(Treat, c("Temp", "pH"), remove = FALSE) %>% 
-  mutate(SP = as.factor(SP),
-         SR = as.factor(SR),
-         Temp = as.factor(Temp),
-         pH = as.factor(pH),
-         Date = as.Date(Date))
-
-##Create a column that calculates the number of days between each measurement date
-dates_surv <- as.factor(meso_survival_clean$Date)
-dates_surv <- data.frame(levels(dates_surv))
-
-dates_surv <- dates_surv %>% 
-  rename(date_record = levels.dates_surv.) %>% 
-  mutate(init_date = as.Date("2018-07-16"),
-         date_record = as.Date(date_record),
-         days_diff = date_record - init_date)
-
-#Create a column with the days between the start and end of each snail's experiment duration (longest is 49 days unless they died earlier)
-meso_surv <- meso_survival_clean %>% 
-  mutate(days_diff = ifelse(Date == "2018-07-16", 0,
-                            ifelse(Date == "2018-07-28", 12,
-                                   ifelse(Date == "2018-07-30", 14,
-                                          ifelse(Date == "2018-08-01", 16, 
-                                                 ifelse(Date == "2018-08-02", 17,
-                                                        ifelse(Date == "2018-08-03", 18,
-                                                               ifelse(Date == "2018-08-04", 19,
-                                                                      ifelse(Date == "2018-08-05", 20,
-                                                                             ifelse(Date == "2018-08-06", 21,
-                                                                                    ifelse(Date == "2018-08-08", 23,
-                                                                                           ifelse(Date == "2018-08-10", 25,
-                                                                                                  ifelse(Date == "2018-08-12", 27,
-                                                                                                         ifelse(Date == "2018-08-13", 28,
-                                                                                                                ifelse(Date == "2018-08-14", 29,
-                                                                                                                       ifelse(Date == "2018-08-21", 36,
-                                                                                                                              ifelse(Date == "2018-08-23", 38,
-                                                                                                                                     ifelse(Date == "2018-08-24", 39,
-                                                                                                                                            ifelse(Date == "2018-08-28", 43,
-                                                                                                                                                   ifelse(Date == "2018-08-29", 44,
-                                                                                                                                                          ifelse(Date == "2018-09-03", 49, NA)))))))))))))))))))))
-
-#Now create a new dataset with daily observations of death or survival (i.e. for any snails that died, make sure that they have a 1 for every day after until the end of the experiment)
-#First remove CO14 from Tank 18 because it was a typo (that snail was never in that tank...)
-meso_surv_1 <- meso_surv %>% 
-  mutate(unique_ID = paste(ID, Tank, sep = "_")) %>% 
-  filter(unique_ID != "CO14_18") %>% 
-  select(!unique_ID)
-
-#Remove the days_diff == 0, because that takes away the double event for each ID
-meso_surv_1 <- meso_surv_1 %>% 
-  filter(!days_diff == 0)
-
-#Create a new datasframe that duplicates this one 49 times
-meso_surv_2 <- meso_surv_1 %>% 
-  slice(rep(1:n(), each = 49)) %>% 
-  arrange(ID)
-
-meso_surv_2 <- meso_surv_2 %>% 
-  group_by(ID) %>% 
-  mutate(day_exp = c(1:49)) %>% 
-  mutate(dead_repeat = ifelse(days_diff == 49, 0,
-                              ifelse(day_exp >= days_diff, 1, 0)))
-
-meso_surv_temp <- meso_surv_1 %>% 
-  filter(pH == "A") %>% 
-  droplevels
-meso_surv_fact <- meso_surv %>% 
-  filter(Temp == 15 | Temp == 22) %>% 
-  droplevels
-
-
-#Survival: since these data are binomial, you have to run a generalized mixed-effects model, with the RV_survival df
-
-#Double check that there aren't any duplicate IDs
-
-#Change structure of datasheet
-#Analysis will be repeated measures, and unit of measurement is individual by tank + (1|Tank/ID) <- intercepts vary by tank and by ID within Tank
-#Need time as a predictor variable also
-#Need continuous 0 and 1 (i.e. for any point that you measured record whether it was alive or dead)
-
-glm_surv_temp <- glmer(dead_repeat ~ day_exp + SP + Temp + (1|Tank/ID), family = binomial, data = meso_surv_temp)
-summary(glm_surv_temp)
-visreg(glm_surv_temp)
-
-
-summary(glm_surv_temp_1)
-Anova(glm_surv_temp, type = "III")
-Anova(glm_surv_temp_2, type = "III")
-
-# Visualize fit 
-visreg(glm_surv_temp_1)
-visreg(glm_surv_temp_1, "Temp", by = "SR", overlay = TRUE)
-plotresid(glm_surv_temp_1)
-
-
-ggplot(meso_surv_temp, aes(day_exp, dead_repeat)) + 
-  geom_point(size = 2, col = "firebrick") + 
-  geom_smooth(method = "loess", size = 1, col = "black", span = 0.8) +
-  theme_classic()
-
-grpMeans_surv <- emmeans(glm_surv_temp, ~ SP*Temp, data = meso_surv_temp)
-pairs(grpMeans_surv, simple = list("SP", "Temp"))
-
 
 #Calculate the average & SD of metrics to visualize across the 2 time periods ----
 #Note: Because submerged weight was only collected in the middle of the experiment, changes to tissue & shell weight are only reflective of
@@ -350,146 +239,6 @@ meso_growth_fact_comb <- plot_grid(meso_stage_fact, xaxistitle, ncol = 1, rel_he
 ggsave(meso_growth_fact_comb, file = "plots/snails/meso/meso_stage_fact.pdf", height = 14, width = 12, dpi = 300)
 
 
-#Create a new df with the change in growth metrics. Group by ID then summarize by tank----
-meso_diff <- meso_clean %>% 
-  arrange(ID, Stage) %>% 
-  group_by(ID)%>% 
-  mutate(diff_l = L - lag(L, default= L[1]),
-         diff_Th = Th - lag(Th, default = Th[1]),
-         diff_ShW = ShW - lag(ShW, default = ShW[1]),
-         diff_TiW = TiW - lag(TiW, default = TiW[1])) %>% 
-  subset(Stage == "Final") %>% 
-  select(Stage, SR, SP, Tank, Treat, ID, SG, diff_l, diff_Th, diff_ShW, diff_TiW) %>%
-  ungroup()
-
-#Summarize by tank so that you can visualize the n/treatment
-meso_diff_tank <- meso_diff %>% 
-  group_by(SR, SP, Treat, Tank) %>% 
-  summarize(meanL_treat = mean(diff_l, na.rm = TRUE), sdL_treat = sd(diff_l, na.rm = TRUE),
-                        meanTh_treat = mean(diff_Th, na.rm = TRUE), sdTh_treat = sd(diff_Th, na.rm = TRUE),
-                        meanShW_treat= mean(diff_ShW, na.rm = TRUE), sdShW_treat = sd(diff_ShW, na.rm = TRUE),
-                        meanTiW_treat = mean(diff_TiW, na.rm = TRUE), sdTiW_treat = sd(diff_TiW, na.rm = TRUE),
-                        meanSG_treat = mean(SG, na.rm = TRUE), sdSG_treat = sd(SG, na.rm = TRUE),
-            n_OR_SR = n()) %>% 
-    ungroup()
-
-meso_diff_temp <- meso_diff_tank %>% 
-  filter(Treat == "12A" | Treat == "15A" | Treat == "19A" | Treat == "22A")
-meso_diff_fact <- meso_diff_tank %>% 
-  filter(Treat == "15A" | Treat == "15L" | Treat == "22A" | Treat == "22L") %>% 
-  mutate(temp = ifelse(Treat == "15A" | Treat == "15L", "15", "22"))
-
-#Visualize change in growth across treatments grouped by SP for temp exp----
-#The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
-plot_temp <- function(df, x, y, grp, clr.values, lbl.y){
-  temp_SR_plot <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
-    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-                 position=position_dodge(0.3)) +
-    scale_colour_manual(values = clr.values) +
-    labs(x = "Treatment", y = lbl.y) +
-    theme_cowplot(16)
-  return(temp_SR_plot)
-}
-
-length_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanL_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
-thick_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanTh_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
-ShW_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanShW_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
-TiW_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanTiW_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
-SG_treat_temp_SP <- plot_temp(meso_diff_temp, Treat, meanSG_treat, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
-
-meso_treat_temp_comb_SP <- plot_grid(length_treat_temp_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                               thick_treat_temp_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                               get_legend(length_treat_temp_SP),
-                               SG_treat_temp_SP + theme(legend.position = "none", axis.title.x = element_blank()),
-                               ShW_treat_temp_SP + theme(legend.position = "none", axis.title.x = element_blank()), 
-                               TiW_treat_temp_SP + theme(legend.position = "none", axis.title.x = element_blank()),
-                               ncol = 3, nrow = 2, axis = "lb", align = "hv")
-
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_treat_temp_comb_title_SP <- plot_grid(meso_treat_temp_comb_SP, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-
-ggsave(meso_treat_temp_comb_title_SP, file = "plots/snails/meso/meso_treat_temp_SP.pdf", height = 8, width = 17, dpi = 300)
-
-#Visualize change in growth across treatments grouped by SP for fact exp----
-#The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
-plot_fact <- function(df, x, y, grp, temp, clr.values, lbl.y) {
-  plot_fact <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
-    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction(temp, {{grp}}))) +
-    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-                 position=position_dodge(0.3)) +
-    scale_colour_manual(values = clr.values) +
-    labs(x = "Treatment", y = lbl.y) +
-    theme_cowplot(16)
-  return(plot_fact)
-}
-
-length_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanL_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
-thick_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanTh_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
-ShW_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanShW_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
-TiW_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanTiW_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
-SG_treat_fact_SP <- plot_fact(meso_diff_fact, Treat, meanSG_treat, SP, temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
-
-meso_treat_fact_comb_SP <- plot_grid(length_treat_fact_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  thick_treat_fact_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                  get_legend(length_treat_fact_SP),
-                                  SG_treat_fact_SP + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ShW_treat_fact_SP + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                  TiW_treat_fact_SP + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ncol = 3, nrow = 2, axis = "lb", align = "hv")
-
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_treat_fact_comb_title_SP <- plot_grid(meso_treat_fact_comb_SP, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-
-ggsave(meso_treat_fact_comb_title_SP, file = "plots/snails/meso/meso_treat_fact_SP.pdf", height = 8, width = 17, dpi = 300)
-
-#Visualize change in growth across treatments grouped by SR for temp exp----
-#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
-length_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanL_treat, SR, c("skyblue", "coral"), "Change in SL (mm)") + labs(colour = "Source Region")
-thick_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanTh_treat, SR, c("skyblue", "coral"), "Change in ST (mm)")
-ShW_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanShW_treat, SR, c("skyblue", "coral"), "Change in ShW (g)")
-TiW_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanTiW_treat, SR, c("skyblue", "coral"), "Change in TiW (g)")
-SG_treat_temp_SR <- plot_temp(meso_diff_temp, Treat, meanSG_treat, SR, c("skyblue", "coral"), "Change in LSG (mm)")
-
-meso_treat_temp_comb_SR <- plot_grid(length_treat_temp_SR + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  thick_treat_temp_SR + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                  get_legend(length_treat_temp),
-                                  SG_treat_temp_SR + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ShW_treat_temp_SR + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                  TiW_treat_temp_SR + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ncol = 3, nrow = 2, axis = "lb", align = "hv")
-
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_treat_temp_comb_title_SR <- plot_grid(meso_treat_temp_comb_SR, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-
-ggsave(meso_treat_temp_comb_title_SR, file = "plots/snails/meso/meso_treat_temp_SR.pdf", height = 8, width = 17, dpi = 300)
-
-#Visualize change in growth across treatments grouped by SR for fact exp----
-#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
-length_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanL_treat, SR, temp, c("skyblue", "coral"), "Change in SL (mm)") + labs(colour = "Source Region")
-thick_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanTh_treat, SR, temp, c("skyblue", "coral"), "Change in ST (mm)")
-ShW_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanShW_treat, SR, temp, c("skyblue", "coral"), "Change in ShW (g)")
-TiW_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanTiW_treat, SR, temp, c("skyblue", "coral"), "Change in TiW (g)")
-SG_treat_fact_SR <- plot_fact(meso_diff_fact, Treat, meanSG_treat, SR, temp, c("skyblue", "coral"), "Change in LSG (mm)")
-
-meso_treat_fact_comb_SR <- plot_grid(length_treat_fact_SR + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                     thick_treat_fact_SR + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                     get_legend(length_treat_fact),
-                                     SG_treat_fact_SR + theme(legend.position = "none", axis.title.x = element_blank()),
-                                     ShW_treat_fact_SR + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                     TiW_treat_fact_SR + theme(legend.position = "none", axis.title.x = element_blank()),
-                                     ncol = 3, nrow = 2, axis = "lb", align = "hv")
-
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_treat_fact_comb_title_SR <- plot_grid(meso_treat_fact_comb_SR, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-
-ggsave(meso_treat_fact_comb_title_SR, file = "plots/snails/meso/meso_treat_fact_SR.pdf", height = 8, width = 17, dpi = 300)
-
-
 #Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects for every snail----
 #Calculate the difference in growth (this time by ID rather than block, as in previous code), and change labels to initL etc
 meso_lm <- meso_clean %>% 
@@ -519,6 +268,312 @@ meso_lm_fact <- meso_lm %>%
   filter(Temp == 15 | Temp == 22) %>% 
   droplevels
 
+#Now create a new dataset with the change in growth summarized by block
+meso_lm_block <- meso_lm %>% 
+  group_by(SR, SP, Treat, Temp, pH, Tank) %>% 
+  summarize(meandiff_l = mean(diff_l, na.rm = TRUE),
+            meandiff_Th = mean(diff_Th, na.rm = TRUE),
+            meandiff_ShW = mean(diff_ShW, na.rm = TRUE),
+            meandiff_TiW = mean(diff_TiW, na.rm = TRUE),
+            mean_SG = mean(SG, na.rm = TRUE)) %>% 
+  mutate(tank_sp = paste(Tank, SP, sep = "_")) %>% 
+  ungroup()
+
+test <- meso_lm %>% 
+  filter(SP == "Cedar" & Treat == "22.A")
+
+#Add on the survival in each tank from the meso_clean_surv df
+meso_clean_surv_1 <- meso_clean_surv %>% 
+  mutate(tank_sp = paste(Tank, SP, sep = "_")) %>% 
+  select(tank_sp, cumsurv)
+
+meso_lm_block <- meso_lm_block %>% 
+  left_join(meso_clean_surv_1, by = "tank_sp") %>% 
+  select(!tank_sp)
+
+meso_lm_block_temp <- meso_lm_block %>% 
+  filter(pH == "A") %>% 
+  droplevels
+
+meso_lm_block_fact <- meso_lm_block %>% 
+  filter(Temp == 15 | Temp == 22) %>% 
+  droplevels
+
+#Visualize change in growth across treatments grouped by SP for temp exp----
+#The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
+plot_temp_me <- function(df, x, y, grp, clr.values, lbl.y){
+  temp_SR_plot <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
+    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+                 position=position_dodge(0.3)) +
+    scale_colour_manual(values = clr.values) +
+    labs(x = "Treatment", y = lbl.y) +
+    theme_cowplot(16)
+  return(temp_SR_plot)
+}
+
+plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
+  ggplot(df, aes({{x}}, {{y}}, fill = {{grp}}, colour = {{grp}})) + 
+    geom_boxplot(colour = "black", varwidth = TRUE, alpha = 0.8) +
+    geom_point(size = 3, alpha=0.5, position = position_jitterdodge(dodge.width = 0.6, jitter.width=0.3))  +
+    scale_fill_manual(values = fill.values) +
+    scale_colour_manual(values = clr.values) +
+    labs(y = lbl.y) +
+    theme_cowplot(16)
+}
+
+length_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_l, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
+thick_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_Th, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_ShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_TiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, mean_SG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
+Surv_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
+meso_temp_comb_SP_me <- plot_grid(length_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                               thick_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                               SG_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                               get_legend(length_temp_SP_me),
+                               ShW_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()), 
+                               TiW_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                               Surv_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                               ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+meso_temp_comb_title_SP_me <- plot_grid(meso_temp_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_temp_comb_title_SP_me, file = "plots/snails/meso/meso_temp_SP_me.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize change in growth across treatments grouped by SP for fact exp----
+#The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
+plot_fact_me <- function(df, x, y, grp, tmp, clr.values, lbl.y) {
+  plot_fact <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
+    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction({{tmp}}, {{grp}}))) +
+    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+                 position=position_dodge(0.3)) +
+    scale_colour_manual(values = clr.values) +
+    labs(x = "Treatment", y = lbl.y) +
+    theme_cowplot(16)
+  return(plot_fact)
+}
+
+length_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_l, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
+thick_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_Th, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_ShW,  SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW,  SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
+Surv_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
+meso_fact_comb_SP_me <- plot_grid(length_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_fact_SP_me),
+                                  ShW_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Surv_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+meso_fact_comb_title_SP_me <- plot_grid(meso_fact_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_fact_comb_title_SP_me, file = "plots/snails/meso/meso_fact_SP_me.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize change in growth across treatments grouped by SR for temp exp----
+#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
+length_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_l, SR, c("skyblue", "coral"), "Change in SL (mm)") + labs(colour = "Source Region")
+thick_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_Th, SR, c("skyblue", "coral"), "Change in ST (mm)")
+ShW_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_ShW, SR, c("skyblue", "coral"), "Change in ShW (g)")
+TiW_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_TiW, SR, c("skyblue", "coral"), "Change in TiW (g)")
+SG_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, mean_SG, SR, c("skyblue", "coral"), "Change in LSG (mm)")
+Surv_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, cumsurv, SR, c("skyblue", "coral"), "Survival(%)")
+
+length_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
+thick_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
+ShW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")
+TiW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in TiW (g)")
+SG_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
+Surv_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
+
+meso_temp_comb_SR_me <- plot_grid(length_temp_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_temp_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_temp_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_temp_SR_me),
+                                  ShW_temp_SR_me + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_temp_SR_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Surv_temp_SR_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_temp_SR_box),
+                                  ShW_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Surv_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+meso_temp_comb_title_SR_me <- plot_grid(meso_temp_comb_SR_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+meso_temp_comb_title_SR_box <- plot_grid(meso_temp_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_temp_comb_title_SR_me, file = "plots/snails/meso/meso_temp_SR_me.pdf", height = 8, width = 17, dpi = 300)
+ggsave(meso_temp_comb_title_SR_box, file = "plots/snails/meso/meso_temp_SR_box.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize change in growth across treatments grouped by SR for fact exp----
+#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
+length_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_l, SR, Temp, c("skyblue", "coral"), "Change in SL (mm)") + labs(colour = "Source Region")
+thick_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_Th, SR, Temp, c("skyblue", "coral"), "Change in ST (mm)")
+ShW_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_ShW, SR, Temp, c("skyblue", "coral"), "Change in ShW (g)")
+TiW_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW, SR, Temp, c("skyblue", "coral"), "Change in TiW (g)")
+SG_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SR, Temp, c("skyblue", "coral"), "Change in LSG (mm)")
+Surv_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SR, Temp, c("skyblue", "coral"), "Survival(%)")
+
+length_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
+thick_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
+ShW_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")
+TiW_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in TiW (g)")
+SG_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
+Surv_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
+
+meso_fact_comb_SR_me <- plot_grid(length_fact_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_fact_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_fact_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_fact_SR_me),
+                                  ShW_fact_SR_me + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_fact_SR_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Surv_fact_SR_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+meso_fact_comb_SR_box <- plot_grid(length_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                   thick_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                   SG_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                   get_legend(length_fact_SR_box),
+                                   ShW_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                   TiW_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                   Surv_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                   ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+meso_fact_comb_title_SR_me <- plot_grid(meso_fact_comb_SR_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+meso_fact_comb_title_SR_box <- plot_grid(meso_fact_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_fact_comb_title_SR_me, file = "plots/snails/meso/meso_fact_SR_me.pdf", height = 8, width = 17, dpi = 300)
+ggsave(meso_fact_comb_title_SR_box, file = "plots/snails/meso/meso_fact_SR_box.pdf", height = 8, width = 17, dpi = 300)
+
+
+#Clean the survival data for analysis----
+#Remove the failed tanks (3, 5, 6) and assign the correct tank treatments, separate treat into temp & pH columns
+meso_survival_clean <- meso_survival[, c(1:7)] %>% 
+  filter(!Tank %in% tanks_remove) %>% 
+  mutate(Treat = as.factor(ifelse(Tank == 9 | Tank == 12, "12.A",
+                                  ifelse(Tank == 4 | Tank == 7 | Tank == 11 | Tank == 14 | Tank == 16, "15.A",
+                                         ifelse(Tank == 17 |  Tank == 20 | Tank == 21 | Tank == 24, "15.L",
+                                                ifelse(Tank == 1 | Tank == 10 | Tank == 13, "19.A",
+                                                       ifelse(Tank == 2 | Tank == 8 | Tank == 15, "22.A",
+                                                              ifelse(Tank == 18 | Tank == 19 | Tank == 22 | Tank == 23, "22.L", NA)))))))) %>% 
+  separate(Treat, c("Temp", "pH"), remove = FALSE) %>% 
+  mutate(SP = as.factor(SP),
+         SR = as.factor(SR),
+         Temp = as.factor(Temp),
+         pH = as.factor(pH),
+         Date = as.Date(Date))
+
+##Create a column that calculates the number of days between each measurement date
+dates_surv <- as.factor(meso_survival_clean$Date)
+dates_surv <- data.frame(levels(dates_surv))
+
+dates_surv <- dates_surv %>% 
+  rename(date_record = levels.dates_surv.) %>% 
+  mutate(init_date = as.Date("2018-07-16"),
+         date_record = as.Date(date_record),
+         days_diff = date_record - init_date)
+
+#Create a column with the days between the start and end of each snail's experiment duration (longest is 49 days unless they died earlier)
+meso_surv <- meso_survival_clean %>% 
+  mutate(days_diff = ifelse(Date == "2018-07-16", 0,
+                            ifelse(Date == "2018-07-28", 12,
+                                   ifelse(Date == "2018-07-30", 14,
+                                          ifelse(Date == "2018-08-01", 16, 
+                                                 ifelse(Date == "2018-08-02", 17,
+                                                        ifelse(Date == "2018-08-03", 18,
+                                                               ifelse(Date == "2018-08-04", 19,
+                                                                      ifelse(Date == "2018-08-05", 20,
+                                                                             ifelse(Date == "2018-08-06", 21,
+                                                                                    ifelse(Date == "2018-08-08", 23,
+                                                                                           ifelse(Date == "2018-08-10", 25,
+                                                                                                  ifelse(Date == "2018-08-12", 27,
+                                                                                                         ifelse(Date == "2018-08-13", 28,
+                                                                                                                ifelse(Date == "2018-08-14", 29,
+                                                                                                                       ifelse(Date == "2018-08-21", 36,
+                                                                                                                              ifelse(Date == "2018-08-23", 38,
+                                                                                                                                     ifelse(Date == "2018-08-24", 39,
+                                                                                                                                            ifelse(Date == "2018-08-28", 43,
+                                                                                                                                                   ifelse(Date == "2018-08-29", 44,
+                                                                                                                                                          ifelse(Date == "2018-09-03", 49, NA)))))))))))))))))))))
+
+#Now create a new dataset with daily observations of death or survival (i.e. for any snails that died, make sure that they have a 1 for every day after until the end of the experiment)
+#First remove CO14 from Tank 18 because it was a typo (that snail was never in that tank...)
+meso_surv_1 <- meso_surv %>% 
+  mutate(unique_ID = paste(ID, Tank, sep = "_")) %>% 
+  filter(unique_ID != "CO14_18") %>% 
+  select(!unique_ID)
+
+#Remove the days_diff == 0, because that takes away the double event for each ID
+meso_surv_1 <- meso_surv_1 %>% 
+  filter(!days_diff == 0)
+
+#Create a new datasframe that duplicates this one 49 times
+meso_surv_2 <- meso_surv_1 %>% 
+  slice(rep(1:n(), each = 49)) %>% 
+  arrange(ID)
+
+meso_surv_2 <- meso_surv_2 %>% 
+  group_by(ID) %>% 
+  mutate(day_exp = c(1:49)) %>% 
+  mutate(dead_repeat = ifelse(days_diff == 49, 0,
+                              ifelse(day_exp >= days_diff, 1, 0)))
+
+meso_surv_temp <- meso_surv_1 %>% 
+  filter(pH == "A") %>% 
+  droplevels
+meso_surv_fact <- meso_surv %>% 
+  filter(Temp == 15 | Temp == 22) %>% 
+  droplevels
+
+#Survival: since these data are binomial, you have to run a generalized mixed-effects model, with the RV_survival df
+
+#Double check that there aren't any duplicate IDs
+
+#Change structure of datasheet
+#Analysis will be repeated measures, and unit of measurement is individual by tank + (1|Tank/ID) <- intercepts vary by tank and by ID within Tank
+#Need time as a predictor variable also
+#Need continuous 0 and 1 (i.e. for any point that you measured record whether it was alive or dead)
+
+glm_surv_temp <- glmer(dead_repeat ~ day_exp + SP + Temp + (1|Tank/ID), family = binomial, data = meso_surv_temp)
+summary(glm_surv_temp)
+visreg(glm_surv_temp)
+
+
+summary(glm_surv_temp_1)
+Anova(glm_surv_temp, type = "III")
+Anova(glm_surv_temp_2, type = "III")
+
+# Visualize fit 
+visreg(glm_surv_temp_1)
+visreg(glm_surv_temp_1, "Temp", by = "SR", overlay = TRUE)
+plotresid(glm_surv_temp_1)
+
+
+ggplot(meso_surv_temp, aes(day_exp, dead_repeat)) + 
+  geom_point(size = 2, col = "firebrick") + 
+  geom_smooth(method = "loess", size = 1, col = "black", span = 0.8) +
+  theme_classic()
+
+grpMeans_surv <- emmeans(glm_surv_temp, ~ SP*Temp, data = meso_surv_temp)
+pairs(grpMeans_surv, simple = list("SP", "Temp"))
 
 #Test whether initial size differs across tanks----
 initL_aov <- lm(initL ~ Tank + Temp, data = meso_lm_temp)
