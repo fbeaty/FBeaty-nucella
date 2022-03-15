@@ -462,7 +462,7 @@ pairs(grpMeans)
 #according to https://stats.stackexchange.com/questions/281528/dealing-with-model-assumption-violation-homogeneity-of-regression-coefficients
 #If initL or interactions were non-significant (e.g. lmer_length_2), I dropped those terms from the model
 lmer_length_1 <- lmer(diff_l ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_length_2 <- lmer(diff_l ~ OS*SP + (1|OS:OS_block), data = RV_lm)
+lmer_length_2 <- lmer(diff_l ~ OS*SP + initL + (1|OS:OS_block), data = RV_lm)
 summary(lmer_length_1)
 summary(lmer_length_2)
 
@@ -506,7 +506,7 @@ grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ OS*SP, data = RV_lm)
 pairs(grpMeans_thick_2, simple = list("OS", "SP"))
 
 #Tissue weight
-lmer_TiW_1 <- lmer(diff_TiW ~ OR*SR + initTiW*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_TiW_1 <- lmer(diff_TiW ~ OR*SR + initTiW + (1|OS/OS_block) + (1|SP), data = RV_lm)
 lmer_TiW_2 <- lmer(diff_TiW ~ OS*SP + initTiW + (1|OS:OS_block), data = RV_lm)
 summary(lmer_TiW_1)
 summary(lmer_TiW_2)
@@ -573,9 +573,8 @@ pairs(grpMeans_SG_2, simple = list("OS", "SP"))
 
 #Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
 #Because I have averaged the survival within blocks, block is now my 'unit of observation' and OS is the only random effect
-lmer_surv_1 <- lmer(cumsurv ~ OR*SR + (1|OS), data = RV_cumsurv_final)
+lmer_surv_1 <- lmer(cumsurv ~ OR*SR + (1|OS), data = RV_cumsurv_final) #<- removed 1|SP because singular fit
 lmer_surv_2 <- lm(cumsurv ~ OS*SP, data = RV_cumsurv_final)
-
 summary(lmer_surv_1)
 summary(lmer_surv_2)
 

@@ -6,7 +6,7 @@
 
 #Load packages----
 pkgs <- c("tidyverse", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
-          "emmeans", "lme4", "RVAideMemoire")
+          "emmeans", "lme4")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -367,6 +367,13 @@ TiW_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW,  SP, Tem
 SG_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
 Surv_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
 
+length_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_l, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
+thick_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_Th, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_ShW,  SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW,  SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
+Surv_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
 meso_fact_comb_SP_me <- plot_grid(length_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
                                   thick_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
                                   SG_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
@@ -376,10 +383,21 @@ meso_fact_comb_SP_me <- plot_grid(length_fact_SP_me + theme(legend.position = "n
                                   Surv_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
                                   ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
 
+meso_fact_comb_SP_me_temp <- plot_grid(length_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_fact_SP_me_temp),
+                                  ShW_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Surv_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
 xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
 meso_fact_comb_title_SP_me <- plot_grid(meso_fact_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+meso_fact_comb_title_SP_me_temp <- plot_grid(meso_fact_comb_SP_me_temp, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(meso_fact_comb_title_SP_me, file = "plots/snails/meso/meso_fact_SP_me.pdf", height = 8, width = 17, dpi = 300)
+ggsave(meso_fact_comb_title_SP_me_temp, file = "plots/snails/meso/meso_fact_SP_me_temp.pdf", height = 8, width = 17, dpi = 300)
 
 #Visualize change in growth across treatments grouped by SR for temp exp----
 #The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
@@ -589,139 +607,299 @@ rm(initL_aov, initTh_aov, initTiW_aov, initShW_aov)
 
 #There is no significant difference in starting size across tanks or treatment
 
-#Build linear mixed effects models & glm for survival----
+#Build linear mixed effects models for temp exp----
 #Fixed effects: SR, Treat & intxn
 #Random effects: Tank & Sp (1|Tank), (1|SP)
-
-lmer_length_1 <- lmer(diff_l ~ SR*Temp + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
-lmer_length_nested <- lmer(diff_l ~ SR*Temp + initL + (1|Tank) + (0+ SR|SP), data = meso_lm_temp)
-
-lmer_length_2 <- lmer(diff_l ~ SP*Temp + initL + (1|Tank), data = meso_lm_temp)
-
+lmer_length_1 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
+lmer_length_2 <- lmer(diff_l ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
 summary(lmer_length_1)
 summary(lmer_length_2)
 
-AIC(lmer_length_1, lmer_length_2)
-
-visreg(lmer_length_1, "SR", by = "Temp")
-
 #Verify assumptions of model
-plot(lmer_length)
-plotresid(lmer_length)
-visreg(lmer_length_1, re.form = (~1|SR/SP))
-visreg(lmer_length, "initL", by = "SR", overlay = TRUE)
-visreg(lmer_length, "initL", by = "Treat", overlay = TRUE)
+plot(lmer_length_1)
+visreg(lmer_length_1, "SR", by = "Treat")
+visreg(lmer_length_1, "initL", by = "SR", overlay = TRUE)
+visreg(lmer_length_1, "initL", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_length_1, type = "III")
-Anova(lmer_length_nested, type = "III")
-Anova(lmer_length_2, type = "III")
-
-Anova(lmer_length)
-Anova(lmer_length_1)
+Anova(lmer_length_2, type = "II") #<- ran a Type II beacuse interaction wasn't significant with Type III
 
 #Since there are significant interactions, use the following notation for the Tukey posthoc
-grpMeans_length <- emmeans(lmer_length, ~ OR*SR + initL*SR, data = RV_lm)
-pairs(grpMeans_length, simple = list("OR", "SR"))
+grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Treat, data = meso_lm_temp)
+pairs(grpMeans_length_1, simple = list("SR", "Treat"))
+grpMeans_length_2 <- emmeans(lmer_length_2, ~ SP*Treat, data = meso_lm_temp)
+pairs(grpMeans_length_2, simple = list("SP", "Treat"))
 
 #Shell thickness: note for this model I received a singular fit when OS_block was nested within OS, where OS variance = 0 --> removed OS from model as per Matuschek
-lmer_thick <- lmer(diff_Th ~ OR*SR + initTh*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-summary(lmer_thick)
+lmer_thick_1 <- lmer(diff_Th ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm_temp) 
+lmer_thick_2 <- lmer(diff_Th ~ SP*Treat + initTh + (1|Tank), data = meso_lm_temp)
+summary(lmer_thick_1)
+summary(lmer_thick_2)
 
-#Verify assumptions
-plot(lmer_thick)
-plotresid(lmer_thick)
-qqnorm(resid(lmer_length))
-visreg(lmer_thick)
-visreg(lmer_thick, "initTh", by = "OR", overlay = TRUE)
-visreg(lmer_thick, "initTh", by = "SR", overlay = TRUE)
+#Verify assumptions of model
+plot(lmer_thick_1)
+visreg(lmer_thick_1, "SR", by = "Treat")
+visreg(lmer_thick_1, "iniTh", by = "SR", overlay = TRUE)
+visreg(lmer_thick_1, "initTh", by = "Treat", overlay = TRUE)
+plot(lmer_thick_2)
+visreg(lmer_thick_2, "SP", by = "Treat")
+visreg(lmer_thick_1, "initTh", by = "SP", overlay = TRUE)
 
-Anova(lmer_thick, type = "III")
-grpMeans_thick <- emmeans(lmer_thick, ~ SR*OR + initTh*SR, data = RV_lm)
-pairs(grpMeans_thick, simple = list("OR", "SR"))
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_thick_1, type = "III")
+Anova(lmer_thick_2, type = "III")
+
+#Since there are significant interactions, use the following notation for the Tukey posthoc
+grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR + Treat, data = meso_lm_temp)
+pairs(grpMeans_thick_1, simple = list("SR", "Treat"))
+grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SP*Treat, data = meso_lm_temp)
+pairs(grpMeans_thick_2, simple = list("SP", "Treat"))
 
 #Tissue weight
-lmer_TiW <- lmer(diff_TiW ~ OR*SR + initTiW*SR + (1|OS/OS_block)+ (1|SP), data = RV_lm)
-summary(lmer_TiW)
+lmer_TiW_1 <- lmer(diff_TiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm_temp) 
+lmer_TiW_2 <- lmer(diff_TiW ~ SP*Treat + initTiW + (1|Tank), data = meso_lm_temp)
+summary(lmer_TiW_1)
+summary(lmer_TiW_2)
 
-plotresid(lmer_TiW)
-visreg(lmer_TiW)
-visreg(lmer_TiW, "initTiW", by = "OR", overlay = TRUE)
-visreg(lmer_TiW, "initTiW", by = "SR", overlay = TRUE)
+#Verify assumptions of model
+plot(lmer_TiW_1)
+visreg(lmer_TiW_1, "SR", by = "Treat")
+visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
+visreg(lmer_TiW_1, "initTiW", by = "Treat", overlay = TRUE)
+plot(lmer_TiW_2)
+visreg(lmer_TiW_2, "SP", by = "Treat")
+visreg(lmer_TiW_1, "initTiW", by = "SP", overlay = TRUE)
 
-Anova(lmer_TiW, type = "III")
-grpMeans_TiW <- emmeans(lmer_TiW, ~ SR*OR + initTiW, data = RV_lm)
-pairs(grpMeans_TiW, simple = list("OR", "SR"))
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_TiW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
+Anova(lmer_TiW_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
+
+#Since there are no significant interactions, use the following notation for the Tukey posthoc
+grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm_temp)
+pairs(grpMeans_TiW_1, simple = list("SR", "Treat"))
+grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SP + Treat, data = meso_lm_temp)
+pairs(grpMeans_TiW_2, simple = list("SP", "Treat"))
 
 #Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
-lmer_ShW <- lmer(diff_ShW ~ OR*SR + initShW*SR + (1|OS/OS_block), data = RV_lm)
-summary(lmer_ShW)
+lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm_temp) #<- removed initShW because it was non-significant
+lmer_ShW_2 <- lmer(diff_ShW ~ SP*Treat + (1|Tank), data = meso_lm_temp) #<- removed initShW because it was non-significant
+summary(lmer_ShW_1)
+summary(lmer_ShW_2)
 
-plotresid(lmer_ShW)
-visreg(lmer_ShW)
-visreg(lmer_ShW, "initShW", by = "OR", overlay = TRUE)
-visreg(lmer_ShW, "initShW", by = "SR", overlay = TRUE)
+#Verify assumptions of model
+plot(lmer_ShW_1)
+visreg(lmer_ShW_1, "SR", by = "Treat")
+visreg(lmer_ShW_1, "initShW", by = "SR", overlay = TRUE)
+visreg(lmer_ShW_1, "initShW", by = "Treat", overlay = TRUE)
+plot(lmer_ShW_2)
+visreg(lmer_ShW_2, "SP", by = "Treat")
+visreg(lmer_ShW_1, "initShW", by = "SP", overlay = TRUE)
 
-Anova(lmer_ShW, type = "III")
-grpMeans_ShW <- emmeans(lmer_ShW, ~ SR*OR + initShW*SR, data = RV_lm)
-pairs(grpMeans_ShW, simple = list("OR", "SR"))
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_ShW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
+Anova(lmer_ShW_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
+
+#Since there are no significant interactions, use the following notation for the Tukey posthoc
+grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + Treat, data = meso_lm_temp)
+pairs(grpMeans_ShW_1, simple = list("SR", "Treat"))
+grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SP + Treat, data = meso_lm_temp)
+pairs(grpMeans_ShW_2, simple = list("SP", "Treat"))
 
 #Shell growth: included initL as covariate as it improves fit of model
-lmer_SG <- lmer(SG ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-summary(lmer_SG)
+lmer_SG_1 <- lmer(SG ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp) 
+lmer_SG_2 <- lmer(SG ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
+summary(lmer_SG_1)
+summary(lmer_SG_2)
 
-plotresid(lmer_SG)
-visreg(lmer_SG)
-visreg(lmer_SG, "initL", by = "OR", overlay = TRUE)
-visreg(lmer_SG, "initL", by = "SR", overlay = TRUE)
+#Verify assumptions of model
+plot(lmer_SG_1)
+visreg(lmer_SG_1, "SR", by = "Treat")
+visreg(lmer_SG_1, "initSG", by = "SR", overlay = TRUE)
+visreg(lmer_SG_1, "initSG", by = "Treat", overlay = TRUE)
+plot(lmer_SG_2)
+visreg(lmer_SG_2, "SP", by = "Treat")
+visreg(lmer_SG_1, "initSG", by = "SP", overlay = TRUE)
 
-Anova(lmer_SG, type = "III")
-grpMeans_SG <- emmeans(lmer_SG, ~ OR*SR + initL*SR, data = RV_lm)
-pairs(grpMeans_SG, simple = list("OR", "SR"))
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_SG_1, type = "III") 
+Anova(lmer_SG_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
 
-lmer_length <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
+#Since there are no significant interactions, use the following notation for the Tukey posthoc
+grpMeans_SG_1 <- emmeans(lmer_SG_1, ~ SR*Treat, data = meso_lm_temp)
+pairs(grpMeans_SG_1, simple = list("SR", "Treat"))
+grpMeans_SG_2 <- emmeans(lmer_SG_2, ~ SP + Treat, data = meso_lm_temp)
+pairs(grpMeans_SG_2, simple = list("SP", "Treat"))
 
-#Survival: since these data are binomial, you have to run a generalized mixed-effects model, with the RV_survival df
-glm_surv_temp_1 <- lmer(days_diff ~ SR*Temp + (1|Tank), data = meso_surv_temp)
-summary(glm_surv_temp_1)
-visreg(glm_surv_temp_1)
-plotresid(glm_surv_temp_1)
+#Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
+#Because I have averaged the survival within tanks, tank is now my 'unit of observation' 
+meso_surv_1 <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv_temp)
+meso_surv_2 <- lm(cumsurv ~ SP*Treat, data = meso_clean_surv_temp)
+summary(meso_surv_1)
+summary(meso_surv_2)
 
-#Double check that there aren't any duplicate IDs
+#Verify assumptions of model (dispersal increases as the variables increase...)
+plot(meso_surv_1)
+plot(meso_surv_2)
+visreg(lmer_surv_1, "SR", by = "OR")
+visreg(lmer_surv_2, "SP", by = "OS")
 
-#Change structure of datasheet
-#Analysis will be repeated measures, and unit of measurement is individual by tank + (1|Tank/ID) <- intercepts vary by tank and by ID within Tank
-#Need time as a predictor variable also
-#Need continuous 0 and 1 (i.e. for any point that you measured record whether it was alive or dead)
+Anova(meso_surv_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
+Anova(meso_surv_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
 
-glm_surv_temp <- glmer(Dead ~ days_diff + SP*Temp + (1|Tank/ID), family = binomial(link = "logit"), data = meso_surv_temp)
+#Since there are no positive interactions, use the following notation for the Tukey posthoc
+grpMeans_surv_1 <- emmeans(meso_surv_1, ~ SR + Treat, data = meso_clean_surv_temp)
+pairs(grpMeans_surv_1, simple = list("SR", "Treat"))
+grpMeans_surv_2 <- emmeans(meso_surv_2, ~ SP + Treat, data = meso_clean_surv_temp)
+pairs(grpMeans_surv_2, simple = list("SP", "Treat"))
 
+#Build linear mixed effects models for fact exp----
+#Fixed effects: SR, Temp, pH & intxns
+#Random effects: Tank & Sp (1|Tank), (1|SP)
+lmer_length_1 <- lmer(diff_l ~ SR*Temp + pH + initL + (1|Tank) + (1|SP), data = meso_lm_fact)
+lmer_length_2 <- lmer(diff_l ~ SP*Temp + pH + initL + (1|Tank), data = meso_lm_fact)
+summary(lmer_length_1)
+summary(lmer_length_2)
 
-summary(glm_surv_temp_1)
-Anova(glm_surv_temp_1, type = "III")
-Anova(glm_surv_temp_2, type = "III")
+#Verify assumptions of model
+plot(lmer_length_1)
+visreg(lmer_length_1, "SR", by = "Treat")
+visreg(lmer_length_1, "initL", by = "SR", overlay = TRUE)
+visreg(lmer_length_1, "initL", by = "Treat", overlay = TRUE)
 
-# Visualize fit 
-visreg(glm_surv_temp_1)
-visreg(glm_surv_temp_1, "Temp", by = "SR", overlay = TRUE)
-plotresid(glm_surv_temp_1)
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_length_1, type = "III")
+Anova(lmer_length_2, type = "III") 
 
+#Since there are significant interactions, use the following notation for the Tukey posthoc
+grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Temp, data = meso_lm_fact)
+pairs(grpMeans_length_1, simple = list("SR", "Temp"))
+grpMeans_length_2 <- emmeans(lmer_length_2, ~ SP*Temp, data = meso_lm_fact)
+pairs(grpMeans_length_2, simple = list("SP", "Temp"))
 
-grpMeans_surv <- emmeans(glm_surv, ~ OR*SR, data = RV_survival)
-pairs(grpMeans_surv, simple = list("OR", "SR"))
+#Shell thickness: 
+lmer_thick_1 <- lmer(diff_Th ~ SR*Temp + SR*pH + initTh + (1|Tank), data = meso_lm_fact) #<- (1|SP) was singular fit so removed it
+lmer_thick_2 <- lmer(diff_Th ~ SP*Temp + SP*pH + initTh + (1|Tank), data = meso_lm_fact)
+summary(lmer_thick_1)
+summary(lmer_thick_2)
 
-rm(cedar_reg, heron_reg, pruth_reg, kwak_reg, tanks_remove, meso_clean_1, meso_clean_2, meso_clean_3)
+#Verify assumptions of model
+plot(lmer_thick_1)
+visreg(lmer_thick_1, "SR", by = "Temp")
+visreg(lmer_thick_1, "iniTh", by = "SR", overlay = TRUE)
+visreg(lmer_thick_1, "initTh", by = "Temp", overlay = TRUE)
+plot(lmer_thick_2)
+visreg(lmer_thick_2, "SP", by = "Temp")
+visreg(lmer_thick_1, "initTh", by = "SP", overlay = TRUE)
 
-#Note: you get an error with the cph. I wonder if it's because there's 100% survival in the 12 degree treatment 
-#To trouble shoot, I'm going to 'kill' a snail from each SP in each temp treatment on the last day, and run this in the cph
-#C & K in Tank 9 and H & P in Tank 12
-meso_surv_temp_1 <- meso_surv_temp_1 %>% 
-  mutate(Dead_2 = ifelse(ID == "CB03", 1, 
-                       ifelse(ID == "KB02", 1, 
-                              ifelse(ID == "HG61", 1,
-                                     ifelse(ID == "PO25", 1, Dead)))))
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_thick_1, type = "III")
+Anova(lmer_thick_2, type = "III")
 
-#Analyze survival data with survival analysis----
+#Since there are significant interactions, use the following notation for the Tukey posthoc
+grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR*Temp + SR*pH, data = meso_lm_fact)
+pairs(grpMeans_thick_1, simple = list("SR", "Temp", "pH"))
+grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SP*Temp + SP*pH, data = meso_lm_fact)
+pairs(grpMeans_thick_2, simple = list("SP", "Temp", "pH"))
+
+#Tissue weight
+lmer_TiW_1 <- lmer(diff_TiW ~ SR*Temp + pH + (1|Tank) + (1|SP), data = meso_lm_fact) #<- removed init TiW because non-significant
+lmer_TiW_2 <- lmer(diff_TiW ~ SP*Temp + pH + (1|Tank), data = meso_lm_fact) #<- removed init TiW because non-significant
+summary(lmer_TiW_1)
+summary(lmer_TiW_2)
+
+#Verify assumptions of model
+plot(lmer_TiW_1)
+visreg(lmer_TiW_1, "SR", by = "Temp")
+visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
+visreg(lmer_TiW_1, "initTiW", by = "Temp", overlay = TRUE)
+plot(lmer_TiW_2)
+visreg(lmer_TiW_2, "SP", by = "Temp")
+visreg(lmer_TiW_1, "initTiW", by = "SP", overlay = TRUE)
+
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_TiW_1, type = "III")
+Anova(lmer_TiW_2, type = "III") 
+
+#Since there are significant interactions, use the following notation for the Tukey posthoc
+grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR*Temp + pH, data = meso_lm_fact)
+pairs(grpMeans_TiW_1, simple = list("SR", "Temp", "pH"))
+grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SP*Treat + pH, data = meso_lm_fact)
+pairs(grpMeans_TiW_2, simple = list("SP", "Temp", "pH"))
+
+#Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
+lmer_ShW_1 <- lmer(diff_ShW ~ SR + pH*Temp + (1|Tank) + (1|SP), data = meso_lm_fact) #<- removed interactions & initShW b/c non-significant
+lmer_ShW_2 <- lmer(diff_ShW ~ SP + pH*Temp + (1|Tank), data = meso_lm_fact) #<- removed interactions & initShW b/c non-significant
+summary(lmer_ShW_1)
+summary(lmer_ShW_2)
+
+#Verify assumptions of model
+plot(lmer_ShW_1)
+visreg(lmer_ShW_1, "SR", by = "Temp")
+visreg(lmer_ShW_1, "initShW", by = "SR", overlay = TRUE)
+visreg(lmer_ShW_1, "initShW", by = "Temp", overlay = TRUE)
+plot(lmer_ShW_2)
+visreg(lmer_ShW_2, "SP", by = "Temp")
+visreg(lmer_ShW_1, "initShW", by = "SP", overlay = TRUE)
+
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_ShW_1, type = "III") #<- ran Type II because interaction was non-significant with Type III
+Anova(lmer_ShW_2, type = "III") #<- ran Type II because interaction was non-significant with Type III
+
+#Since there are no significant interactions, use the following notation for the Tukey posthoc
+grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + pH*Temp, data = meso_lm_fact)
+pairs(grpMeans_ShW_1, simple = list("SR", "Temp", "pH"))
+grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SP + Temp, data = meso_lm_fact)
+pairs(grpMeans_ShW_2, simple = list("SP", "Temp"))
+
+#Shell growth: included initL as covariate as it improves fit of model
+lmer_SG_1 <- lmer(SG ~ SR*Temp + pH + initL + (1|Tank) + (1|SP), data = meso_lm_fact) 
+lmer_SG_2 <- lmer(SG ~ SP*Temp + pH + initL + (1|Tank), data = meso_lm_fact)
+summary(lmer_SG_1)
+summary(lmer_SG_2)
+
+#Verify assumptions of model
+plot(lmer_SG_1)
+visreg(lmer_SG_1, "SR", by = "Temp")
+visreg(lmer_SG_1, "initL", by = "SR", overlay = TRUE)
+visreg(lmer_SG_1, "initL", by = "Temp", overlay = TRUE)
+plot(lmer_SG_2)
+visreg(lmer_SG_2, "SP", by = "Temp")
+visreg(lmer_SG_1, "initL", by = "SP", overlay = TRUE)
+
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_SG_1, type = "III") 
+Anova(lmer_SG_2, type = "III")
+
+#Since there are no significant interactions, use the following notation for the Tukey posthoc
+grpMeans_SG_1 <- emmeans(lmer_SG_1, ~ SR*Temp, data = meso_lm_fact)
+pairs(grpMeans_SG_1, simple = list("SR", "Temp"))
+grpMeans_SG_2 <- emmeans(lmer_SG_2, ~ SP*Temp, data = meso_lm_fact)
+pairs(grpMeans_SG_2, simple = list("SP", "Temp"))
+
+#Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
+#Because I have averaged the survival within tanks, tank is now my 'unit of observation' 
+meso_surv_1 <- lm(cumsurv ~ SR*Temp + pH, data = meso_clean_surv_fact) #<- removed (1|SP) because singular fit
+meso_surv_2 <- lm(cumsurv ~ SP*Temp + Temp*pH, data = meso_clean_surv_fact)
+summary(meso_surv_1)
+summary(meso_surv_2)
+
+#Verify assumptions of model (dispersal increases as the variables increase...)
+plot(meso_surv_1)
+plot(meso_surv_2)
+visreg(lmer_surv_1, "SR", by = "OR")
+visreg(lmer_surv_2, "SP", by = "OS")
+
+Anova(meso_surv_1, type = "III") 
+Anova(meso_surv_2, type = "III") 
+
+#Since there are no positive interactions, use the following notation for the Tukey posthoc
+grpMeans_surv_1 <- emmeans(meso_surv_1, ~ SR + Temp + pH, data = meso_clean_surv_fact)
+pairs(grpMeans_surv_1, simple = list("SR", "Temp", "pH"))
+grpMeans_surv_2 <- emmeans(meso_surv_2, ~ SP + Temp + pH, data = meso_clean_surv_fact)
+pairs(grpMeans_surv_2, simple = list("SP", "Temp", "pH"))
+
+#Remove this at the end of your process once you're decided to not run the survival analysis for anything, since data violate assumptions----
 sfit <- survfit(Surv(days_diff, Dead) ~ SR + Temp, data = meso_surv_temp)
 summary(sfit)
 survdiff(Surv(days_diff, Dead) ~ SR + Temp, data = meso_surv_temp)
@@ -763,3 +941,7 @@ round(summary(cph)$sctest[3], digits = 9) == round(surv_pvalue(sfit)[,2], digits
 
 ggsurvplot(sfit, legend.title = "Source Region", xlab = "Time, days", data = meso_surv_temp)
 
+
+#Remove variables----
+rm(cedar_reg, heron_reg, kwak_reg, pruth_reg, snails_remove, tanks_remove, meso_clean_1, meso_clean_2, meso_clean_3,
+   meso_clean_surv_1)
