@@ -184,60 +184,6 @@ RV_combined_stage_title <- plot_grid(RV_stage, xaxistitle, ncol = 1, rel_heights
 ggsave(RV_combined_stage_title, file = "plots/snails/RT/RV_stage.pdf", height = 14, width = 12, dpi = 300)
 
 
-#Create new dataframe for growth analysis & region visuals with init size, change in growth metrics, and fixed & random effects for every snail----
-#Calculate the difference in growth by ID, and change labels to initL etc
-RV_lm <- RV_alive %>% 
-  subset(Stage != "Mid") %>% 
-  arrange(ID, Stage) %>% 
-  group_by(ID) %>% 
-  mutate(diff_l = L - lag(L, default= L[1]),
-         diff_Th = Th - lag(Th, default = Th[1]),
-         diff_ShW = ShW - lag(ShW, default = ShW[1]),
-         diff_TiW = TiW - lag(TiW, default = TiW[1])) %>% 
-  subset(Stage == "Final") %>% 
-  unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) %>% 
-  mutate(OS_block = as.factor(OS_block)) %>% 
-  select(Stage, OR, OS, SR, SP, Block, OS_block, ID, SG, diff_l, diff_Th, diff_ShW, diff_TiW) %>%
-  ungroup()
-
-#Gather initial sizes for covariates in models & for standardized growth calculation
-RV_lm_init <- RV_alive %>% 
-  subset(Stage == "Init") %>% 
-  select(ID, initL = L, initTh = Th, initShW = ShW, initTiW = TiW)
-
-#Merge RV_lm and RV_lm_init by ID & create new column with the diff growth standardized by initial size
-RV_lm <- left_join(RV_lm, RV_lm_init, by = "ID") %>% 
-  mutate(diff_l_i = diff_l/initL,
-         diff_Th_i = diff_Th/initTh,
-         diff_ShW_i = diff_ShW/initShW,
-         diff_TiW_i = diff_TiW/initTiW,
-         SG_i = SG/initL)
-
-#Now create a separate dataframe with the meandiff & meandiff_i summarized by block for your graphs
-RV_lm_block <- RV_lm %>% 
-  group_by(OR, OS, SR, SP, Block) %>% 
-  summarize(meandiff_l = mean(diff_l, na.rm = TRUE),
-            meandiff_Th = mean(diff_Th, na.rm = TRUE),
-            meandiff_ShW = mean(diff_ShW, na.rm = TRUE),
-            meandiff_TiW = mean(diff_TiW, na.rm = TRUE),
-            mean_SG = mean(SG, na.rm = TRUE),
-            meandiff_l_i = mean(diff_l_i, na.rm = TRUE),
-            meandiff_Th_i = mean(diff_Th_i, na.rm = TRUE),
-            meandiff_ShW_i = mean(diff_ShW_i, na.rm = TRUE),
-            meandiff_TiW_i = mean(diff_TiW_i, na.rm = TRUE),
-            meanSG_i = mean(SG_i, na.rm = TRUE), n = n()) %>% 
-  ungroup()
-
-#Might delete this code if don't do survival amalysis
-#For the survival analysis I have to create a dataframe that has all the IDs in the final period with 0 or 1 and also the IDs that died in mid
-RV_survival_glm <- RV_survival %>% 
-  unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) %>% 
-  mutate(OS_block = as.factor(OS_block),
-         Died_fin = ifelse(Stage == "Mid" & DIED == 1, 1,
-                           ifelse(Stage == "Final", DIED, NA))) %>% 
-  filter(!is.na(Died_fin))
-
-
 #Visualize the growth & var across blocks by SR----
 ggplot(RV_lm, aes(Block, diff_l_i, group = SR, colour = SR)) +
   geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
@@ -360,7 +306,6 @@ ggsave(RV_combined_OR_me_title, file = "plots/snails/RT/RV_OR_me.pdf", height = 
 ggsave(RV_combined_OR_me_i_title, file = "plots/snails/RT/RV_OR_me_i.pdf", height = 8, width = 17, dpi = 300)
 ggsave(RV_combined_OR_box_title, file = "plots/snails/RT/RV_OR_box.pdf", height = 8, width = 17, dpi = 300)
 ggsave(RV_combined_OR_box_i_title, file = "plots/snails/RT/RV_OR_box_i.pdf", height = 8, width = 17, dpi = 300)
-
 
 #Visualize the RVs grouped by OS & SP----
 plot_OS_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
