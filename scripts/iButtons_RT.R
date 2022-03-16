@@ -227,29 +227,24 @@ sum_both <- all_tides %>%
   ungroup()
 
 #Visualize temps----
-my_theme <- theme(axis.title.x = element_text(size = 20), axis.text.x = element_text(size = 18),
-                  axis.text.y = element_text(size = 18), axis.title.y = element_text(size = 20), 
-                  legend.text = element_text(size = 20),
-                  panel.border = element_blank(), panel.grid.major = element_blank(),
-                  panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 
 water_90 <- ggplot(sum_water, aes(Date, water90th, fill = SP)) + 
   geom_line (aes(colour = SP), size = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  theme_bw() + labs(x = "Date", y = "90th percentile temperature, water (°C)") +
-  my_theme
+  labs(x = "Date", y = "90th percentile temperature, water (°C)", color = "Source Population") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 air_90 <- ggplot(sum_air, aes(Date, air90th, fill = SP)) + 
   geom_line (aes(colour = SP), size = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  theme_bw() + labs(x = "Date", y = "90th percentile temperature, air (°C)") +
-  my_theme
+  labs(x = "Date", y = "90th percentile temperature, air (°C)", color = "Source Population") +
+  theme_cowplot(16)+ theme(legend.position = c(0.1, 0.75))
 
 both_90 <- ggplot(sum_both, aes(Date, both90th, fill = SP)) + 
   geom_line (aes(colour = SP), size = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  theme_bw() + labs(x = "Date", y = "90th percentile temp (°C)") +
-  my_theme
+  labs(x = "Date", y = "90th percentile temp (°C)", color = "Source Population") +
+  theme_cowplot(16)+ theme(legend.position = c(0.1, 0.75))
 
 #Sites faceted
 water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) + 

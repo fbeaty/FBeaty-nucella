@@ -3,8 +3,8 @@
 #Last edited Jan 2022
 
 #Load in necessary packages----
-install.packages("zoo")
-pkgs <- c("janitor", "dplyr", "tidyverse", "ggplot2", "zoo", "lubridate")
+install.packages("janitor")
+pkgs <- c("janitor", "dplyr", "tidyverse", "ggplot2", "zoo", "lubridate", "cowplot")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -19,7 +19,7 @@ egg_1 <- egg[ , c(1,3)] %>%
   rename("date" = "DATE (YYYY-MM-DD)", "temp" = "TEMPERATURE ( C )") %>% 
   mutate(date = ymd(date),
          temp = as.numeric(temp),
-         station = "Egg Island",
+         station = "Egg Island, Calvert",
          year = year(date),
          month = month(date)) %>% 
   filter(date > "2012-01-01" & date < "2020-01-01", 
@@ -30,7 +30,7 @@ departure_1 <- departure[ , c(1,3)] %>%
   rename("date" = "DATE (YYYY-MM-DD)", "temp" = "TEMPERATURE ( C )") %>% 
   mutate(date = ymd(date),
          temp = as.numeric(temp),
-         station = "Departure Bay",
+         station = "Departure Bay, Nanaimo",
          year = year(date),
          month = month(date)) %>% 
   filter(date > "2012-01-01" & date < "2020-01-01", 
@@ -50,9 +50,8 @@ lighthouse <- rbind(egg_1, departure_1) %>%
 both <- ggplot(lighthouse, aes(date, temp90th, group = station)) + 
   geom_line(aes(colour = station), size = 0.7) +
   scale_colour_manual(values = c("coral", "skyblue")) +
-  theme_bw() + labs(x = "Year", y = "90th percentile temperature (°C)") +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+  labs(x = "Year", y = "90th percentile temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = "top", legend.justification = "right")
 
 ggsave(both, file = "plots/lighthouse/both_lighthouse_stations.pdf", height = 5, width = 9, dpi = 300)
 

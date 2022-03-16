@@ -289,6 +289,41 @@ meso_growth_fact_comb <- plot_grid(meso_stage_fact, xaxistitle, ncol = 1, rel_he
 #Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
 ggsave(meso_growth_fact_comb, file = "plots/snails/meso/meso_stage_fact.pdf", height = 14, width = 12, dpi = 300)
 
+#Visualize the RVs over time for all 6 treatments exp----
+length_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanL, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SL (mm)") + 
+  labs(colour = "Source Population") + theme(strip.background = element_blank(), strip.text = element_text(size = 16)) + facet_wrap(~ Treat, ncol = 6)
+thick_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ST (mm)")+ facet_wrap(~ Treat, ncol = 6)
+ShW_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")+ facet_wrap(~ Treat, ncol = 6)
+TiW_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")+ facet_wrap(~ Treat, ncol = 6)
+SG_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (mm)")+ facet_wrap(~ Treat, ncol = 6)
+Surv_stage_all <- plot_temp_stage(meso_clean_surv, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")+ facet_wrap(~ Treat, ncol = 6)
+
+meso_stage_all <- plot_grid(length_stage_all + theme(legend.position = "none",
+                                                       axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                             get_legend(length_stage_all),
+                             thick_stage_all + theme(legend.position = "none", 
+                                                      axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                             NULL,
+                             SG_stage_all + theme(legend.position = "none", 
+                                                   axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                             NULL,
+                             ShW_stage_all + theme(legend.position = "none",
+                                                    axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                             NULL,
+                             TiW_stage_all + theme(legend.position = "none", 
+                                                    axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                             NULL,
+                             Surv_stage_all + theme(legend.position = "none", axis.title.x = element_blank()), 
+                             NULL,
+                             ncol = 2, nrow = 6, axis = "lb", align = "hv", rel_widths = c(1,0.2))
+
+xaxistitle <- ggdraw() + draw_label("Stage", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+meso_growth_all_comb <- plot_grid(meso_stage_all, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
+
+#Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
+ggsave(meso_growth_all_comb, file = "plots/snails/meso/meso_stage_all.pdf", height = 14, width = 14, dpi = 300)
+
+
 #Visualize the feeding rate over time for both experiments----
 feeding_time <- ggplot(meso_food_clean, aes(Date, Per_cap, group = SP, colour = SP)) +
   stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(1.8)) +
@@ -409,7 +444,7 @@ meso_temp_comb_SP_me <- plot_grid(length_temp_SP_me + theme(legend.position = "n
                                Surv_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
                                ncol = 4, nrow = 2, axis = "lb", align = "hv")
 
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
 meso_temp_comb_title_SP_me <- plot_grid(meso_temp_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(meso_temp_comb_title_SP_me, file = "plots/snails/meso/meso_temp_SP_me.pdf", height = 8, width = 17, dpi = 300)
@@ -465,7 +500,7 @@ meso_fact_comb_SP_me_temp <- plot_grid(length_fact_SP_me_temp + theme(legend.pos
                                   Surv_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
                                   ncol = 4, nrow = 2,  axis = "lb", align = "hv")
 
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
 meso_fact_comb_title_SP_me <- plot_grid(meso_fact_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 meso_fact_comb_title_SP_me_temp <- plot_grid(meso_fact_comb_SP_me_temp, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
@@ -508,7 +543,7 @@ meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = 
                                   Surv_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
                                   ncol = 4, nrow = 2, axis = "lb", align = "hv")
 
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
 meso_temp_comb_title_SR_me <- plot_grid(meso_temp_comb_SR_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 meso_temp_comb_title_SR_box <- plot_grid(meso_temp_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
@@ -551,7 +586,7 @@ meso_fact_comb_SR_box <- plot_grid(length_fact_SR_box + theme(legend.position = 
                                    Surv_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
                                    ncol = 4, nrow = 2, axis = "lb", align = "hv")
 
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
 meso_fact_comb_title_SR_me <- plot_grid(meso_fact_comb_SR_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 meso_fact_comb_title_SR_box <- plot_grid(meso_fact_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
