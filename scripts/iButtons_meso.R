@@ -361,19 +361,13 @@ all_treat <- all_cleaned %>%
 
 #Now visualize data across treatments----
 #Set theme aesthetics for font sizes
-my_theme <- theme(axis.title.x = element_text(size = 20), axis.text.x = element_text(size = 18),
-                  axis.text.y = element_text(size = 18), axis.title.y = element_text(size = 20), 
-                  legend.text = element_text(size = 20))
-
 treat_meso_iButton <- ggplot(all_treat, aes(Date, avgtemp, fill = Treat)) + 
   geom_line (aes(colour = Treat), size = 1) +
   scale_color_viridis(discrete = TRUE, option = "D") +
   scale_fill_viridis(discrete = TRUE) +
   geom_ribbon(aes(ymin = avgtemp-sdtemp, ymax = avgtemp+sdtemp), alpha = 0.2) +
-  theme_bw() + labs(x = "Date, 2018", y = "Temp (Celsius)") +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
-  my_theme
+  labs(x = "Date, 2018", y = "Temp (Celsius)") +
+  theme_cowplot(16)
 
 ggsave(treat_meso_iButton, file = "plots/iButtons/treat_meso_iButton.pdf", height = 5, width = 9, dpi = 300)
 
@@ -386,10 +380,8 @@ treat_subset<- ggplot(all_treat_subset, aes(Date, avgtemp, fill = Treat)) +
   scale_color_viridis(discrete = TRUE, option = "D") +
   scale_fill_viridis(discrete = TRUE) +
   geom_ribbon(aes(ymin = avgtemp-sdtemp, ymax = avgtemp+sdtemp), alpha = 0.2) +
-  theme_bw() + labs(x = "Date, 2018", y = "Temp (Celsius)") +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
-  my_theme
+  labs(x = "Date, 2018", y = "Temp (Celsius)") +
+  theme_cowplot(16)
 
 ggsave(treat_subset, file = "plots/iButtons/treat_subset.pdf", height = 5, width = 9, dpi = 300)
 
