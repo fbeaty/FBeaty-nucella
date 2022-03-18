@@ -98,6 +98,9 @@ meso_clean_1 <- left_join(meso_clean_i, meso_clean_m, by = "ID") %>%
   left_join(meso_clean_f, by = "ID") %>% 
   droplevels
 
+#For some reason CB44 was duplicated twice and has 2 incomplete rows --> remove rows 64-66
+meso_clean_1 <- meso_clean_1[c(1:63,67:591), ]
+
 #Now we have a dataframe with rows for all the right IDs, but we need to switch it into a long format keeping the IDs. 
 #SO: split it into 2 dataframes again, and then rbind them
 meso_clean_2 <- meso_clean_1 %>% 
@@ -161,12 +164,14 @@ meso_clean_surv <- meso_clean %>%
   ungroup()
 
 #Calculate the proportion of surviving snails at the end of the experiment & separate treatment into the temp & pH columns
-meso_clean_surv <- meso_clean_surv %>% 
+meso_clean_surv_1 <- meso_clean_surv %>% 
   arrange(SR, SP, Treat, Tank, Stage) %>%
   mutate(cumsurv = ifelse(Stage == "Init", n_snl/n_snl,
                           ifelse(Stage == "Final", n_snl/lag(n_snl, default = n_snl[1]), NA)),
          cumsurv = 100*cumsurv) %>% 
-  arrange(SR, SP, Treat, Tank, Stage) %>% 
+  arrange(SR, SP, Treat, Tank, Stage) 
+
+meso_clean_surv <- meso_clean_surv_1 %>% 
   filter(Stage == "Final")
 
 meso_clean_surv_temp <- meso_clean_surv %>% 
@@ -195,6 +200,11 @@ meso_growth_tank <- meso_clean %>%
             meanTiW = mean(TiW, na.rm = TRUE), sdTiW = sd(TiW, na.rm = TRUE),
             meanSG = mean(SG, na.rm = TRUE), sdSG = sd(SG, na.rm = TRUE), n = n()) %>% 
   ungroup()
+
+#Calculate sample size for stage figure (i.e. number of tanks/treatment at each stage)
+meso_growth_tank_sample <- meso_growth_tank %>% 
+  group_by(Stage, Treat, SP) %>% 
+  summarize(n_sample = n())
 
 #Mid Calvert Pruth 22 only has 1 snail --> no SD
 #Final Calvert Pruth 2 only has 1 snail --> no SD
@@ -296,7 +306,19 @@ thick_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanTh, SP, c("coral
 ShW_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")+ facet_wrap(~ Treat, ncol = 6)
 TiW_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")+ facet_wrap(~ Treat, ncol = 6)
 SG_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (mm)")+ facet_wrap(~ Treat, ncol = 6)
-Surv_stage_all <- plot_temp_stage(meso_clean_surv, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")+ facet_wrap(~ Treat, ncol = 6)
+Surv_stage_all <- plot_temp_stage(meso_clean_surv_1, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")+ facet_wrap(~ Treat, ncol = 6)
+
+feeding_time <- ggplot(meso_food_clean, aes(Date, Per_cap, group = SP, colour = SP)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(1.8)) +
+  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(1.8), alpha = 0.5) +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", 
+               position=position_dodge(1.8), alpha = 0.8) +
+  facet_wrap(~ Treat, ncol = 6) +
+  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+  labs(y = "Per capita feeding rate") +
+  theme_cowplot(16) + theme(axis.text.x = element_text(size = 10)) + 
+  labs(colour = "Source Population") + theme(strip.text = element_blank())
+
 
 meso_stage_all <- plot_grid(length_stage_all + theme(legend.position = "none",
                                                        axis.text.x = element_blank(), axis.title.x = element_blank()), 
@@ -313,30 +335,17 @@ meso_stage_all <- plot_grid(length_stage_all + theme(legend.position = "none",
                              TiW_stage_all + theme(legend.position = "none", 
                                                     axis.text.x = element_blank(), axis.title.x = element_blank()), 
                              NULL,
-                             Surv_stage_all + theme(legend.position = "none", axis.title.x = element_blank()), 
-                             NULL,
-                             ncol = 2, nrow = 6, axis = "lb", align = "hv", rel_widths = c(1,0.2))
+                            Surv_stage_all + theme(legend.position = "none", axis.title.x = element_blank()), 
+                            NULL,
+                            feeding_time + theme(legend.position = "none", axis.title.x = element_blank()), 
+                            NULL, 
+                            ncol = 2, nrow = 7, axis = "lb", align = "hv", rel_widths = c(1,0.2))
 
-xaxistitle <- ggdraw() + draw_label("Stage", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+xaxistitle <- ggdraw() + draw_label("Stage/Date", fontface = "plain", x = 0.43, hjust = 0, size = 16)
 meso_growth_all_comb <- plot_grid(meso_stage_all, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
 
 #Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
 ggsave(meso_growth_all_comb, file = "plots/snails/meso/meso_stage_all.pdf", height = 14, width = 14, dpi = 300)
-
-
-#Visualize the feeding rate over time for both experiments----
-feeding_time <- ggplot(meso_food_clean, aes(Date, Per_cap, group = SP, colour = SP)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(1.8)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(1.8), alpha = 0.5) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", 
-               position=position_dodge(1.8), alpha = 0.8) +
-  facet_wrap(~ Treat, ncol = 3) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(y = "Per capita feeding rate") +
-  theme_cowplot(16) + 
-  labs(colour = "Source Population") + theme(strip.background = element_blank(), strip.text = element_text(size = 16))
-
-ggsave(feeding_time, file = "plots/snails/meso/feeding_time.pdf", height = 8, width = 12, dpi = 300)
 
 #Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects for every snail----
 #Calculate the difference in growth (this time by ID rather than block, as in previous code), and change labels to initL etc
@@ -356,8 +365,13 @@ meso_lm_init <- meso_clean %>%
   subset(Stage == "Init") %>% 
   select(ID, initL = L, initTh = Th, initShW = ShW, initTiW = TiW)
 
+meso_lm_fin <- meso_clean %>% 
+  subset(Stage == "Final") %>% 
+  select(ID, finL = L, finTh = Th, finShW = ShW, finTiW = TiW)
+
 #Merge 2 datasets by ID
-meso_lm <- left_join(meso_lm, meso_lm_init, by = "ID")
+meso_lm <- left_join(meso_lm, meso_lm_init, by = "ID")  %>% 
+  left_join(meso_lm_fin, by = "ID")
 
 #Create a temp & fact set
 meso_lm_temp <- meso_lm %>% 
@@ -374,7 +388,11 @@ meso_lm_block <- meso_lm %>%
             meandiff_Th = mean(diff_Th, na.rm = TRUE),
             meandiff_ShW = mean(diff_ShW, na.rm = TRUE),
             meandiff_TiW = mean(diff_TiW, na.rm = TRUE),
-            mean_SG = mean(SG, na.rm = TRUE)) %>% 
+            mean_SG = mean(SG, na.rm = TRUE),
+            meanfinL = mean(finL, na.rm = TRUE),
+            meanfinTh = mean(finTh, na.rm = TRUE),
+            meanfinShW = mean(finShW, na.rm = TRUE),
+            meanfinTiW = mean(finTiW, na.rm = TRUE)) %>% 
   mutate(tank_sp = paste(Tank, SP, sep = "_")) %>% 
   ungroup()
 
@@ -400,6 +418,13 @@ meso_lm_block_fact <- meso_lm_block %>%
   filter(Temp == 15 | Temp == 22) %>% 
   droplevels
 
+#Summarize the sample size for each treatment for your figure captions
+meso_temp_sampl <- meso_lm_block_temp %>% 
+  group_by(SP, Treat) %>% 
+  summarize(n_tanks = n())
+meso_fact_sampl <- meso_lm_block_fact %>% 
+  group_by(SR, Treat) %>% 
+  summarize(n_tanks = n())
 
 #Visualize change in growth across treatments grouped by SP for temp exp----
 #The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
@@ -592,6 +617,32 @@ meso_fact_comb_title_SR_box <- plot_grid(meso_fact_comb_SR_box, xaxistitle_treat
 
 ggsave(meso_fact_comb_title_SR_me, file = "plots/snails/meso/meso_fact_SR_me.pdf", height = 8, width = 17, dpi = 300)
 ggsave(meso_fact_comb_title_SR_box, file = "plots/snails/meso/meso_fact_SR_box.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize final size across treatments grouped by SR for temp exp----
+#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
+fin_length_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
+fin_thick_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
+fin_ShW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
+fin_TiW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
+fin_SG_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean LSG (mm)")
+fin_Feed_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")
+fin_Surv_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
+
+meso_temp_fin_SR_box <- plot_grid(fin_length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  fin_thick_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  fin_SG_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                   get_legend(fin_length_temp_SR_box),
+                                  fin_ShW_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  fin_TiW_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  fin_Feed_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  fin_Surv_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                   ncol = 4, nrow = 2, axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
+meso_temp_fin_title_SR_box <- plot_grid(meso_temp_fin_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_temp_fin_title_SR_box, file = "plots/snails/meso/meso_temp_SR_box_fin.pdf", height = 8, width = 17, dpi = 300)
+
 
 #Test whether initial size differs across tanks----
 initL_aov <- lm(initL ~ Tank + Temp, data = meso_lm_temp)

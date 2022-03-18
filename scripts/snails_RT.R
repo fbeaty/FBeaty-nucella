@@ -205,13 +205,19 @@ RV_lm_init <- RV_alive %>%
   subset(Stage == "Init") %>% 
   select(ID, initL = L, initTh = Th, initShW = ShW, initTiW = TiW)
 
+#Gather final sizes for visualization 
+RV_lm_fin <- RV_alive %>% 
+  subset(Stage == "Final") %>% 
+  select(ID, finL = L, finTh = Th, finShW = ShW, finTiW = TiW)
+
 #Merge RV_lm and RV_lm_init by ID & create new column with the diff growth standardized by initial size
 RV_lm <- left_join(RV_lm, RV_lm_init, by = "ID") %>% 
-  mutate(diff_l_i = diff_l/initL,
-         diff_Th_i = diff_Th/initTh,
-         diff_ShW_i = diff_ShW/initShW,
-         diff_TiW_i = diff_TiW/initTiW,
-         SG_i = SG/initL)
+  left_join(RV_lm_fin)
+
+#Calculate the sample size for each SP at each OS for your supplemental initial size vs change in growth
+RV_lm_sample <- RV_lm %>% 
+  group_by(OS, SP) %>% 
+  summarize(n_snail = n())
 
 #Now create a separate dataframe with the meandiff & meandiff_i summarized by block for your graphs
 RV_lm_block <- RV_lm %>% 
@@ -221,11 +227,10 @@ RV_lm_block <- RV_lm %>%
             meandiff_ShW = mean(diff_ShW, na.rm = TRUE),
             meandiff_TiW = mean(diff_TiW, na.rm = TRUE),
             mean_SG = mean(SG, na.rm = TRUE),
-            meandiff_l_i = mean(diff_l_i, na.rm = TRUE),
-            meandiff_Th_i = mean(diff_Th_i, na.rm = TRUE),
-            meandiff_ShW_i = mean(diff_ShW_i, na.rm = TRUE),
-            meandiff_TiW_i = mean(diff_TiW_i, na.rm = TRUE),
-            meanSG_i = mean(SG_i, na.rm = TRUE), n = n()) %>% 
+            meanfinL = mean(finL, na.rm = TRUE),
+            meanfinTh = mean(finTh, na.rm = TRUE),
+            meanfinShW = mean(finShW, na.rm = TRUE),
+            meanfinTiW = mean(finTiW, na.rm = TRUE)) %>% 
   ungroup()
 
 #Might delete this code if don't do survival amalysis
@@ -236,7 +241,6 @@ RV_survival_glm <- RV_survival %>%
          Died_fin = ifelse(Stage == "Mid" & DIED == 1, 1,
                            ifelse(Stage == "Final", DIED, NA))) %>% 
   filter(!is.na(Died_fin))
-
 
 #Visualize the growth & var across blocks by SR----
 ggplot(RV_lm, aes(Block, diff_l_i, group = SR, colour = SR)) +
@@ -250,7 +254,7 @@ ggplot(RV_lm, aes(Block, diff_l_i, group = SR, colour = SR)) +
   labs(x = "Block", y = "Change in SL (mm)") +
   theme_cowplot(16)
 
-#Visualize the RVs grouped by OR & SR----
+#Visualize the change in RVs grouped by OR & SR----
 plot_OR_RT_me <- function(df, x, y, grp, clr.values, lbl.y){
   ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) + 
     geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
@@ -360,6 +364,31 @@ ggsave(RV_combined_OR_me_title, file = "plots/snails/RT/RV_OR_me.pdf", height = 
 ggsave(RV_combined_OR_me_i_title, file = "plots/snails/RT/RV_OR_me_i.pdf", height = 8, width = 17, dpi = 300)
 ggsave(RV_combined_OR_box_title, file = "plots/snails/RT/RV_OR_box.pdf", height = 8, width = 17, dpi = 300)
 ggsave(RV_combined_OR_box_i_title, file = "plots/snails/RT/RV_OR_box_i.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize the final RVs grouped by OR & SR----
+fin_length_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") +
+  labs(colour = "Source Region", fill = "Source Region")
+fin_thick_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
+fin_ShW_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
+fin_TiW_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
+fin_SG_OR_box <- plot_OR_RT_box(RV_lm_block, OR, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean LSG (mm)")
+fin_CSurv_OR_box <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)")
+
+RV_fin_OR_box <- plot_grid(fin_length_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                           fin_thick_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                           fin_SG_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                get_legend(fin_length_OR_box),
+                           fin_ShW_OR_box + theme(legend.position = "none", axis.title.x = element_blank()), 
+                           fin_TiW_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                           fin_CSurv_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                NULL,
+                                ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+xaxistitle_OR <- ggdraw() + draw_label("Outplant Region", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+RV_fin_OR_box_title <- plot_grid(RV_fin_OR_box, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
+
+#Save both OR by SR plots
+ggsave(RV_fin_OR_box_title, file = "plots/snails/RT/RV_OR_box_fin.pdf", height = 8, width = 17, dpi = 300)
 
 #Visualize the RVs grouped by OS & SP----
 plot_OS_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
