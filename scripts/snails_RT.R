@@ -242,31 +242,7 @@ RV_survival_glm <- RV_survival %>%
                            ifelse(Stage == "Final", DIED, NA))) %>% 
   filter(!is.na(Died_fin))
 
-#Visualize the growth & var across blocks by SR----
-ggplot(RV_lm, aes(Block, diff_l_i, group = SR, colour = SR)) +
-  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
-               position=position_dodge(0.3)) +
-  facet_wrap(~ OR) +
-  labs(colour = "Source Region") +
-  scale_colour_manual(values = c("skyblue", "coral")) +
-  labs(x = "Block", y = "Change in SL (mm)") +
-  theme_cowplot(16)
-
-#Visualize the change in RVs grouped by OR & SR----
-plot_OR_RT_me <- function(df, x, y, grp, clr.values, lbl.y){
-  ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) + 
-    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-                 position=position_dodge(0.3)) +
-    scale_colour_manual(values = clr.values) +
-    labs(y = lbl.y) +
-    theme_cowplot(16)
-}
-
+#Visualize the change in RVs grouped by OR & SR and by OR & SP----
 plot_OR_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
   ggplot(df, aes({{x}}, {{y}}, fill = {{grp}}, colour = {{grp}})) + 
     geom_boxplot(colour = "black", varwidth = TRUE, alpha = 0.8) +
@@ -278,24 +254,6 @@ plot_OR_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
     theme_cowplot(16)
 }
 
-#Create ME plots with change in growth
-length_OR_me <- plot_OR_RT_me(RV_lm_block, OR, meandiff_l, SR, c("skyblue", "coral"), "Change in SL (mm)") +
-  labs(colour = "Source Region")
-thick_OR_me <- plot_OR_RT_me(RV_lm_block, OR, meandiff_Th, SR, c("skyblue", "coral"), "Change in ST (mm)")
-
-ShW_OR_me <- plot_OR_RT_me(RV_lm_block, OR, meandiff_ShW, SR, c("skyblue", "coral"), "Change in ShW (g)")
-TiW_OR_me <- plot_OR_RT_me(RV_lm_block, OR, meandiff_TiW, SR, c("skyblue", "coral"), "Change in TiW (g)")
-SG_OR_me <- plot_OR_RT_me(RV_lm_block, OR, mean_SG, SR, c("skyblue", "coral"), "Change in LSG (mm)")
-CSurv_OR_me <- plot_OR_RT_me(RV_cumsurv_final, OR, cumsurv, SR, c("skyblue", "coral"), "Survival (%)")
-
-#Create ME plots with standardized change in growth
-length_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meandiff_l_i, SR, c("skyblue", "coral"), "S change in SL (mm)") +
-  labs(colour = "Source Region")
-thick_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meandiff_Th_i, SR, c("skyblue", "coral"), "S change in ST (mm)")
-ShW_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meandiff_ShW_i, SR, c("skyblue", "coral"), "S change in ShW (g)")
-TiW_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meandiff_TiW_i, SR, c("skyblue", "coral"), "S change in TiW (g)")
-SG_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meanSG_i, SR, c("skyblue", "coral"), "S change in LSG (mm)")
-
 #Create boxplots with change in growth
 length_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") +
   labs(colour = "Source Region", fill = "Source Region")
@@ -304,34 +262,6 @@ ShW_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meandiff_ShW, SR, c("skyblue", "co
 TiW_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in TiW (g)")
 SG_OR_box <- plot_OR_RT_box(RV_lm_block, OR, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
 CSurv_OR_box <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)")
-
-#Create boxplots withchange in growth standardized by initial size
-length_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meandiff_l_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in SL (mm)") +
-  labs(colour = "Source Region", fill = "Source Region")
-thick_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meandiff_Th_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in ST (mm)")
-ShW_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meandiff_ShW_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in ShW (g)")
-TiW_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meandiff_TiW_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in TiW (g)")
-SG_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meanSG_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in LSG (mm)")
-
-RV_combined_OR_me <- plot_grid(length_OR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                               thick_OR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                               SG_OR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                 get_legend(length_OR_me),
-                               ShW_OR_me + theme(legend.position = "none", axis.title.x = element_blank()), 
-                               TiW_OR_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                               CSurv_OR_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                                 NULL,
-                                 ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
-
-RV_combined_OR_me_i <- plot_grid(length_OR_me_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                 thick_OR_me_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                 SG_OR_me_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                               get_legend(length_OR_me_i),
-                               ShW_OR_me_i + theme(legend.position = "none", axis.title.x = element_blank()), 
-                               TiW_OR_me_i + theme(legend.position = "none", axis.title.x = element_blank()),
-                               CSurv_OR_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                               NULL,
-                               ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
 
 RV_combined_OR_box <- plot_grid(length_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
                                 thick_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
@@ -343,36 +273,39 @@ RV_combined_OR_box <- plot_grid(length_OR_box + theme(legend.position = "none", 
                                  NULL,
                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
 
-RV_combined_OR_box_i <- plot_grid(length_OR_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                thick_OR_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                SG_OR_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                get_legend(length_OR_box_i),
-                                ShW_OR_box_i + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                TiW_OR_box_i + theme(legend.position = "none", axis.title.x = element_blank()),
-                                CSurv_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                NULL,
-                                ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
-
 xaxistitle_OR <- ggdraw() + draw_label("Outplant Region", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-RV_combined_OR_me_title <- plot_grid(RV_combined_OR_me, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
-RV_combined_OR_me_i_title <- plot_grid(RV_combined_OR_me_i, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
 RV_combined_OR_box_title <- plot_grid(RV_combined_OR_box, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
-RV_combined_OR_box_i_title <- plot_grid(RV_combined_OR_box_i, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
 
 #Save both OR by SR plots
-ggsave(RV_combined_OR_me_title, file = "plots/snails/RT/RV_OR_me.pdf", height = 8, width = 17, dpi = 300)
-ggsave(RV_combined_OR_me_i_title, file = "plots/snails/RT/RV_OR_me_i.pdf", height = 8, width = 17, dpi = 300)
 ggsave(RV_combined_OR_box_title, file = "plots/snails/RT/RV_OR_box.pdf", height = 8, width = 17, dpi = 300)
-ggsave(RV_combined_OR_box_i_title, file = "plots/snails/RT/RV_OR_box_i.pdf", height = 8, width = 17, dpi = 300)
 
-#Visualize the final RVs grouped by OR & SR----
+#Create boxplots with change in growth by SP
+length_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, meandiff_l, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") +
+  labs(colour = "Source Region", fill = "Source Region")
+thick_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, meandiff_Th, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_OR_box_SP <- plot_OR_RT_box(RV_lm_block,OR, meandiff_ShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, meandiff_TiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, mean_SG, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
+CSurv_OR_box_SP <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
+#Visualize the final RVs grouped by OR & SR & SP----
 fin_length_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") +
   labs(colour = "Source Region", fill = "Source Region")
 fin_thick_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
 fin_ShW_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
 fin_TiW_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
 fin_SG_OR_box <- plot_OR_RT_box(RV_lm_block, OR, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean LSG (mm)")
-fin_CSurv_OR_box <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)")
+fin_CSurv_OR_box <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)") +
+  labs(colour = "Source Region", fill = "Source Region", x = "Outplant Region") + theme(legend.position = c(0.1, 0.3))
+
+fin_length_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, meanfinL, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Mean SL (mm)") +
+  labs(colour = "Source Population", fill = "Source Population")
+fin_thick_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, meanfinTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Mean ST (mm)")
+fin_ShW_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, meanfinShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Mean ShW (g)")
+fin_TiW_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, meanfinTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Mean TiW (g)")
+fin_SG_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, mean_SG, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Mean LSG (mm)")
+fin_CSurv_OR_box_SP <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)") +
+  labs(colour = "Source Region", fill = "Source Region", x = "Outplant Region") + theme(legend.position = c(0.1, 0.3))
 
 RV_fin_OR_box <- plot_grid(fin_length_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
                            fin_thick_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
@@ -380,7 +313,7 @@ RV_fin_OR_box <- plot_grid(fin_length_OR_box + theme(legend.position = "none", a
                                 get_legend(fin_length_OR_box),
                            fin_ShW_OR_box + theme(legend.position = "none", axis.title.x = element_blank()), 
                            fin_TiW_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                           fin_CSurv_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                           CSurv_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
                                 NULL,
                                 ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
 
@@ -390,90 +323,46 @@ RV_fin_OR_box_title <- plot_grid(RV_fin_OR_box, xaxistitle_OR, ncol = 1, rel_hei
 #Save both OR by SR plots
 ggsave(RV_fin_OR_box_title, file = "plots/snails/RT/RV_OR_box_fin.pdf", height = 8, width = 17, dpi = 300)
 
-#Visualize the RVs grouped by OS & SP----
-plot_OS_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
-  ggplot(df, aes({{x}}, {{y}}, fill = {{grp}}, colour = {{grp}})) + 
-    geom_boxplot(colour = "black", varwidth = TRUE, alpha = 0.8) +
-    geom_point(size = 3, alpha=0.5, position = position_jitterdodge(dodge.width = 0.7, jitter.width=0.3))  +
-    scale_fill_manual(values = fill.values) +
-    scale_colour_manual(values = clr.values) +
-    labs(y = lbl.y) +
-    theme_cowplot(16)
-}
+#Create a new combined figure that has the phenotype & change in growth side by side & separate survival figure----
+#First plot by SR
+RV_fin_change_SR <- plot_grid(length_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                           fin_length_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                           get_legend(fin_length_OR_box),
+                           thick_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                           fin_thick_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                           NULL,
+                           ShW_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                           fin_ShW_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                           NULL,
+                           TiW_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                           fin_TiW_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                           NULL,
+                           ncol = 3, nrow = 4, rel_widths= c(1, 1, 0.3), axis = "lb", align = "hv", labels = c('A', 'B', ''), label_size = 18)
 
-#Create boxplots with change in growth 
-length_OS_box <- plot_OS_RT_box(RV_lm_block, OS, meandiff_l, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") +
-  labs(colour = "Source Region", fill = "Source Region")
-thick_OS_box <- plot_OS_RT_box(RV_lm_block, OS, meandiff_Th, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
-ShW_OS_box <- plot_OS_RT_box(RV_lm_block, OS, meandiff_ShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
-TiW_OS_box <- plot_OS_RT_box(RV_lm_block, OS, meandiff_TiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
-SG_OS_box <- plot_OS_RT_box(RV_lm_block, OS, mean_SG, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
-CSurv_OS_box <- plot_OS_RT_box(RV_cumsurv_final, OS, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+RV_fin_change_title_SR <- plot_grid(RV_fin_change_SR, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
 
-#Create boxplots withc hange in growth standardized by initial size
-length_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meandiff_l_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in SL (mm)") +
-  labs(colour = "Source Region", fill = "Source Region")
-thick_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meandiff_Th_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in ST (mm)")
-ShW_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meandiff_ShW_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in ShW (g)")
-TiW_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meandiff_TiW_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in TiW (g)")
-SG_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meanSG_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in LSG (mm)")
-CSurv_OS_box <- plot_OS_RT_box(RV_cumsurv_final, OS, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+#Create another one by SP
+RV_fin_change_SP <- plot_grid(length_OR_box_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                              fin_length_OR_box_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                              get_legend(fin_length_OR_box_SP),
+                              thick_OR_box_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                              fin_thick_OR_box_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                              NULL,
+                              ShW_OR_box_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                              fin_ShW_OR_box_SP + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                              NULL,
+                              TiW_OR_box_SP + theme(legend.position = "none", axis.title.x = element_blank()),
+                              fin_TiW_OR_box_SP + theme(legend.position = "none", axis.title.x = element_blank()),
+                              NULL,
+                              ncol = 3, nrow = 4, rel_widths= c(1, 1, 0.3), axis = "lb", align = "hv", labels = c('A', 'B', ''), label_size = 18)
 
-RV_combined_OS_box <- plot_grid(length_OS_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                 thick_OS_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                 SG_OS_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                 get_legend(length_OS_box),
-                                 ShW_OS_box + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                 TiW_OS_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                 CSurv_OS_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                 NULL,
-                                 ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
-
-RV_combined_OS_box_i <- plot_grid(length_OS_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                 thick_OS_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                 SG_OS_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                 get_legend(length_OS_box_i),
-                                 ShW_OS_box_i + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                 TiW_OS_box_i + theme(legend.position = "none", axis.title.x = element_blank()),
-                                 CSurv_OS_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                 NULL,
-                                 ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
-
-xaxistitle_OS <- ggdraw() + draw_label("Outplant Site", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-RV_combined_OS_box_title <- plot_grid(RV_combined_OS_box, xaxistitle_OS, ncol = 1, rel_heights = c(1, 0.05))
-RV_combined_OS_box_i_title <- plot_grid(RV_combined_OS_box_i, xaxistitle_OS, ncol = 1, rel_heights = c(1, 0.05))
+RV_fin_change_title_SP <- plot_grid(RV_fin_change_SP, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
 
 #Save both OR by SR plots
-ggsave(RV_combined_OS_box_title, file = "plots/snails/RT/RV_OS_box.pdf", height = 8, width = 17, dpi = 300)
-ggsave(RV_combined_OS_box_i_title, file = "plots/snails/RT/RV_OS_box_i.pdf", height = 8, width = 17, dpi = 300)
-
-#Visualize change in growth by initial size for each SP at each OS----
-#Just tried it for length, can do with the other variables too & make a formula, but later... only if necessary!
-plot_init <- function(df, x, y, fill.clr, lbl.y, lbl.fill) {
-  init_plot <- ggplot(df, aes({{x}}, {{y}}, fill = {{fill.clr}}, colour = {{fill.clr}})) + 
-    geom_point () + geom_smooth(method = lm, se = FALSE) +
-    scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-    labs(x = "Initial size", y = lbl.y, fill = "Source Population", colour = "Source Population") +
-    facet_wrap(~OS, nrow = 1) +
-    theme_cowplot(16) + theme(strip.background = element_blank())
-  return(init_plot)
-}
-
-init_length <- plot_init(RV_lm, initL, diff_l, SP, "Change in Length (mm)")
-init_thickness <- plot_init(RV_lm, initTh, diff_Th, SP, "Change in shell thickness (mm)")
-init_ShW <- plot_init(RV_lm, initShW, diff_ShW, SP, "Change in shell weight (g)")
-init_TiW <- plot_init(RV_lm, initTiW, diff_TiW, SP, "Change in tissue weight (g)")
-init_SG <- plot_init(RV_lm, initL, SG, SP, "Linear shell growth (mm)")
-
-comb_init_figs <- plot_grid(init_length + theme(legend.position = "none", axis.title.x = element_blank()),
-                                init_thickness + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                init_SG + theme(legend.position = "none"), 
-                                init_ShW + theme(legend.position = "none"), 
-                                init_TiW + theme(legend.position = "none"),
-                                get_legend(init_length),
-                                ncol = 3, nrow = 2, axis = "lb", align = "hv")
-
-ggsave(comb_init_figs, file = "plots/snails/RT/initial_size.pdf", height = 8, width = 20, dpi = 300)
+ggsave(RV_fin_change_title_SR, file = "plots/snails/RT/RV_fin_change_SR.pdf", height = 12, width = 12, dpi = 300)
+ggsave(RV_fin_change_title_SP, file = "plots/snails/RT/RV_fin_change_SP.pdf", height = 12, width = 12, dpi = 300)
+ggsave(fin_CSurv_OR_box, file = "plots/snails/RT/RV_survival_SR.pdf", height = 6, width = 6, dpi = 300)
+ggsave(fin_CSurv_SP_box, file = "plots/snails/RT/RV_survival_SP.pdf", height = 6, width = 6, dpi = 300)
 
 #Test for the effects of initial size across SP & OS----
 length_ced <- RV_lm %>% 
@@ -484,6 +373,19 @@ Anova(length_size)
 
 grpMeans <- emmeans(length_size, ~ OS, data = length_ced)
 pairs(grpMeans)
+
+
+#Visualize the growth & var across blocks by SR----
+ggplot(RV_lm, aes(Block, diff_l_i, group = SR, colour = SR)) +
+  geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+  stat_summary(fun.data = "mean_sd", geom = "errorbar", width = 0.2, size = 0.5,
+               position=position_dodge(0.3)) +
+  facet_wrap(~ OR) +
+  labs(colour = "Source Region") +
+  scale_colour_manual(values = c("skyblue", "coral")) +
+  labs(x = "Block", y = "Change in SL (mm)") +
+  theme_cowplot(16)
 
 
 #Build linear mixed effects models----
@@ -691,5 +593,171 @@ ggsurvplot(sfit2, facet.by = "OR", legend.title = "Source Region", xlab = "Time,
            palette = c("skyblue", "coral"), data = RV_survival)
 
 
+#Visualize change in growth by initial size for each SP at each OS----
+#Just tried it for length, can do with the other variables too & make a formula, but later... only if necessary!
+plot_init <- function(df, x, y, fill.clr, lbl.y, lbl.fill) {
+  init_plot <- ggplot(df, aes({{x}}, {{y}}, fill = {{fill.clr}}, colour = {{fill.clr}})) + 
+    geom_point () + geom_smooth(method = lm, se = FALSE) +
+    scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+    labs(x = "Initial size", y = lbl.y, fill = "Source Population", colour = "Source Population") +
+    facet_wrap(~OS, nrow = 1) +
+    theme_cowplot(16) + theme(strip.background = element_blank())
+  return(init_plot)
+}
+
+init_length <- plot_init(RV_lm, initL, diff_l, SP, "Change in Length (mm)")
+init_thickness <- plot_init(RV_lm, initTh, diff_Th, SP, "Change in shell thickness (mm)")
+init_ShW <- plot_init(RV_lm, initShW, diff_ShW, SP, "Change in shell weight (g)")
+init_TiW <- plot_init(RV_lm, initTiW, diff_TiW, SP, "Change in tissue weight (g)")
+init_SG <- plot_init(RV_lm, initL, SG, SP, "Linear shell growth (mm)")
+
+comb_init_figs <- plot_grid(init_length + theme(legend.position = "none", axis.title.x = element_blank()),
+                            init_thickness + theme(legend.position = "none", axis.title.x = element_blank()), 
+                            init_SG + theme(legend.position = "none"), 
+                            init_ShW + theme(legend.position = "none"), 
+                            init_TiW + theme(legend.position = "none"),
+                            get_legend(init_length),
+                            ncol = 3, nrow = 2, axis = "lb", align = "hv")
+
+ggsave(comb_init_figs, file = "plots/snails/RT/initial_size.pdf", height = 8, width = 20, dpi = 300)
+
+
+#Visualize the change in RVs grouped by OS & SP----
+plot_OS_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
+  ggplot(df, aes({{x}}, {{y}}, fill = {{grp}}, colour = {{grp}})) + 
+    geom_boxplot(colour = "black", varwidth = TRUE, alpha = 0.8) +
+    geom_point(size = 3, alpha=0.5, position = position_jitterdodge(dodge.width = 0.7, jitter.width=0.3))  +
+    scale_fill_manual(values = fill.values) +
+    scale_colour_manual(values = clr.values) +
+    labs(y = lbl.y) +
+    theme_cowplot(16)
+}
+
+#Create boxplots with change in growth 
+length_OS_box <- plot_OS_RT_box(RV_lm_block, OS, meandiff_l, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") +
+  labs(colour = "Source Region", fill = "Source Region")
+thick_OS_box <- plot_OS_RT_box(RV_lm_block, OS, meandiff_Th, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_OS_box <- plot_OS_RT_box(RV_lm_block, OS, meandiff_ShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_OS_box <- plot_OS_RT_box(RV_lm_block, OS, meandiff_TiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_OS_box <- plot_OS_RT_box(RV_lm_block, OS, mean_SG, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
+CSurv_OS_box <- plot_OS_RT_box(RV_cumsurv_final, OS, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
+#Create boxplots withc hange in growth standardized by initial size
+length_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meandiff_l_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in SL (mm)") +
+  labs(colour = "Source Region", fill = "Source Region")
+thick_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meandiff_Th_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in ST (mm)")
+ShW_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meandiff_ShW_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in ShW (g)")
+TiW_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meandiff_TiW_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in TiW (g)")
+SG_OS_box_i <- plot_OS_RT_box(RV_lm_block, OS, meanSG_i, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "S change in LSG (mm)")
+CSurv_OS_box <- plot_OS_RT_box(RV_cumsurv_final, OS, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
+RV_combined_OS_box <- plot_grid(length_OS_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                thick_OS_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                SG_OS_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                get_legend(length_OS_box),
+                                ShW_OS_box + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                TiW_OS_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                CSurv_OS_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                NULL,
+                                ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+RV_combined_OS_box_i <- plot_grid(length_OS_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_OS_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_OS_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_OS_box_i),
+                                  ShW_OS_box_i + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_OS_box_i + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  CSurv_OS_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  NULL,
+                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+xaxistitle_OS <- ggdraw() + draw_label("Outplant Site", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+RV_combined_OS_box_title <- plot_grid(RV_combined_OS_box, xaxistitle_OS, ncol = 1, rel_heights = c(1, 0.05))
+RV_combined_OS_box_i_title <- plot_grid(RV_combined_OS_box_i, xaxistitle_OS, ncol = 1, rel_heights = c(1, 0.05))
+
+#Save both OR by SR plots
+ggsave(RV_combined_OS_box_title, file = "plots/snails/RT/RV_OS_box.pdf", height = 8, width = 17, dpi = 300)
+ggsave(RV_combined_OS_box_i_title, file = "plots/snails/RT/RV_OS_box_i.pdf", height = 8, width = 17, dpi = 300)
+
+#Old code for mean & error plots & standardized growth----
+#Create ME plots with change in growth for OR
+plot_OR_RT_me <- function(df, x, y, grp, clr.values, lbl.y){
+  ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) + 
+    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+                 position=position_dodge(0.3)) +
+    scale_colour_manual(values = clr.values) +
+    labs(y = lbl.y) +
+    theme_cowplot(16)
+}
+length_OR_me <- plot_OR_RT_me(RV_lm_block, OR, meandiff_l, SR, c("skyblue", "coral"), "Change in SL (mm)") +
+  labs(colour = "Source Region")
+thick_OR_me <- plot_OR_RT_me(RV_lm_block, OR, meandiff_Th, SR, c("skyblue", "coral"), "Change in ST (mm)")
+ShW_OR_me <- plot_OR_RT_me(RV_lm_block, OR, meandiff_ShW, SR, c("skyblue", "coral"), "Change in ShW (g)")
+TiW_OR_me <- plot_OR_RT_me(RV_lm_block, OR, meandiff_TiW, SR, c("skyblue", "coral"), "Change in TiW (g)")
+SG_OR_me <- plot_OR_RT_me(RV_lm_block, OR, mean_SG, SR, c("skyblue", "coral"), "Change in LSG (mm)")
+CSurv_OR_me <- plot_OR_RT_me(RV_cumsurv_final, OR, cumsurv, SR, c("skyblue", "coral"), "Survival (%)")
+
+#Create ME plots with standardized change in growth
+length_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meandiff_l_i, SR, c("skyblue", "coral"), "S change in SL (mm)") +
+  labs(colour = "Source Region")
+thick_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meandiff_Th_i, SR, c("skyblue", "coral"), "S change in ST (mm)")
+ShW_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meandiff_ShW_i, SR, c("skyblue", "coral"), "S change in ShW (g)")
+TiW_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meandiff_TiW_i, SR, c("skyblue", "coral"), "S change in TiW (g)")
+SG_OR_me_i <- plot_OR_RT_me(RV_lm_block, OR, meanSG_i, SR, c("skyblue", "coral"), "S change in LSG (mm)")
+
+
+#Create boxplots withchange in growth standardized by initial size
+length_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meandiff_l_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in SL (mm)") +
+  labs(colour = "Source Region", fill = "Source Region")
+thick_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meandiff_Th_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in ST (mm)")
+ShW_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meandiff_ShW_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in ShW (g)")
+TiW_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meandiff_TiW_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in TiW (g)")
+SG_OR_box_i <- plot_OR_RT_box(RV_lm_block, OR, meanSG_i, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "S change in LSG (mm)")
+
+RV_combined_OR_me <- plot_grid(length_OR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                               thick_OR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                               SG_OR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                               get_legend(length_OR_me),
+                               ShW_OR_me + theme(legend.position = "none", axis.title.x = element_blank()), 
+                               TiW_OR_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                               CSurv_OR_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                               NULL,
+                               ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+RV_combined_OR_me_i <- plot_grid(length_OR_me_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                 thick_OR_me_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                 SG_OR_me_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                 get_legend(length_OR_me_i),
+                                 ShW_OR_me_i + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                 TiW_OR_me_i + theme(legend.position = "none", axis.title.x = element_blank()),
+                                 CSurv_OR_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                 NULL,
+                                 ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+
+RV_combined_OR_box_i <- plot_grid(length_OR_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_OR_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_OR_box_i + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_OR_box_i),
+                                  ShW_OR_box_i + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_OR_box_i + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  CSurv_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  NULL,
+                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
+
+RV_combined_OR_me_title <- plot_grid(RV_combined_OR_me, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
+RV_combined_OR_me_i_title <- plot_grid(RV_combined_OR_me_i, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
+RV_combined_OR_box_i_title <- plot_grid(RV_combined_OR_box_i, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(RV_combined_OR_me_title, file = "plots/snails/RT/RV_OR_me.pdf", height = 8, width = 17, dpi = 300)
+ggsave(RV_combined_OR_me_i_title, file = "plots/snails/RT/RV_OR_me_i.pdf", height = 8, width = 17, dpi = 300)
+ggsave(RV_combined_OR_box_i_title, file = "plots/snails/RT/RV_OR_box_i.pdf", height = 8, width = 17, dpi = 300)
+
+
+
 #Remove all final variables----
 rm(lmer_length, RV_base, RV_diff_1, RV_lm, RV_lm_init, RV_survival, RV_survival_glm, ID_ostrina, remove)
+
