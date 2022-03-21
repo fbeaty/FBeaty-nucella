@@ -601,6 +601,7 @@ meso_temp_comb_SR_box_fin <- plot_grid(length_temp_SR_box + theme(legend.positio
                                    NULL,
                                    ncol = 3, nrow = 4, rel_widths= c(1, 1, 0.3), axis = "lb", align = "hv", labels = c('A', 'B', ''), label_size = 18)
 
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.43, hjust = 0, size = 16)
 meso_temp_comb_title_SR_box_fin <- plot_grid(meso_temp_comb_SR_box_fin, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(meso_temp_comb_title_SR_box_fin, file = "plots/snails/meso/meso_temp_fin_change.pdf", height = 12, width = 12, dpi = 300)
@@ -642,9 +643,9 @@ surv_feed_comb <- plot_grid(Surv_all_meso + theme(legend.position ="none", axis.
                             CSurv_OR_box_noLines + theme(legend.position ="none", axis.text.y = element_blank(), axis.title.y = element_blank()) + labs(x = "Outplant Region"),
                             Feed_all_meso + theme(legend.position ="none") + labs(x = "Treatment"),
                             legend,
-                            ncol = 2, nrow = 2, rel_widths = c(1, 0.7), axis = "lb", align = "hv")
+                            ncol = 2, nrow = 2, rel_widths = c(1, 0.7), axis = "lb", align = "hv", labels = c('A', 'C', 'B', ''), label_size = 18)
 
-ggsave(surv_feed_comb, file = "plots/snails/surv_feed_comb.pdf", height = 8, width = 12, dpi = 300)
+ggsave(surv_feed_comb, file = "plots/snails/surv_feed_comb.pdf", height = 9, width = 12, dpi = 300)
 
 #Visualize final size across treatments grouped by SR for temp exp----
 #The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
