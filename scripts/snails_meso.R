@@ -426,21 +426,8 @@ meso_fact_sampl <- meso_lm_block_fact %>%
   group_by(SR, Treat) %>% 
   summarize(n_tanks = n())
 
-#Visualize change in growth across treatments grouped by SP for temp exp----
-#The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
-plot_temp_me <- function(df, x, y, grp, clr.values, lbl.y){
-  temp_SR_plot <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
-    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-                 position=position_dodge(0.3)) +
-    scale_colour_manual(values = clr.values) +
-    labs(x = "Treatment", y = lbl.y) +
-    theme_cowplot(16)
-  return(temp_SR_plot)
-}
-
+#Visualize change in growth across treatments grouped by SR for temp exp----
+#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
 plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
   ggplot(df, aes({{x}}, {{y}}, fill = {{grp}}, colour = {{grp}})) + 
     geom_boxplot(colour = "black", varwidth = TRUE, alpha = 0.8) +
@@ -451,89 +438,6 @@ plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
     theme_cowplot(16)
 }
 
-length_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_l, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
-thick_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_Th, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
-ShW_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_ShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
-TiW_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_TiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
-SG_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, mean_SG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
-Food_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meanPer_cap, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Per capita weekly feeding rate")
-Surv_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
-
-meso_temp_comb_SP_me <- plot_grid(length_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                               thick_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                               SG_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                               get_legend(length_temp_SP_me),
-                               ShW_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()), 
-                               TiW_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                               Food_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                               Surv_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                               ncol = 4, nrow = 2, axis = "lb", align = "hv")
-
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
-meso_temp_comb_title_SP_me <- plot_grid(meso_temp_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-
-ggsave(meso_temp_comb_title_SP_me, file = "plots/snails/meso/meso_temp_SP_me.pdf", height = 8, width = 17, dpi = 300)
-
-#Visualize change in growth across treatments grouped by SP for fact exp----
-#The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
-plot_fact_me <- function(df, x, y, grp, tmp, clr.values, lbl.y) {
-  plot_fact <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
-    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
-    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
-    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction({{tmp}}, {{grp}}))) +
-    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
-                 position=position_dodge(0.3)) +
-    scale_colour_manual(values = clr.values) +
-    labs(x = "Treatment", y = lbl.y) +
-    theme_cowplot(16)
-  return(plot_fact)
-}
-
-length_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_l, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
-thick_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_Th, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
-ShW_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_ShW,  SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
-TiW_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW,  SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
-SG_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
-Food_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meanPer_cap, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Weekly per capita feeding rate")
-Surv_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
-
-length_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_l, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
-thick_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_Th, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
-ShW_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_ShW,  SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
-TiW_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW,  SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
-SG_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
-Food_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meanPer_cap, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Weely per capita feeding rate")
-Surv_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
-
-meso_fact_comb_SP_me <- plot_grid(length_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  thick_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                  SG_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  get_legend(length_fact_SP_me),
-                                  ShW_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                  TiW_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  Food_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  Surv_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ncol = 4, nrow = 2, axis = "lb", align = "hv")
-
-meso_fact_comb_SP_me_temp <- plot_grid(length_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  thick_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                  SG_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  get_legend(length_fact_SP_me_temp),
-                                  ShW_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                  TiW_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  Food_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  Surv_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ncol = 4, nrow = 2,  axis = "lb", align = "hv")
-
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
-meso_fact_comb_title_SP_me <- plot_grid(meso_fact_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-meso_fact_comb_title_SP_me_temp <- plot_grid(meso_fact_comb_SP_me_temp, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-
-ggsave(meso_fact_comb_title_SP_me, file = "plots/snails/meso/meso_fact_SP_me.pdf", height = 8, width = 17, dpi = 300)
-ggsave(meso_fact_comb_title_SP_me_temp, file = "plots/snails/meso/meso_fact_SP_me_temp.pdf", height = 8, width = 17, dpi = 300)
-
-#Visualize change in growth across treatments grouped by SR for temp exp----
-#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
 length_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
 thick_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
 ShW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")
@@ -691,7 +595,7 @@ rm(initL_aov, initTh_aov, initTiW_aov, initShW_aov)
 #Fixed effects: SR, Treat & intxn
 #Random effects: Tank & Sp (1|Tank), (1|SP)
 lmer_length_1 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
-lmer_length_2 <- lmer(diff_l ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
+lmer_length_2 <- lmer(finL ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
 summary(lmer_length_1)
 summary(lmer_length_2)
 
@@ -703,17 +607,17 @@ visreg(lmer_length_1, "initL", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_length_1, type = "III")
-Anova(lmer_length_2, type = "II") #<- ran a Type II beacuse interaction wasn't significant with Type III
+Anova(lmer_length_2, type = "III") 
 
 #Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Treat, data = meso_lm_temp)
 pairs(grpMeans_length_1, simple = list("SR", "Treat"))
-grpMeans_length_2 <- emmeans(lmer_length_2, ~ SP*Treat, data = meso_lm_temp)
-pairs(grpMeans_length_2, simple = list("SP", "Treat"))
+grpMeans_length_2 <- emmeans(lmer_length_2, ~ SR*Treat, data = meso_lm_temp)
+pairs(grpMeans_length_2, simple = list("SR", "Treat"))
 
 #Shell thickness: note for this model I received a singular fit when OS_block was nested within OS, where OS variance = 0 --> removed OS from model as per Matuschek
 lmer_thick_1 <- lmer(diff_Th ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm_temp) 
-lmer_thick_2 <- lmer(diff_Th ~ SP*Treat + initTh + (1|Tank), data = meso_lm_temp)
+lmer_thick_2 <- lmer(finTh ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm_temp)
 summary(lmer_thick_1)
 summary(lmer_thick_2)
 
@@ -733,37 +637,12 @@ Anova(lmer_thick_2, type = "III")
 #Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR + Treat, data = meso_lm_temp)
 pairs(grpMeans_thick_1, simple = list("SR", "Treat"))
-grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SP*Treat, data = meso_lm_temp)
-pairs(grpMeans_thick_2, simple = list("SP", "Treat"))
-
-#Tissue weight
-lmer_TiW_1 <- lmer(diff_TiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm_temp) 
-lmer_TiW_2 <- lmer(diff_TiW ~ SP*Treat + initTiW + (1|Tank), data = meso_lm_temp)
-summary(lmer_TiW_1)
-summary(lmer_TiW_2)
-
-#Verify assumptions of model
-plot(lmer_TiW_1)
-visreg(lmer_TiW_1, "SR", by = "Treat")
-visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
-visreg(lmer_TiW_1, "initTiW", by = "Treat", overlay = TRUE)
-plot(lmer_TiW_2)
-visreg(lmer_TiW_2, "SP", by = "Treat")
-visreg(lmer_TiW_1, "initTiW", by = "SP", overlay = TRUE)
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_TiW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
-Anova(lmer_TiW_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
-
-#Since there are no significant interactions, use the following notation for the Tukey posthoc
-grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm_temp)
-pairs(grpMeans_TiW_1, simple = list("SR", "Treat"))
-grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SP + Treat, data = meso_lm_temp)
-pairs(grpMeans_TiW_2, simple = list("SP", "Treat"))
+grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SR*Treat, data = meso_lm_temp)
+pairs(grpMeans_thick_2, simple = list("SR", "Treat"))
 
 #Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
 lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm_temp) #<- removed initShW because it was non-significant
-lmer_ShW_2 <- lmer(diff_ShW ~ SP*Treat + (1|Tank), data = meso_lm_temp) #<- removed initShW because it was non-significant
+lmer_ShW_2 <- lmer(finShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm_temp) #<- removed initShW because it was non-significant
 summary(lmer_ShW_1)
 summary(lmer_ShW_2)
 
@@ -773,8 +652,8 @@ visreg(lmer_ShW_1, "SR", by = "Treat")
 visreg(lmer_ShW_1, "initShW", by = "SR", overlay = TRUE)
 visreg(lmer_ShW_1, "initShW", by = "Treat", overlay = TRUE)
 plot(lmer_ShW_2)
-visreg(lmer_ShW_2, "SP", by = "Treat")
-visreg(lmer_ShW_1, "initShW", by = "SP", overlay = TRUE)
+visreg(lmer_ShW_2, "SR", by = "Treat")
+visreg(lmer_ShW_2, "initShW", by = "SR", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_ShW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
@@ -783,33 +662,33 @@ Anova(lmer_ShW_2, type = "II") #<- ran Type II because interaction was non-signi
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
 grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + Treat, data = meso_lm_temp)
 pairs(grpMeans_ShW_1, simple = list("SR", "Treat"))
-grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SP + Treat, data = meso_lm_temp)
-pairs(grpMeans_ShW_2, simple = list("SP", "Treat"))
+grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SR + Treat, data = meso_lm_temp)
+pairs(grpMeans_ShW_2, simple = list("SR", "Treat"))
 
-#Shell growth: included initL as covariate as it improves fit of model
-lmer_SG_1 <- lmer(SG ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp) 
-lmer_SG_2 <- lmer(SG ~ SP*Treat + initL + (1|Tank), data = meso_lm_temp)
-summary(lmer_SG_1)
-summary(lmer_SG_2)
+#Tissue weight
+lmer_TiW_1 <- lmer(diff_TiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm_temp) 
+lmer_TiW_2 <- lmer(finTiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm_temp)
+summary(lmer_TiW_1)
+summary(lmer_TiW_2)
 
 #Verify assumptions of model
-plot(lmer_SG_1)
-visreg(lmer_SG_1, "SR", by = "Treat")
-visreg(lmer_SG_1, "initSG", by = "SR", overlay = TRUE)
-visreg(lmer_SG_1, "initSG", by = "Treat", overlay = TRUE)
-plot(lmer_SG_2)
-visreg(lmer_SG_2, "SP", by = "Treat")
-visreg(lmer_SG_1, "initSG", by = "SP", overlay = TRUE)
+plot(lmer_TiW_1)
+visreg(lmer_TiW_1, "SR", by = "Treat")
+visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
+visreg(lmer_TiW_1, "initTiW", by = "Treat", overlay = TRUE)
+plot(lmer_TiW_2)
+visreg(lmer_TiW_2, "SR", by = "Treat")
+visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_SG_1, type = "III") 
-Anova(lmer_SG_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
+Anova(lmer_TiW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
+Anova(lmer_TiW_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
-grpMeans_SG_1 <- emmeans(lmer_SG_1, ~ SR*Treat, data = meso_lm_temp)
-pairs(grpMeans_SG_1, simple = list("SR", "Treat"))
-grpMeans_SG_2 <- emmeans(lmer_SG_2, ~ SP + Treat, data = meso_lm_temp)
-pairs(grpMeans_SG_2, simple = list("SP", "Treat"))
+grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm_temp)
+pairs(grpMeans_TiW_1, simple = list("SR", "Treat"))
+grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SR + Treat, data = meso_lm_temp)
+pairs(grpMeans_TiW_2, simple = list("SR", "Treat"))
 
 #Feeding rate: I'm just going to analyze the final per capita weekly feeding rate. Note that because tank is your unit of replication here, 
 #you don't need it as a random effect
@@ -821,42 +700,25 @@ Anova(lmer_food_temp_1, type = "II") #<- ran with Type II beacuse interaction wa
 grpMeans_food_1 <- emmeans(lmer_food_temp_1, ~ SR*Treat, data = meso_food_tank_temp)
 pairs(grpMeans_food_1, simple = list("SR", "Treat"))
 
-lmer_food_temp_2 <- lm(meanPer_cap ~ SP*Treat, data = meso_food_tank_temp)
-summary(lmer_food_temp_2)
-plot(lmer_food_temp_2)
-visreg(lmer_food_temp_2, "SP", by = "Treat")
-Anova(lmer_food_temp_2, type = "II") #<- ran with Type II because interaction was non-significant
-grpMeans_food_2 <- emmeans(lmer_food_temp_2, ~ SP*Treat, data = meso_food_tank_temp)
-pairs(grpMeans_food_2, simple = list("SP", "Treat"))
-
-
 #Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
 #Because I have averaged the survival within tanks, tank is now my 'unit of observation' 
 meso_surv_1 <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv_temp)
-meso_surv_2 <- lm(cumsurv ~ SP*Treat, data = meso_clean_surv_temp)
 summary(meso_surv_1)
-summary(meso_surv_2)
 
 #Verify assumptions of model (dispersal increases as the variables increase...)
 plot(meso_surv_1)
-plot(meso_surv_2)
 visreg(meso_surv_1, "SR", by = "Treat")
-visreg(meso_surv_2, "SP", by = "Treat")
-
 Anova(meso_surv_1, type = "III") 
-Anova(meso_surv_2, type = "III") 
 
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
 grpMeans_surv_1 <- emmeans(meso_surv_1, ~ SR + Treat, data = meso_clean_surv_temp)
 pairs(grpMeans_surv_1, simple = list("SR", "Treat"))
-grpMeans_surv_2 <- emmeans(meso_surv_2, ~ SP + Treat, data = meso_clean_surv_temp)
-pairs(grpMeans_surv_2, simple = list("SP", "Treat"))
 
 #Build linear mixed effects models for fact exp----
 #Fixed effects: SR, Temp, pH & intxns
 #Random effects: Tank & Sp (1|Tank), (1|SP)
 lmer_length_1 <- lmer(diff_l ~ SR*Temp + pH + initL + (1|Tank) + (1|SP), data = meso_lm_fact)
-lmer_length_2 <- lmer(diff_l ~ SP*Temp + pH + initL + (1|Tank), data = meso_lm_fact)
+lmer_length_2 <- lmer(finL ~ SR*Temp + pH + initL + (1|Tank) + (1|SP), data = meso_lm_fact)
 summary(lmer_length_1)
 summary(lmer_length_2)
 
@@ -873,12 +735,12 @@ Anova(lmer_length_2, type = "III")
 #Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Temp, data = meso_lm_fact)
 pairs(grpMeans_length_1, simple = list("SR", "Temp"))
-grpMeans_length_2 <- emmeans(lmer_length_2, ~ SP*Temp, data = meso_lm_fact)
-pairs(grpMeans_length_2, simple = list("SP", "Temp"))
+grpMeans_length_2 <- emmeans(lmer_length_2, ~ SR*Temp, data = meso_lm_fact)
+pairs(grpMeans_length_2, simple = list("SR", "Temp"))
 
 #Shell thickness: 
 lmer_thick_1 <- lmer(diff_Th ~ SR*Temp + SR*pH + initTh + (1|Tank), data = meso_lm_fact) #<- (1|SP) was singular fit so removed it
-lmer_thick_2 <- lmer(diff_Th ~ SP*Temp + SP*pH + initTh + (1|Tank), data = meso_lm_fact)
+lmer_thick_2 <- lmer(finTh ~ SR*Temp + SR*pH + initTh + (1|Tank), data = meso_lm_fact)
 summary(lmer_thick_1)
 summary(lmer_thick_2)
 
@@ -898,12 +760,37 @@ Anova(lmer_thick_2, type = "III")
 #Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR*Temp + SR*pH, data = meso_lm_fact)
 pairs(grpMeans_thick_1, simple = list("SR", "Temp", "pH"))
-grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SP*Temp + SP*pH, data = meso_lm_fact)
-pairs(grpMeans_thick_2, simple = list("SP", "Temp", "pH"))
+grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SR*Temp + SP*pH, data = meso_lm_fact)
+pairs(grpMeans_thick_2, simple = list("SR", "Temp", "pH"))
+
+#Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
+lmer_ShW_1 <- lmer(diff_ShW ~ SR + Temp*pH + (1|Tank) + (1|SP), data = meso_lm_fact) #<- removed interactions & initShW b/c non-significant
+lmer_ShW_2 <- lmer(finShW ~ SR + Temp*pH + initShW + (1|Tank) + (1|SP), data = meso_lm_fact)
+summary(lmer_ShW_1)
+summary(lmer_ShW_2)
+
+#Verify assumptions of model
+plot(lmer_ShW_1)
+visreg(lmer_ShW_1, "SR", by = "Temp")
+visreg(lmer_ShW_1, "initShW", by = "SR", overlay = TRUE)
+visreg(lmer_ShW_1, "initShW", by = "Temp", overlay = TRUE)
+plot(lmer_ShW_2)
+visreg(lmer_ShW_2, "SP", by = "Temp")
+visreg(lmer_ShW_1, "initShW", by = "SP", overlay = TRUE)
+
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_ShW_1, type = "III") 
+Anova(lmer_ShW_2, type = "III")
+
+#Since there are no significant interactions, use the following notation for the Tukey posthoc
+grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + pH*Temp, data = meso_lm_fact)
+pairs(grpMeans_ShW_1, simple = list("SR", "Temp", "pH"))
+grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SP + Temp, data = meso_lm_fact)
+pairs(grpMeans_ShW_2, simple = list("SP", "Temp"))
 
 #Tissue weight
 lmer_TiW_1 <- lmer(diff_TiW ~ SR*Temp + pH + (1|Tank) + (1|SP), data = meso_lm_fact) #<- removed init TiW because non-significant
-lmer_TiW_2 <- lmer(diff_TiW ~ SP*Temp + pH + (1|Tank), data = meso_lm_fact) #<- removed init TiW because non-significant
+lmer_TiW_2 <- lmer(finTiW ~ SR*Temp + pH + initTiW + (1|Tank) + (1|SP), data = meso_lm_fact) 
 summary(lmer_TiW_1)
 summary(lmer_TiW_2)
 
@@ -926,56 +813,6 @@ pairs(grpMeans_TiW_1, simple = list("SR", "Temp", "pH"))
 grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SP*Treat + pH, data = meso_lm_fact)
 pairs(grpMeans_TiW_2, simple = list("SP", "Temp", "pH"))
 
-#Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
-lmer_ShW_1 <- lmer(diff_ShW ~ SR + pH*Temp + (1|Tank) + (1|SP), data = meso_lm_fact) #<- removed interactions & initShW b/c non-significant
-lmer_ShW_2 <- lmer(diff_ShW ~ SP + pH*Temp + (1|Tank), data = meso_lm_fact) #<- removed interactions & initShW b/c non-significant
-summary(lmer_ShW_1)
-summary(lmer_ShW_2)
-
-#Verify assumptions of model
-plot(lmer_ShW_1)
-visreg(lmer_ShW_1, "SR", by = "Temp")
-visreg(lmer_ShW_1, "initShW", by = "SR", overlay = TRUE)
-visreg(lmer_ShW_1, "initShW", by = "Temp", overlay = TRUE)
-plot(lmer_ShW_2)
-visreg(lmer_ShW_2, "SP", by = "Temp")
-visreg(lmer_ShW_1, "initShW", by = "SP", overlay = TRUE)
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_ShW_1, type = "III") #<- ran Type II because interaction was non-significant with Type III
-Anova(lmer_ShW_2, type = "III") #<- ran Type II because interaction was non-significant with Type III
-
-#Since there are no significant interactions, use the following notation for the Tukey posthoc
-grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + pH*Temp, data = meso_lm_fact)
-pairs(grpMeans_ShW_1, simple = list("SR", "Temp", "pH"))
-grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SP + Temp, data = meso_lm_fact)
-pairs(grpMeans_ShW_2, simple = list("SP", "Temp"))
-
-#Shell growth: included initL as covariate as it improves fit of model
-lmer_SG_1 <- lmer(SG ~ SR*Temp + pH + initL + (1|Tank) + (1|SP), data = meso_lm_fact) 
-lmer_SG_2 <- lmer(SG ~ SP*Temp + pH + initL + (1|Tank), data = meso_lm_fact)
-summary(lmer_SG_1)
-summary(lmer_SG_2)
-
-#Verify assumptions of model
-plot(lmer_SG_1)
-visreg(lmer_SG_1, "SR", by = "Temp")
-visreg(lmer_SG_1, "initL", by = "SR", overlay = TRUE)
-visreg(lmer_SG_1, "initL", by = "Temp", overlay = TRUE)
-plot(lmer_SG_2)
-visreg(lmer_SG_2, "SP", by = "Temp")
-visreg(lmer_SG_1, "initL", by = "SP", overlay = TRUE)
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_SG_1, type = "III") 
-Anova(lmer_SG_2, type = "III")
-
-#Since there are no significant interactions, use the following notation for the Tukey posthoc
-grpMeans_SG_1 <- emmeans(lmer_SG_1, ~ SR*Temp, data = meso_lm_fact)
-pairs(grpMeans_SG_1, simple = list("SR", "Temp"))
-grpMeans_SG_2 <- emmeans(lmer_SG_2, ~ SP*Temp, data = meso_lm_fact)
-pairs(grpMeans_SG_2, simple = list("SP", "Temp"))
-
 #Feeding rate: I'm just going to analyze the final per capita weekly feeding rate. Note that because tank is your unit of replication here, 
 #you don't need it as a random effect
 lmer_food_fact_1 <- lmer(meanPer_cap ~ SR*pH + Temp + (1|SP), data = meso_food_tank_fact)
@@ -987,20 +824,10 @@ Anova(lmer_food_fact_1, type = "III")
 grpMeans_food_1 <- emmeans(lmer_food_fact_1, ~ SR*pH + Temp, data = meso_food_tank_fact)
 pairs(grpMeans_food_1, simple = list("SR", "Temp", "pH"))
 
-lmer_food_fact_2 <- lm(meanPer_cap ~ SP*pH + Temp, data = meso_food_tank_fact)
-summary(lmer_food_fact_2)
-plot(lmer_food_fact_2)
-visreg(lmer_food_fact_2, "SP", by = "Temp")
-Anova(lmer_food_fact_2, type = "II") #<- ran with Type II because interaction was non-significant
-grpMeans_food_2 <- emmeans(lmer_food_fact_2, ~ SP*pH + Temp, data = meso_food_tank_fact)
-pairs(grpMeans_food_2, simple = list("SP", "Temp"))
-
 #Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
 #Because I have averaged the survival within tanks, tank is now my 'unit of observation' 
 meso_surv_1 <- lm(cumsurv ~ SR*Temp + pH, data = meso_clean_surv_fact) #<- removed (1|SP) because singular fit
-meso_surv_2 <- lm(cumsurv ~ SP*Temp + Temp*pH, data = meso_clean_surv_fact)
 summary(meso_surv_1)
-summary(meso_surv_2)
 
 #Verify assumptions of model (dispersal increases as the variables increase...)
 plot(meso_surv_1)
@@ -1170,6 +997,103 @@ ggplot(meso_surv_temp, aes(day_exp, dead_repeat)) +
 
 grpMeans_surv <- emmeans(glm_surv_temp, ~ SP*Temp, data = meso_surv_temp)
 pairs(grpMeans_surv, simple = list("SP", "Temp"))
+
+
+#Visualize change in growth across treatments grouped by SP for temp exp----
+#The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
+plot_temp_me <- function(df, x, y, grp, clr.values, lbl.y){
+  temp_SR_plot <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
+    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
+    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+                 position=position_dodge(0.3)) +
+    scale_colour_manual(values = clr.values) +
+    labs(x = "Treatment", y = lbl.y) +
+    theme_cowplot(16)
+  return(temp_SR_plot)
+}
+
+length_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_l, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
+thick_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_Th, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_ShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_TiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, mean_SG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
+Food_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, meanPer_cap, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Per capita weekly feeding rate")
+Surv_temp_SP_me <- plot_temp_me(meso_lm_block_temp, Temp, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
+meso_temp_comb_SP_me <- plot_grid(length_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_temp_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_temp_SP_me),
+                                  ShW_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Food_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Surv_temp_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ncol = 4, nrow = 2, axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
+meso_temp_comb_title_SP_me <- plot_grid(meso_temp_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_temp_comb_title_SP_me, file = "plots/snails/meso/meso_temp_SP_me.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize change in growth across treatments grouped by SP for fact exp----
+#The datapoints being visualized are each tank  within each treatment for each SP :) The correct unit of replication! 
+plot_fact_me <- function(df, x, y, grp, tmp, clr.values, lbl.y) {
+  plot_fact <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
+    geom_point(alpha=0.3, position = position_jitterdodge(dodge.width = 0.3, jitter.width=0.05)) +
+    stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
+    stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5, aes(group = interaction({{tmp}}, {{grp}}))) +
+    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+                 position=position_dodge(0.3)) +
+    scale_colour_manual(values = clr.values) +
+    labs(x = "Treatment", y = lbl.y) +
+    theme_cowplot(16)
+  return(plot_fact)
+}
+
+length_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_l, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
+thick_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_Th, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_ShW,  SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW,  SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
+Food_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, meanPer_cap, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Weekly per capita feeding rate")
+Surv_fact_SP_me <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SP, Temp, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
+length_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_l, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in SL (mm)") + labs(colour = "Source Population")
+thick_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_Th, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ST (mm)")
+ShW_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_ShW,  SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in ShW (g)")
+TiW_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW,  SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in TiW (g)")
+SG_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
+Food_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, meanPer_cap, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Weely per capita feeding rate")
+Surv_fact_SP_me_temp <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SP, pH, c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
+
+meso_fact_comb_SP_me <- plot_grid(length_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  thick_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                  SG_fact_SP_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                  get_legend(length_fact_SP_me),
+                                  ShW_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                  TiW_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Food_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  Surv_fact_SP_me + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  ncol = 4, nrow = 2, axis = "lb", align = "hv")
+
+meso_fact_comb_SP_me_temp <- plot_grid(length_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                       thick_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                       SG_fact_SP_me_temp + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                       get_legend(length_fact_SP_me_temp),
+                                       ShW_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                       TiW_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
+                                       Food_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
+                                       Surv_fact_SP_me_temp + theme(legend.position = "none", axis.title.x = element_blank()),
+                                       ncol = 4, nrow = 2,  axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
+meso_fact_comb_title_SP_me <- plot_grid(meso_fact_comb_SP_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+meso_fact_comb_title_SP_me_temp <- plot_grid(meso_fact_comb_SP_me_temp, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_fact_comb_title_SP_me, file = "plots/snails/meso/meso_fact_SP_me.pdf", height = 8, width = 17, dpi = 300)
+ggsave(meso_fact_comb_title_SP_me_temp, file = "plots/snails/meso/meso_fact_SP_me_temp.pdf", height = 8, width = 17, dpi = 300)
 
 
 #Remove variables----

@@ -413,7 +413,7 @@ ggplot(RV_lm, aes(Block, diff_l_i, group = SR, colour = SR)) +
 #according to https://stats.stackexchange.com/questions/281528/dealing-with-model-assumption-violation-homogeneity-of-regression-coefficients
 #If initL or interactions were non-significant (e.g. lmer_length_2), I dropped those terms from the model
 lmer_length_1 <- lmer(diff_l ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_length_2 <- lmer(diff_l ~ OS*SP + initL + (1|OS:OS_block), data = RV_lm)
+lmer_length_2 <- lmer(finL ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
 summary(lmer_length_1)
 summary(lmer_length_2)
 
@@ -421,22 +421,21 @@ summary(lmer_length_2)
 plot(lmer_length_1)
 plot(lmer_length_2)
 visreg(lmer_length_1, "SR", by = "OR")
-visreg(lmer_length_2, "SP", by = "OS")
+visreg(lmer_length_2, "SR", by = "OR")
 
-#Analyse mixed-effects model using type 3 anova w F statistic (although not sure why still I use this one rather than the default Wald Chi-squared)
+#Analyse mixed-effects model using type 3 anova
 Anova(lmer_length_1, type = "III")
 Anova(lmer_length_2, type = "III")
 
 #Since there are positive interactions, use the following notation for the Tukey posthoc, with kenward-roger df method
 grpMeans_length_1 <- emmeans(lmer_length_1, ~ OR*SR, data = RV_lm)
 pairs(grpMeans_length_1, simple = list("OR", "SR"))
-grpMeans_length_2 <- emmeans(lmer_length_2, ~ OS*SP, data = RV_lm)
-pairs(grpMeans_length_2, simple = list("OS", "SP"))
+grpMeans_length_2 <- emmeans(lmer_length_2, ~ OR*SR, data = RV_lm)
+pairs(grpMeans_length_2, simple = list("OR", "SR"))
 
 #Shell thickness: 
 lmer_thick_1 <- lmer(diff_Th ~ OR*SR + initTh*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_thick_2 <- lmer(diff_Th ~ OS*SP + initTh*OS + (1|OS:OS_block), data = RV_lm)
-
+lmer_thick_2 <- lmer(finTh ~ OR*SR + initTh*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
 summary(lmer_thick_1)
 summary(lmer_thick_2)
 
@@ -444,7 +443,7 @@ summary(lmer_thick_2)
 plot(lmer_thick_1)
 plot(lmer_thick_2)
 visreg(lmer_thick_1, "SR", by = "OR")
-visreg(lmer_thick_2, "SP", by = "OS")
+visreg(lmer_thick_2, "SR", by = "OR")
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_thick_1, type = "III")
@@ -453,12 +452,35 @@ Anova(lmer_thick_2, type = "III")
 #Since there are positive interactions, use the following notation for the Tukey posthoc
 grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ OR*SR, data = RV_lm)
 pairs(grpMeans_thick_1, simple = list("OR", "SR"))
-grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ OS*SP, data = RV_lm)
-pairs(grpMeans_thick_2, simple = list("OS", "SP"))
+grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ OR*SR, data = RV_lm)
+pairs(grpMeans_thick_2, simple = list("OR", "SR"))
+
+#Shell weight: 
+lmer_ShW_1 <- lmer(diff_ShW ~ OR*SR + initShW*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_ShW_2 <- lmer(finShW ~ OR*SR + initShW*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+summary(lmer_ShW_1)
+summary(lmer_ShW_2)
+
+#Verify assumptions of model (dispersal increases as the variables increase...)
+plot(lmer_ShW_1)
+plot(lmer_ShW_2)
+visreg(lmer_ShW_1, "SR", by = "OR")
+visreg(lmer_ShW_2, "SR", by = "OR")
+
+#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
+Anova(lmer_ShW_1, type = "III")
+Anova(lmer_ShW_2, type = "III")
+
+#Since there are positive interactions, use the following notation for the Tukey posthoc
+grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ OR*SR, data = RV_lm)
+pairs(grpMeans_ShW_1, simple = list("OR", "SR"))
+grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ OR*SR, data = RV_lm)
+pairs(grpMeans_ShW_2, simple = list("OR", "SR"))
 
 #Tissue weight
 lmer_TiW_1 <- lmer(diff_TiW ~ OR*SR + initTiW + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_TiW_2 <- lmer(diff_TiW ~ OS*SP + initTiW + (1|OS:OS_block), data = RV_lm)
+lmer_TiW_2 <- lmer(finTiW ~ OR*SR + initTiW + (1|OS/OS_block) + (1|SP), data = RV_lm)
+AIC(lmer_TiW_2, lmer_TiW_3)
 summary(lmer_TiW_1)
 summary(lmer_TiW_2)
 
@@ -478,71 +500,18 @@ pairs(grpMeans_TiW_1, simple = list("OR", "SR"))
 grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ OS*SP, data = RV_lm)
 pairs(grpMeans_TiW_2, simple = list("OS", "SP"))
 
-#Shell weight: 
-lmer_ShW_1 <- lmer(diff_ShW ~ OR*SR + initShW*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_ShW_2 <- lmer(diff_ShW ~ OS*SP + (1|OS:OS_block), data = RV_lm)
-summary(lmer_ShW_1)
-summary(lmer_ShW_2)
-
-#Verify assumptions of model (dispersal increases as the variables increase...)
-plot(lmer_ShW_1)
-plot(lmer_ShW_2)
-visreg(lmer_ShW_1, "SR", by = "OR")
-visreg(lmer_ShW_2, "SP", by = "OS")
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_ShW_1, type = "III")
-Anova(lmer_ShW_2, type = "III")
-
-#Since there are positive interactions, use the following notation for the Tukey posthoc
-grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ OR*SR, data = RV_lm)
-pairs(grpMeans_ShW_1, simple = list("OR", "SR"))
-grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ OS*SP, data = RV_lm)
-pairs(grpMeans_ShW_2, simple = list("OS", "SP"))
-
-#Shell growth: included initL as covariate as it improves fit of model
-lmer_SG_1 <- lmer(SG ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
-lmer_SG_2 <- lmer(SG ~ OS*SP + (1|OS:OS_block), data = RV_lm)
-summary(lmer_SG_1)
-summary(lmer_SG_2)
-
-#Verify assumptions of model (dispersal increases as the variables increase...)
-plot(lmer_SG_1)
-plot(lmer_SG_2)
-visreg(lmer_SG_1, "SR", by = "OR")
-visreg(lmer_SG_2, "SP", by = "OS")
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_SG_1, type = "III")
-Anova(lmer_SG_2, type = "III")
-
-#Since there are positive interactions, use the following notation for the Tukey posthoc
-grpMeans_SG_1 <- emmeans(lmer_SG_1, ~ OR*SR, data = RV_lm)
-pairs(grpMeans_SG_1, simple = list("OR", "SR"))
-grpMeans_SG_2 <- emmeans(lmer_SG_2, ~ OS*SP, data = RV_lm)
-pairs(grpMeans_SG_2, simple = list("OS", "SP"))
-
 #Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
 #Because I have averaged the survival within blocks, block is now my 'unit of observation' and OS is the only random effect
 lmer_surv_1 <- lmer(cumsurv ~ OR*SR + (1|OS), data = RV_cumsurv_final) #<- removed 1|SP because singular fit
-lmer_surv_2 <- lm(cumsurv ~ OS*SP, data = RV_cumsurv_final)
 summary(lmer_surv_1)
-summary(lmer_surv_2)
-
 #Verify assumptions of model (dispersal increases as the variables increase...)
 plot(lmer_surv_1)
-plot(lmer_surv_2)
 visreg(lmer_surv_1, "SR", by = "OR")
-visreg(lmer_surv_2, "SP", by = "OS")
-
 Anova(lmer_surv_1, type = "II")
-Anova(lmer_surv_2, type = "II")
 
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
 grpMeans_surv_1 <- emmeans(lmer_surv_1, ~ OR + SR, data = RV_lm)
 pairs(grpMeans_surv_1, simple = list("OR", "SR"))
-grpMeans_surv_2 <- emmeans(lmer_surv_2, ~ OS + SP, data = RV_lm)
-pairs(grpMeans_surv_2, simple = list("OS", "SP"))
 
 #Remove all the unneeded objects for survival analysis----
 rm(length_OR_box, length_OR_me, RV_alive, RV_combined_OR_SR, RV_diff, test,
