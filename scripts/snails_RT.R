@@ -288,6 +288,18 @@ TiW_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, meandiff_TiW, SP, c("coral", "c
 SG_OR_box_SP <- plot_OR_RT_box(RV_lm_block, OR, mean_SG, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Change in LSG (mm)")
 CSurv_OR_box_SP <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), c("coral", "coral3", "skyblue", "skyblue3"), "Survival (%)")
 
+#Create new survival plots without the lines connecting the median (for your combined mesocosm plots)
+CSurv_OR_box <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)")
+
+
+CSurv_OR_box_noLines <- ggplot(RV_cumsurv_final, aes(OR, cumsurv, fill = SR, colour = SR)) + 
+  geom_boxplot(colour = "black", varwidth = TRUE, alpha = 0.8) +
+  geom_point(size = 3, alpha=0.5, position = position_jitterdodge(dodge.width = 0.7, jitter.width=0.3))  +
+  scale_fill_manual(values = c("skyblue", "coral")) +
+  scale_colour_manual(values = c("skyblue3", "coral3")) +
+  labs(y = "Survival (%)") +
+  theme_cowplot(16)
+
 #Visualize the final RVs grouped by OR & SR & SP----
 fin_length_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") +
   labs(colour = "Source Region", fill = "Source Region")
@@ -359,10 +371,10 @@ RV_fin_change_SP <- plot_grid(length_OR_box_SP + theme(legend.position = "none",
 RV_fin_change_title_SP <- plot_grid(RV_fin_change_SP, xaxistitle_OR, ncol = 1, rel_heights = c(1, 0.05))
 
 #Save both OR by SR plots
-ggsave(RV_fin_change_title_SR, file = "plots/snails/RT/RV_fin_change_SR.pdf", height = 12, width = 12, dpi = 300)
-ggsave(RV_fin_change_title_SP, file = "plots/snails/RT/RV_fin_change_SP.pdf", height = 12, width = 12, dpi = 300)
-ggsave(fin_CSurv_OR_box, file = "plots/snails/RT/RV_survival_SR.pdf", height = 6, width = 6, dpi = 300)
-ggsave(fin_CSurv_SP_box, file = "plots/snails/RT/RV_survival_SP.pdf", height = 6, width = 6, dpi = 300)
+ggsave(RV_fin_change_title_SR, file = "plots/snails/RT/RT_fin_change_SR.pdf", height = 12, width = 12, dpi = 300)
+ggsave(RV_fin_change_title_SP, file = "plots/snails/RT/RT_fin_change_SP.pdf", height = 12, width = 12, dpi = 300)
+ggsave(fin_CSurv_OR_box, file = "plots/snails/RT/RT_survival_SR.pdf", height = 6, width = 6, dpi = 300)
+ggsave(fin_CSurv_SP_box, file = "plots/snails/RT/RT_survival_SP.pdf", height = 6, width = 6, dpi = 300)
 
 #Test for the effects of initial size across SP & OS----
 length_ced <- RV_lm %>% 

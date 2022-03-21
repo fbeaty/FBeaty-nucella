@@ -534,13 +534,6 @@ ggsave(meso_fact_comb_title_SP_me_temp, file = "plots/snails/meso/meso_fact_SP_m
 
 #Visualize change in growth across treatments grouped by SR for temp exp----
 #The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
-length_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_l, SR, c("skyblue", "coral"), "Change in SL (mm)") + labs(colour = "Source Region")
-thick_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_Th, SR, c("skyblue", "coral"), "Change in ST (mm)")
-ShW_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_ShW, SR, c("skyblue", "coral"), "Change in ShW (g)")
-TiW_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, meandiff_TiW, SR, c("skyblue", "coral"), "Change in TiW (g)")
-SG_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, mean_SG, SR, c("skyblue", "coral"), "Change in LSG (mm)")
-Surv_temp_SR_me <- plot_temp_me(meso_lm_block_temp, Temp, cumsurv, SR, c("skyblue", "coral"), "Survival(%)")
-
 length_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
 thick_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
 ShW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")
@@ -548,15 +541,6 @@ TiW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_TiW, SR, c("
 SG_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
 Feed_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")
 Surv_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
-
-meso_temp_comb_SR_me <- plot_grid(length_temp_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  thick_temp_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                  SG_temp_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  get_legend(length_temp_SR_me),
-                                  ShW_temp_SR_me + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                  TiW_temp_SR_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  Surv_temp_SR_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
 
 meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
                                   thick_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
@@ -569,21 +553,12 @@ meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = 
                                   ncol = 4, nrow = 2, axis = "lb", align = "hv")
 
 xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
-meso_temp_comb_title_SR_me <- plot_grid(meso_temp_comb_SR_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 meso_temp_comb_title_SR_box <- plot_grid(meso_temp_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
-ggsave(meso_temp_comb_title_SR_me, file = "plots/snails/meso/meso_temp_SR_me.pdf", height = 8, width = 17, dpi = 300)
 ggsave(meso_temp_comb_title_SR_box, file = "plots/snails/meso/meso_temp_SR_box.pdf", height = 8, width = 17, dpi = 300)
 
 #Visualize change in growth across treatments grouped by SR for fact exp----
 #The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
-length_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_l, SR, Temp, c("skyblue", "coral"), "Change in SL (mm)") + labs(colour = "Source Region")
-thick_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_Th, SR, Temp, c("skyblue", "coral"), "Change in ST (mm)")
-ShW_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_ShW, SR, Temp, c("skyblue", "coral"), "Change in ShW (g)")
-TiW_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, meandiff_TiW, SR, Temp, c("skyblue", "coral"), "Change in TiW (g)")
-SG_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, mean_SG, SR, Temp, c("skyblue", "coral"), "Change in LSG (mm)")
-Surv_fact_SR_me <- plot_fact_me(meso_lm_block_fact, Treat, cumsurv, SR, Temp, c("skyblue", "coral"), "Survival(%)")
-
 length_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
 thick_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
 ShW_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")
@@ -591,15 +566,6 @@ TiW_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_TiW, SR, c(
 SG_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
 Feed_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")
 Surv_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
-
-meso_fact_comb_SR_me <- plot_grid(length_fact_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  thick_fact_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                  SG_fact_SR_me + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  get_legend(length_fact_SR_me),
-                                  ShW_fact_SR_me + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                  TiW_fact_SR_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  Surv_fact_SR_me + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  ncol = 4, nrow = 2, rel_widths= c(1, 1, 1, 0.3), axis = "lb", align = "hv")
 
 meso_fact_comb_SR_box <- plot_grid(length_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
                                    thick_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
@@ -612,11 +578,73 @@ meso_fact_comb_SR_box <- plot_grid(length_fact_SR_box + theme(legend.position = 
                                    ncol = 4, nrow = 2, axis = "lb", align = "hv")
 
 xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
-meso_fact_comb_title_SR_me <- plot_grid(meso_fact_comb_SR_me, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 meso_fact_comb_title_SR_box <- plot_grid(meso_fact_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-
-ggsave(meso_fact_comb_title_SR_me, file = "plots/snails/meso/meso_fact_SR_me.pdf", height = 8, width = 17, dpi = 300)
 ggsave(meso_fact_comb_title_SR_box, file = "plots/snails/meso/meso_fact_SR_box.pdf", height = 8, width = 17, dpi = 300)
+
+#Visualize change in growth & final phenotype grouped by SR for temp----
+length_temp_SR_box_fin <- plot_temp_box(meso_lm_block_temp, Temp, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
+thick_temp_SR_box_fin <- plot_temp_box(meso_lm_block_temp, Temp, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
+ShW_temp_SR_box_fin <- plot_temp_box(meso_lm_block_temp, Temp, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
+TiW_temp_SR_box_fin <- plot_temp_box(meso_lm_block_temp, Temp, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
+
+meso_temp_comb_SR_box_fin <- plot_grid(length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                       length_temp_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                       get_legend(length_temp_SR_box),
+                                   thick_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                   thick_temp_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                   NULL,
+                                   ShW_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                   ShW_temp_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                   NULL,
+                                   TiW_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                   TiW_temp_SR_box_fin + theme(legend.position = "none", axis.title.x = element_blank()),
+                                   NULL,
+                                   ncol = 3, nrow = 4, rel_widths= c(1, 1, 0.3), axis = "lb", align = "hv", labels = c('A', 'B', ''), label_size = 18)
+
+meso_temp_comb_title_SR_box_fin <- plot_grid(meso_temp_comb_SR_box_fin, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_temp_comb_title_SR_box_fin, file = "plots/snails/meso/meso_temp_fin_change.pdf", height = 12, width = 12, dpi = 300)
+
+#Visualize change in growth & final phenotype grouped by SR for fact ----
+length_fact_SR_box_fin <- plot_temp_box(meso_lm_block_fact, Treat, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
+thick_fact_SR_box_fin <- plot_temp_box(meso_lm_block_fact, Treat, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
+ShW_fact_SR_box_fin <- plot_temp_box(meso_lm_block_fact, Treat, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
+TiW_fact_SR_box_fin <- plot_temp_box(meso_lm_block_fact, Treat, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
+
+thick_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
+
+
+meso_fact_comb_SR_box_fin <- plot_grid(length_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                       length_fact_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                       get_legend(length_fact_SR_box),
+                                       thick_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                       thick_fact_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                       NULL,
+                                       ShW_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                       ShW_fact_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                       NULL,
+                                       TiW_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                       TiW_fact_SR_box_fin + theme(legend.position = "none", axis.title.x = element_blank()),
+                                       NULL,
+                                       ncol = 3, nrow = 4, rel_widths= c(1, 1, 0.3), axis = "lb", align = "hv", labels = c('A', 'B', ''), label_size = 18)
+
+meso_fact_comb_title_SR_box_fin <- plot_grid(meso_fact_comb_SR_box_fin, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_fact_comb_title_SR_box_fin, file = "plots/snails/meso/meso_fact_fin_change.pdf", height = 12, width = 12, dpi = 300)
+
+#Visualize the survival & feeding rate for the temp & fact experiments (separately)----
+Feed_all_meso <- plot_temp_box(meso_lm_block, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate") + labs(colour = "Source Region", fill = "Source Region")
+Surv_all_meso <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
+legend <- get_legend(Feed_all_meso + theme(legend.justification="center" , legend.box.just = "bottom"))
+
+#For this line of code you have to have the survival figure from the RT loaded (just run through that script to get the CSurv_OR_box figure)
+surv_feed_comb <- plot_grid(Surv_all_meso + theme(legend.position ="none", axis.title.x = element_blank()),
+                            CSurv_OR_box_noLines + theme(legend.position ="none", axis.text.y = element_blank(), axis.title.y = element_blank()) + labs(x = "Outplant Region"),
+                            Feed_all_meso + theme(legend.position ="none") + labs(x = "Treatment"),
+                            legend,
+                            ncol = 2, nrow = 2, rel_widths = c(1, 0.7), axis = "lb", align = "hv")
+
+ggsave(surv_feed_comb, file = "plots/snails/surv_feed_comb.pdf", height = 8, width = 12, dpi = 300)
 
 #Visualize final size across treatments grouped by SR for temp exp----
 #The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
