@@ -783,8 +783,8 @@ Anova(lmer_ShW_1, type = "III")
 Anova(lmer_ShW_2, type = "III")
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
-grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + pH*Temp, data = meso_lm_fact)
-pairs(grpMeans_ShW_1, simple = list("SR", "Temp", "pH"))
+grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ pH*Temp, data = meso_lm_fact)
+pairs(grpMeans_ShW_1, simple = list("Temp", "pH"))
 grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SP + Temp, data = meso_lm_fact)
 pairs(grpMeans_ShW_2, simple = list("SP", "Temp"))
 

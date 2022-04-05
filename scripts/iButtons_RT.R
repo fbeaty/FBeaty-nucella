@@ -5,9 +5,7 @@
 
 
 #Load packages----
-pkgs <- c("dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2", "visreg")
-lapply(pkgs, library, character.only = TRUE)
-rm(pkgs)
+
 
 #Upload & clean iButton data from data folder----
 #Load & clean ibutton data from Kwak and Pruth
@@ -242,6 +240,10 @@ air_90 <- ggplot(sum_air, aes(Date, air90th, fill = SP)) +
 
 both_90 <- ggplot(sum_both, aes(Date, both90th, fill = SP)) + 
   geom_line (aes(colour = SP), size = 0.7) +
+  geom_hline(yintercept = 12, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 15, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 22, linetype = "dashed", alpha = 0.8, col = "grey") +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(x = "Date", y = "90th percentile temp (°C)", color = "Source Population") +
   theme_cowplot(16)+ theme(legend.position = c(0.1, 0.75))
@@ -254,9 +256,6 @@ water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) +
   facet_grid(. ~ SP) +
   my_theme
 
-ggsave(water_90, file = "plots/iButtons/water_90percentile.pdf", width = 8, height = 6, dpi = 300)
-ggsave(water_90_facet, file = "plots/iButtons/water_90percentile_facet.pdf", width = 8, height = 6, dpi = 300)
-ggsave(air_90, file = "plots/iButtons/air_90percentile.pdf", width = 8, height = 6, dpi = 300)
 ggsave(both_90, file = "plots/iButtons/both_90percentile.pdf", width = 8, height = 6, dpi = 300)
 
 #Test whether the 90th percentile is significantly different across regions over time----
@@ -265,7 +264,7 @@ ggsave(both_90, file = "plots/iButtons/both_90percentile.pdf", width = 8, height
 
 library('car')
 ancova_model <- aov(both90th ~ Date + region, data = sum_both)
-Anova(ancova_model, type="III")
+Anova(ancova_model, type="II")
 visreg(ancova_model)
 #Both region & Date are very significant, with temp increasing with time & differing between the 2 regions
 
@@ -277,11 +276,11 @@ sum_both_nan <- sum_both %>%
   filter(SP == "Cedar" | SP == "Heron")
 
 ancova_cal <-aov(both90th ~ SP + Date, data = sum_both_cal)
-Anova(ancova_cal, type="III")
+Anova(ancova_cal, type="II")
 visreg(ancova_cal)
 
 ancova_nan <-aov(both90th ~ SP + Date, data = sum_both_nan)
-Anova(ancova_nan, type="III")
+Anova(ancova_nan, type="II")
 visreg(ancova_nan)
 
 #Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)----

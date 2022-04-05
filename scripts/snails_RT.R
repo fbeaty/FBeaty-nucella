@@ -144,7 +144,7 @@ length_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanL, SP, c("coral", "cor
 thick_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ST (mm)")
 ShW_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")
 TiW_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")
-SG_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SG (g)")
+SG_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (g)")
 
 #This one draws from a different dataframe so just code out the full plot 
 surv_stage <- ggplot(RV_cumsurv_OR, aes(Stage, meancumsurv, group = SP, colour = SP)) + 
@@ -586,22 +586,30 @@ plot_init <- function(df, x, y, fill.clr, lbl.y, lbl.fill) {
   return(init_plot)
 }
 
-init_length <- plot_init(RV_lm, initL, diff_l, SP, "Change in Length (mm)")
-init_thickness <- plot_init(RV_lm, initTh, diff_Th, SP, "Change in shell thickness (mm)")
-init_ShW <- plot_init(RV_lm, initShW, diff_ShW, SP, "Change in shell weight (g)")
-init_TiW <- plot_init(RV_lm, initTiW, diff_TiW, SP, "Change in tissue weight (g)")
-init_SG <- plot_init(RV_lm, initL, SG, SP, "Linear shell growth (mm)")
+init_length <- plot_init(RV_lm, initL, diff_l, SP, "Change in SL (mm)")
+init_thickness <- plot_init(RV_lm, initTh, diff_Th, SP, "Change in ST (mm)")
+init_ShW <- plot_init(RV_lm, initShW, diff_ShW, SP, "Change in ShW (g)")
+init_TiW <- plot_init(RV_lm, initTiW, diff_TiW, SP, "Change in TiW (g)")
+init_SG <- plot_init(RV_lm, initL, SG, SP, "LSG (mm)")
 
-comb_init_figs <- plot_grid(init_length + theme(legend.position = "none", axis.title.x = element_blank()),
-                            init_thickness + theme(legend.position = "none", axis.title.x = element_blank()), 
-                            init_SG + theme(legend.position = "none"), 
-                            init_ShW + theme(legend.position = "none"), 
-                            init_TiW + theme(legend.position = "none"),
-                            get_legend(init_length),
-                            ncol = 3, nrow = 2, axis = "lb", align = "hv")
+comb_init_figs <- plot_grid(init_length + theme(legend.position = "none",
+                                           axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      get_legend(init_length),
+                      init_thickness + theme(legend.position = "none", 
+                                          axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      NULL,
+                      init_SG + theme(legend.position = "none", 
+                                       axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      NULL,
+                      init_ShW + theme(legend.position = "none",
+                                        axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      NULL,
+                      init_TiW + theme(legend.position = "none",
+                                        axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      NULL,
+                      ncol = 2, nrow = 5, axis = "lb", align = "hv", rel_widths = c(1,0.2))
 
 ggsave(comb_init_figs, file = "plots/snails/RT/initial_size.pdf", height = 8, width = 20, dpi = 300)
-
 
 #Visualize the change in RVs grouped by OS & SP----
 plot_OS_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){

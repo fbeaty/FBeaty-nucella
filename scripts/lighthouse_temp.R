@@ -50,7 +50,7 @@ lighthouse <- rbind(egg_1, departure_1) %>%
 both <- ggplot(lighthouse, aes(date, temp90th, group = station)) + 
   geom_line(aes(colour = station), size = 0.7) +
   scale_colour_manual(values = c("coral", "skyblue")) +
-  labs(x = "Year", y = "90th percentile temperature (°C)") +
+  labs(x = "Year", y = "90th percentile SST (°C)") +
   theme_cowplot(16) + theme(legend.position = "top", legend.justification = "right")
 
 ggsave(both, file = "plots/lighthouse/both_lighthouse_stations.pdf", height = 5, width = 9, dpi = 300)
@@ -71,4 +71,15 @@ ind <- seq(1, nrow(diff), by=2)
 diff_sum <- diff[ind, ] %>% 
   summarize(mean_90th_diff = mean(diff), sd_90th_diff = sd(diff))
 
+#Visualize temps from May - Sept
+months <- c(5:10)
+
+summer <- lighthouse %>% 
+  filter(month %in% months)
+
+ggplot(summer, aes(date, temp90th, group = station)) + 
+  geom_line(aes(colour = station), size = 0.7) +
+  scale_colour_manual(values = c("coral", "skyblue")) +
+  labs(x = "Month", y = "90th percentile SST (°C)") +
+  theme_cowplot(16) + theme(legend.position = "top", legend.justification = "right")
 
