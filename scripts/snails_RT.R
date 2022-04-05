@@ -592,24 +592,22 @@ init_ShW <- plot_init(RV_lm, initShW, diff_ShW, SP, "Change in ShW (g)")
 init_TiW <- plot_init(RV_lm, initTiW, diff_TiW, SP, "Change in TiW (g)")
 init_SG <- plot_init(RV_lm, initL, SG, SP, "LSG (mm)")
 
-comb_init_figs <- plot_grid(init_length + theme(legend.position = "none",
-                                           axis.text.x = element_blank(), axis.title.x = element_blank()), 
+comb_init_figs <- plot_grid(init_length + theme(legend.position = "none", axis.title.x = element_blank()), 
                       get_legend(init_length),
-                      init_thickness + theme(legend.position = "none", 
-                                          axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      init_thickness + theme(legend.position = "none", axis.title.x = element_blank()), 
                       NULL,
-                      init_SG + theme(legend.position = "none", 
-                                       axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      init_SG + theme(legend.position = "none", axis.title.x = element_blank()), 
                       NULL,
-                      init_ShW + theme(legend.position = "none",
-                                        axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      init_ShW + theme(legend.position = "none", axis.title.x = element_blank()), 
                       NULL,
-                      init_TiW + theme(legend.position = "none",
-                                        axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      init_TiW + theme(legend.position = "none", axis.title.x = element_blank()), 
                       NULL,
                       ncol = 2, nrow = 5, axis = "lb", align = "hv", rel_widths = c(1,0.2))
 
-ggsave(comb_init_figs, file = "plots/snails/RT/initial_size.pdf", height = 8, width = 20, dpi = 300)
+xaxistitle <- ggdraw() + draw_label("Initial size", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+comb_init_figs <- plot_grid(comb_init_figs, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(comb_init_figs, file = "plots/snails/RT/initial_size.pdf", height = 12, width = 12, dpi = 300)
 
 #Visualize the change in RVs grouped by OS & SP----
 plot_OS_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
