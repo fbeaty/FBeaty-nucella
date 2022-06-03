@@ -642,15 +642,13 @@ pairs(grpMeans_thick_2, simple = list("SR", "Treat"))
 
 #Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
 lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm_temp) #<- removed initShW because it was non-significant
-lmer_ShW_2 <- lmer(finShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm_temp) #<- removed initShW because it was non-significant
+lmer_ShW_2 <- lmer(finShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm_temp)
 summary(lmer_ShW_1)
 summary(lmer_ShW_2)
 
 #Verify assumptions of model
 plot(lmer_ShW_1)
 visreg(lmer_ShW_1, "SR", by = "Treat")
-visreg(lmer_ShW_1, "initShW", by = "SR", overlay = TRUE)
-visreg(lmer_ShW_1, "initShW", by = "Treat", overlay = TRUE)
 plot(lmer_ShW_2)
 visreg(lmer_ShW_2, "SR", by = "Treat")
 visreg(lmer_ShW_2, "initShW", by = "SR", overlay = TRUE)
