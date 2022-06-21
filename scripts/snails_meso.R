@@ -26,6 +26,7 @@ meso_feed <- read.csv("data/snail_RVs/meso_percap_feeding_rate.csv")
 #Remove the Died & Notes column
 #Rename column headers
 #Remove the tanks that experienced chiller failures & 100% mortality within first experimental days: 3, 5, 6 :( :(
+#Remove the lowered pH treatment tanks: 17, 20, 21, 24, 18, 19, 22, 23
 #Estimate shell weight (ShW) & tissue weight (TiW) based on the following submerged regressions for each population where x is SW (submerged weight):
 #Pruth	y = 1.5889x + 0.1392
 #Kwakshua	y = 1.5958x + 0.0646
@@ -52,7 +53,7 @@ heron_reg <- function(x){
   return(ShW)
 }
 
-tanks_remove <- c(3, 5, 6)
+tanks_remove <- c(3, 5, 6, 17, 20, 21, 24, 18, 19, 22, 23)
 
 meso_clean <- meso_base %>% 
   filter(!Tank %in% tanks_remove) %>% 
@@ -65,22 +66,13 @@ meso_clean <- meso_base %>%
          SR = as.factor(ifelse(SP == "Cedar" | SP == "Heron", "Nanaimo", "Calvert")),
          SP = as.factor(SP),
          Stage = as.factor(Stage),
-         Treat = as.factor(ifelse(Tank == 9 | Tank == 12, "12.A",
-                                  ifelse(Tank == 4 | Tank == 7 | Tank == 11 | Tank == 14 | Tank == 16, "15.A",
-                                         ifelse(Tank == 17 |  Tank == 20 | Tank == 21 | Tank == 24, "15.L",
-                                                ifelse(Tank == 1 | Tank == 10 | Tank == 13, "19.A",
-                                                       ifelse(Tank == 2 | Tank == 8 | Tank == 15, "22.A",
-                                                              ifelse(Tank == 18 | Tank == 19 | Tank == 22 | Tank == 23, "22.L", NA))))))),
+         Treat = as.factor(ifelse(Tank == 9 | Tank == 12, "12",
+                                  ifelse(Tank == 4 | Tank == 7 | Tank == 11 | Tank == 14 | Tank == 16, "15",
+                                                ifelse(Tank == 1 | Tank == 10 | Tank == 13, "19",
+                                                       ifelse(Tank == 2 | Tank == 8 | Tank == 15, "22", NA))))), 
          TiW = TW-ShW) %>% 
-  separate(Treat, c("Temp", "pH"), remove = FALSE) %>% 
-  mutate(Treat = as.factor(ifelse(Treat == "12.A", "12A",
-                       ifelse(Treat == "15.A", "15A", 
-                              ifelse(Treat == "15.L", "15L",
-                                     ifelse(Treat == "19.A", "19A", 
-                                            ifelse(Treat == "22.A", "22A",
-                                                   ifelse(Treat == "22.L", "22L", NA)))))))) %>% 
   filter_at(vars(L,Th, SG, ShW, TiW), any_vars(!is.na(.))) %>% 
-  select(Stage, SR, SP, Tank, Treat, Temp, pH, ID, L, Th, ShW, TiW, SG)
+  select(Stage, SR, SP, Tank, Treat, ID, L, Th, ShW, TiW, SG)
 
 #You have to add the TiW & ShW values for each ID to the init ID so that you only have 1 row/snail (otherwise it messes up the sample sizes later
 meso_clean_i <- meso_clean %>% 
@@ -99,19 +91,19 @@ meso_clean_1 <- left_join(meso_clean_i, meso_clean_m, by = "ID") %>%
   droplevels
 
 #For some reason CB44 was duplicated twice and has 2 incomplete rows --> remove rows 64-66
-meso_clean_1 <- meso_clean_1[c(1:63,67:591), ]
+meso_clean_1 <- meso_clean_1[-c(64:66), ]
 
 #Now we have a dataframe with rows for all the right IDs, but we need to switch it into a long format keeping the IDs. 
 #SO: split it into 2 dataframes again, and then rbind them
 meso_clean_2 <- meso_clean_1 %>% 
-  select(SR, SP, Tank, Treat, Temp, pH, ID, Stage.y, L_final, Th_final, ShW_final, TiW_final, SG.y) %>% 
+  select(SR, SP, Tank, Treat, ID, Stage.y, L_final, Th_final, ShW_final, TiW_final, SG.y) %>% 
   rename(L = L_final, Th = Th_final, ShW = ShW_final, TiW = TiW_final, Stage = Stage.y, SG = SG.y) %>%
   mutate(Alive = ifelse(is.na(Stage), 0, 1),
          Stage = ifelse(is.na(Stage), "Final", "Final")) %>% 
-  select(Stage, SR, SP, Tank, Treat, Temp, pH, ID, L, Th, ShW, TiW, SG, Alive)
+  select(Stage, SR, SP, Tank, Treat, ID, L, Th, ShW, TiW, SG, Alive)
   
 meso_clean <- meso_clean_1 %>% 
-  select(Stage.x, SR, SP, Tank, Treat, Temp, pH, ID, L, Th, ShW, TiW, SG.x) %>% 
+  select(Stage.x, SR, SP, Tank, Treat, ID, L, Th, ShW, TiW, SG.x) %>% 
   rename(Stage = Stage.x, SG = SG.x) %>% 
   mutate(Alive = 1) %>% 
   rbind(meso_clean_2)
@@ -127,39 +119,23 @@ meso_food_clean <-meso_feed %>%
                                              ifelse(SP == "P", "Pruth", NA))))),
          Date = as.Date(Date, format = "%m-%d-%Y"),
          tank_sp = paste(Tank, SP, sep = "_"),
-         Treat = as.factor(ifelse(Tank == 9 | Tank == 12, "12.A",
-                                  ifelse(Tank == 4 | Tank == 7 | Tank == 11 | Tank == 14 | Tank == 16, "15.A",
-                                         ifelse(Tank == 17 |  Tank == 20 | Tank == 21 | Tank == 24, "15.L",
-                                                ifelse(Tank == 1 | Tank == 10 | Tank == 13, "19.A",
-                                                       ifelse(Tank == 2 | Tank == 8 | Tank == 15, "22.A",
-                                                              ifelse(Tank == 18 | Tank == 19 | Tank == 22 | Tank == 23, "22.L", NA)))))))) %>% 
-  separate(Treat, c("Temp", "pH"), remove = FALSE) %>% 
-  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Nanaimo", "Calvert"),
-         Treat = as.factor(ifelse(Treat == "12.A", "12A",
-                                  ifelse(Treat == "15.A", "15A", 
-                                         ifelse(Treat == "15.L", "15L",
-                                                ifelse(Treat == "19.A", "19A", 
-                                                       ifelse(Treat == "22.A", "22A",
-                                                              ifelse(Treat == "22.L", "22L", NA)))))))) %>% 
-  select(Date, Tank, SR, SP, tank_sp, Treat, Temp, pH, Per_cap)
+         Treat = as.factor(ifelse(Tank == 9 | Tank == 12, "12",
+                                  ifelse(Tank == 4 | Tank == 7 | Tank == 11 | Tank == 14 | Tank == 16, "15",
+                                                ifelse(Tank == 1 | Tank == 10 | Tank == 13, "19",
+                                                       ifelse(Tank == 2 | Tank == 8 | Tank == 15, "22", NA)))))) %>% 
+  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Nanaimo", "Calvert")) %>% 
+  select(Date, Tank, SR, SP, tank_sp, Treat, Per_cap)
 
 #Now summarize the average feeding rate for each tank_sp
 meso_food_tank <- meso_food_clean %>% 
-  group_by(Treat, Temp, pH, Tank, SR, SP, tank_sp) %>% 
+  group_by(Treat, Tank, SR, SP, tank_sp) %>% 
   summarize(meanPer_cap = mean(Per_cap)) %>% 
   ungroup()
-
-meso_food_tank_temp <- meso_food_tank %>% 
-  filter(pH == "A") %>% 
-  droplevels
-meso_food_tank_fact <- meso_food_tank %>% 
-  filter(Temp == 15 | Temp == 22) %>% 
-  droplevels
 
 #Calculate the proportion of surviving snails based on the start and end sample size of each SP in each tank
 #Calculate the number of snails in each tank at the beginning and end
 meso_clean_surv <- meso_clean %>% 
-  group_by(Stage, SR, SP, Treat, Temp, pH, Tank) %>% 
+  group_by(Stage, SR, SP, Treat, Tank) %>% 
   summarize(n_snl = sum(Alive)) %>% 
   ungroup()
 
@@ -169,17 +145,10 @@ meso_clean_surv_1 <- meso_clean_surv %>%
   mutate(cumsurv = ifelse(Stage == "Init", n_snl/n_snl,
                           ifelse(Stage == "Final", n_snl/lag(n_snl, default = n_snl[1]), NA)),
          cumsurv = 100*cumsurv) %>% 
-  arrange(SR, SP, Treat, Tank, Stage) 
+  arrange(SR, SP, Treat, Tank, Stage)
 
 meso_clean_surv <- meso_clean_surv_1 %>% 
   filter(Stage == "Final")
-
-meso_clean_surv_temp <- meso_clean_surv %>% 
-  filter(pH == "A") %>% 
-  droplevels
-meso_clean_surv_fact <- meso_clean_surv %>% 
-  filter(Temp == 15 | Temp == 22) %>% 
-  droplevels
 
 #Calculate the average & SD of metrics to visualize across the 2 time periods ----
 #Note: Because submerged weight was only collected in the middle of the experiment, changes to tissue & shell weight are only reflective of
@@ -188,12 +157,12 @@ meso_clean_surv_fact <- meso_clean_surv %>%
 #First check for outliers caused by high mortality within block that only leaves 1 individual left (which often means the mean - mean values are disproportionate)
 #Remove the following outliers due to high mortality causing outliers in data
 #The only 2 surviving snails in Tank 15 were abnormally large --> average values for that tank pull up the length & distort the Treatment SD for Cedar --> remove from visualization
-#remove <- c("Cedar_15_Final")
-#unite(unique_ID, c(SP, Tank, Stage), sep = "_", remove = FALSE) %>% 
-#filter(!unique_ID %in% remove) %>% 
+remove <- c("Cedar_15_Final")
 
 meso_growth_tank <- meso_clean %>% 
-  group_by(Stage, SP, Treat, Temp, pH, Tank) %>% 
+  unite(unique_ID, c(SP, Tank, Stage), sep = "_", remove = FALSE) %>% 
+  filter(!unique_ID %in% remove) %>% 
+  group_by(Stage, SP, Treat, Tank) %>% 
   summarize(meanL = mean(L, na.rm = TRUE), sdL = sd(L, na.rm = TRUE),
             meanTh = mean(Th, na.rm = TRUE), sdTh = sd(Th, na.rm = TRUE),
             meanShW = mean(ShW, na.rm = TRUE), sdShW = sd(ShW, na.rm = TRUE),
@@ -210,14 +179,6 @@ meso_growth_tank_sample <- meso_growth_tank %>%
 #Final Calvert Pruth 2 only has 1 snail --> no SD
 #Final Calvert Pruth 22 only has 1 snail --> no SD
 
-#Subset temp & factorial exps
-meso_growth_temp <- meso_growth_tank %>% 
-  filter(pH == "A") %>% 
-  droplevels
-meso_growth_fact <- meso_growth_tank %>% 
-  filter(Temp == 15 | Temp == 22) %>% 
-  droplevels
-
 #Visualize the RVs over time by SP for temp exp----
 plot_temp_stage <- function(df, x, y, grp, clr.values, lbl.y){
   temp_plot <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
@@ -232,13 +193,13 @@ plot_temp_stage <- function(df, x, y, grp, clr.values, lbl.y){
   return(temp_plot)
 }
 
-length_stage_temp <- plot_temp_stage(meso_growth_temp, Stage, meanL, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SL (mm)") + 
+length_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanL, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SL (mm)") + 
   labs(colour = "Source Population") + theme(strip.background = element_blank(), strip.text = element_text(size = 16))
-thick_stage_temp <- plot_temp_stage(meso_growth_temp, Stage, meanTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ST (mm)")
-ShW_stage_temp <- plot_temp_stage(meso_growth_temp, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")
-TiW_stage_temp <- plot_temp_stage(meso_growth_temp, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")
-SG_stage_temp <- plot_temp_stage(meso_growth_temp, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (mm)")
-Surv_stage_temp <- plot_temp_stage(meso_clean_surv_temp, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")
+thick_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ST (mm)")
+ShW_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")
+TiW_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")
+SG_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (mm)")
+Surv_stage_temp <- plot_temp_stage(meso_clean_surv_1, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")
 
 meso_stage_temp <- plot_grid(length_stage_temp + theme(legend.position = "none",
                                            axis.text.x = element_blank(), axis.title.x = element_blank()), 
@@ -265,88 +226,6 @@ meso_growth_temp_comb <- plot_grid(meso_stage_temp, xaxistitle, ncol = 1, rel_he
 #Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
 ggsave(meso_growth_temp_comb, file = "plots/snails/meso/meso_stage_temp.pdf", height = 14, width = 12, dpi = 300)
 
-#Visualize the RVs over time for fact exp----
-length_stage_fact <- plot_temp_stage(meso_growth_fact, Stage, meanL, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SL (mm)") + 
-  labs(colour = "Source Population") + theme(strip.background = element_blank(), strip.text = element_text(size = 16))
-thick_stage_fact <- plot_temp_stage(meso_growth_fact, Stage, meanTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ST (mm)")
-ShW_stage_fact <- plot_temp_stage(meso_growth_fact, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")
-TiW_stage_fact <- plot_temp_stage(meso_growth_fact, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")
-SG_stage_fact <- plot_temp_stage(meso_growth_fact, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (mm)")
-Surv_stage_fact <- plot_temp_stage(meso_clean_surv_fact, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")
-
-meso_stage_fact <- plot_grid(length_stage_fact + theme(legend.position = "none",
-                                                       axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             get_legend(length_stage_fact_SP),
-                             thick_stage_fact + theme(legend.position = "none", 
-                                                      axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             NULL,
-                             SG_stage_fact + theme(legend.position = "none", 
-                                                   axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             NULL,
-                             ShW_stage_fact + theme(legend.position = "none",
-                                                    axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             NULL,
-                             TiW_stage_fact + theme(legend.position = "none", 
-                                                    axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             NULL,
-                             Surv_stage_fact + theme(legend.position = "none", axis.title.x = element_blank()), 
-                             NULL,
-                             ncol = 2, nrow = 6, axis = "lb", align = "hv", rel_widths = c(1,0.2))
-
-xaxistitle <- ggdraw() + draw_label("Stage", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_growth_fact_comb <- plot_grid(meso_stage_fact, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
-
-#Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
-ggsave(meso_growth_fact_comb, file = "plots/snails/meso/meso_stage_fact.pdf", height = 14, width = 12, dpi = 300)
-
-#Visualize the RVs over time for all 6 treatments exp----
-length_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanL, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SL (mm)") + 
-  labs(colour = "Source Population") + theme(strip.background = element_blank(), strip.text = element_text(size = 16)) + facet_wrap(~ Treat, ncol = 6)
-thick_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ST (mm)")+ facet_wrap(~ Treat, ncol = 6)
-ShW_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")+ facet_wrap(~ Treat, ncol = 6)
-TiW_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")+ facet_wrap(~ Treat, ncol = 6)
-SG_stage_all <- plot_temp_stage(meso_growth_tank, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (mm)")+ facet_wrap(~ Treat, ncol = 6)
-Surv_stage_all <- plot_temp_stage(meso_clean_surv_1, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")+ facet_wrap(~ Treat, ncol = 6)
-
-feeding_time <- ggplot(meso_food_clean, aes(Date, Per_cap, group = SP, colour = SP)) +
-  stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(1.8)) +
-  stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(1.8), alpha = 0.5) +
-  stat_summary(fun.data = "mean_se", geom = "errorbar", 
-               position=position_dodge(1.8), alpha = 0.8) +
-  facet_wrap(~ Treat, ncol = 6) +
-  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(y = "Per capita feeding rate") +
-  theme_cowplot(16) + theme(axis.text.x = element_text(size = 10)) + 
-  labs(colour = "Source Population") + theme(strip.text = element_blank())
-
-
-meso_stage_all <- plot_grid(length_stage_all + theme(legend.position = "none",
-                                                       axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             get_legend(length_stage_all),
-                             thick_stage_all + theme(legend.position = "none", 
-                                                      axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             NULL,
-                             SG_stage_all + theme(legend.position = "none", 
-                                                   axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             NULL,
-                             ShW_stage_all + theme(legend.position = "none",
-                                                    axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             NULL,
-                             TiW_stage_all + theme(legend.position = "none", 
-                                                    axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                             NULL,
-                            Surv_stage_all + theme(legend.position = "none", axis.title.x = element_blank()), 
-                            NULL,
-                            feeding_time + theme(legend.position = "none", axis.title.x = element_blank()), 
-                            NULL, 
-                            ncol = 2, nrow = 7, axis = "lb", align = "hv", rel_widths = c(1,0.2))
-
-xaxistitle <- ggdraw() + draw_label("Stage/Date", fontface = "plain", x = 0.43, hjust = 0, size = 16)
-meso_growth_all_comb <- plot_grid(meso_stage_all, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
-
-#Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
-ggsave(meso_growth_all_comb, file = "plots/snails/meso/meso_stage_all.pdf", height = 14, width = 14, dpi = 300)
-
 #Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects for every snail----
 #Calculate the difference in growth (this time by ID rather than block, as in previous code), and change labels to initL etc
 meso_lm <- meso_clean %>% 
@@ -357,7 +236,7 @@ meso_lm <- meso_clean %>%
          diff_ShW = ShW - lag(ShW, default = ShW[1]),
          diff_TiW = TiW - lag(TiW, default = TiW[1])) %>% 
   subset(Stage == "Final") %>% 
-  select(Stage, SR, SP, Treat, Temp, pH, Tank, ID, SG, diff_l, diff_Th, diff_ShW, diff_TiW) %>%
+  select(Stage, SR, SP, Treat, Tank, ID, SG, diff_l, diff_Th, diff_ShW, diff_TiW) %>%
   ungroup()
 
 #Gather initial sizes for covariates in models
@@ -373,17 +252,9 @@ meso_lm_fin <- meso_clean %>%
 meso_lm <- left_join(meso_lm, meso_lm_init, by = "ID")  %>% 
   left_join(meso_lm_fin, by = "ID")
 
-#Create a temp & fact set
-meso_lm_temp <- meso_lm %>% 
-  filter(pH == "A") %>% 
-  droplevels
-meso_lm_fact <- meso_lm %>% 
-  filter(Temp == 15 | Temp == 22) %>% 
-  droplevels
-
 #Now create a new dataset with the change in growth summarized by block
 meso_lm_block <- meso_lm %>% 
-  group_by(SR, SP, Treat, Temp, pH, Tank) %>% 
+  group_by(SR, SP, Treat, Tank) %>% 
   summarize(meandiff_l = mean(diff_l, na.rm = TRUE),
             meandiff_Th = mean(diff_Th, na.rm = TRUE),
             meandiff_ShW = mean(diff_ShW, na.rm = TRUE),
@@ -411,19 +282,9 @@ meso_lm_block <- meso_lm_block %>%
   left_join(meso_food_1, by = "tank_sp") %>% 
   select(!tank_sp)
 
-meso_lm_block_temp <- meso_lm_block %>% 
-  filter(pH == "A") %>% 
-  droplevels
-meso_lm_block_fact <- meso_lm_block %>% 
-  filter(Temp == 15 | Temp == 22) %>% 
-  droplevels
-
 #Summarize the sample size for each treatment for your figure captions
-meso_temp_sampl <- meso_lm_block_temp %>% 
+meso_temp_sampl <- meso_lm_block %>% 
   group_by(SP, Treat) %>% 
-  summarize(n_tanks = n())
-meso_fact_sampl <- meso_lm_block_fact %>% 
-  group_by(SR, Treat) %>% 
   summarize(n_tanks = n())
 
 #Visualize change in growth across treatments grouped by SR for temp exp----
@@ -438,13 +299,13 @@ plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
     theme_cowplot(16)
 }
 
-length_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
-thick_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
-ShW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")
-TiW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in TiW (g)")
-SG_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
-Feed_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")
-Surv_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
+length_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
+thick_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
+ShW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")
+TiW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in TiW (g)")
+SG_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
+Feed_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")
+Surv_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
 
 meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
                                   thick_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
@@ -459,37 +320,13 @@ meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = 
 xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
 meso_temp_comb_title_SR_box <- plot_grid(meso_temp_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
-ggsave(meso_temp_comb_title_SR_box, file = "plots/snails/meso/meso_temp_SR_box.pdf", height = 8, width = 17, dpi = 300)
-
-#Visualize change in growth across treatments grouped by SR for fact exp----
-#The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
-length_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
-thick_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
-ShW_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")
-TiW_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in TiW (g)")
-SG_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
-Feed_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")
-Surv_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
-
-meso_fact_comb_SR_box <- plot_grid(length_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                   thick_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                   SG_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                   get_legend(length_fact_SR_box),
-                                   ShW_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                   TiW_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                   Feed_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                   Surv_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                   ncol = 4, nrow = 2, axis = "lb", align = "hv")
-
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
-meso_fact_comb_title_SR_box <- plot_grid(meso_fact_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-ggsave(meso_fact_comb_title_SR_box, file = "plots/snails/meso/meso_fact_SR_box.pdf", height = 8, width = 17, dpi = 300)
+ggsave(meso_temp_comb_title_SR_box, file = "plots/snails/meso/meso_temp_SR_box_revised.pdf", height = 8, width = 17, dpi = 300)
 
 #Visualize change in growth & final phenotype grouped by SR for temp----
-length_temp_SR_box_fin <- plot_temp_box(meso_lm_block_temp, Temp, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
-thick_temp_SR_box_fin <- plot_temp_box(meso_lm_block_temp, Temp, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
-ShW_temp_SR_box_fin <- plot_temp_box(meso_lm_block_temp, Temp, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
-TiW_temp_SR_box_fin <- plot_temp_box(meso_lm_block_temp, Temp, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
+length_temp_SR_box_fin <- plot_temp_box(meso_lm_block, Treat, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
+thick_temp_SR_box_fin <- plot_temp_box(meso_lm_block, Treat, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
+ShW_temp_SR_box_fin <- plot_temp_box(meso_lm_block, Treat, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
+TiW_temp_SR_box_fin <- plot_temp_box(meso_lm_block, Treat, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
 
 meso_temp_comb_SR_box_fin <- plot_grid(length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
                                        length_temp_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
@@ -510,34 +347,7 @@ meso_temp_comb_title_SR_box_fin <- plot_grid(meso_temp_comb_SR_box_fin, xaxistit
 
 ggsave(meso_temp_comb_title_SR_box_fin, file = "plots/snails/meso/meso_temp_fin_change.pdf", height = 12, width = 12, dpi = 300)
 
-#Visualize change in growth & final phenotype grouped by SR for fact ----
-length_fact_SR_box_fin <- plot_temp_box(meso_lm_block_fact, Treat, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
-thick_fact_SR_box_fin <- plot_temp_box(meso_lm_block_fact, Treat, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
-ShW_fact_SR_box_fin <- plot_temp_box(meso_lm_block_fact, Treat, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
-TiW_fact_SR_box_fin <- plot_temp_box(meso_lm_block_fact, Treat, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
-
-thick_fact_SR_box <- plot_temp_box(meso_lm_block_fact, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)")
-
-
-meso_fact_comb_SR_box_fin <- plot_grid(length_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                       length_fact_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                       get_legend(length_fact_SR_box),
-                                       thick_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                       thick_fact_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                       NULL,
-                                       ShW_fact_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                       ShW_fact_SR_box_fin + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                       NULL,
-                                       TiW_fact_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                       TiW_fact_SR_box_fin + theme(legend.position = "none", axis.title.x = element_blank()),
-                                       NULL,
-                                       ncol = 3, nrow = 4, rel_widths= c(1, 1, 0.3), axis = "lb", align = "hv", labels = c('A', 'B', ''), label_size = 18)
-
-meso_fact_comb_title_SR_box_fin <- plot_grid(meso_fact_comb_SR_box_fin, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
-
-ggsave(meso_fact_comb_title_SR_box_fin, file = "plots/snails/meso/meso_fact_fin_change.pdf", height = 12, width = 12, dpi = 300)
-
-#Visualize the survival & feeding rate for the temp & fact experiments (separately)----
+#Visualize the survival & feeding rate for the experiments (and combine with RT survival)----
 Feed_all_meso <- plot_temp_box(meso_lm_block, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate") + labs(colour = "Source Region", fill = "Source Region")
 Surv_all_meso <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
 legend <- get_legend(Feed_all_meso + theme(legend.justification="center" , legend.box.just = "bottom"))
@@ -553,13 +363,13 @@ ggsave(surv_feed_comb, file = "plots/snails/surv_feed_comb.pdf", height = 9, wid
 
 #Visualize final size across treatments grouped by SR for temp exp----
 #The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
-fin_length_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
-fin_thick_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
-fin_ShW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
-fin_TiW_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
-fin_SG_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean LSG (mm)")
-fin_Feed_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")
-fin_Surv_temp_SR_box <- plot_temp_box(meso_lm_block_temp, Temp, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
+fin_length_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
+fin_thick_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanfinTh, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ST (mm)")
+fin_ShW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanfinShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean ShW (g)")
+fin_TiW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanfinTiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean TiW (g)")
+fin_SG_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean LSG (mm)")
+fin_Feed_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")
+fin_Surv_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")
 
 meso_temp_fin_SR_box <- plot_grid(fin_length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
                                   fin_thick_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
@@ -576,15 +386,14 @@ meso_temp_fin_title_SR_box <- plot_grid(meso_temp_fin_SR_box, xaxistitle_treat, 
 
 ggsave(meso_temp_fin_title_SR_box, file = "plots/snails/meso/meso_temp_SR_box_fin.pdf", height = 8, width = 17, dpi = 300)
 
-
 #Test whether initial size differs across tanks----
-initL_aov <- lm(initL ~ Tank + Temp, data = meso_lm_temp)
+initL_aov <- lm(initL ~ Tank + Treat, data = meso_lm)
 Anova(initL_aov)
-initTh_aov <- lm(initTh ~ Tank + Temp, data = meso_lm_temp)
+initTh_aov <- lm(initTh ~ Tank + Treat, data = meso_lm)
 Anova(initTh_aov)
-initTiW_aov <- lm(initTiW ~ Tank + Temp, data = meso_lm_temp)
+initTiW_aov <- lm(initTiW ~ Tank + Treat, data = meso_lm)
 Anova(initTiW_aov)
-initShW_aov <- lm(initShW ~ Tank + Temp, data = meso_lm_temp)
+initShW_aov <- lm(initShW ~ Tank + Treat, data = meso_lm)
 Anova(initShW_aov)
 
 rm(initL_aov, initTh_aov, initTiW_aov, initShW_aov)
@@ -594,8 +403,8 @@ rm(initL_aov, initTh_aov, initTiW_aov, initShW_aov)
 #Build linear mixed effects models for temp exp----
 #Fixed effects: SR, Treat & intxn
 #Random effects: Tank & Sp (1|Tank), (1|SP)
-lmer_length_1 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
-lmer_length_2 <- lmer(finL ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_temp)
+lmer_length_1 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm)
+lmer_length_2 <- lmer(finL ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm)
 summary(lmer_length_1)
 summary(lmer_length_2)
 
@@ -610,14 +419,14 @@ Anova(lmer_length_1, type = "III")
 Anova(lmer_length_2, type = "III") 
 
 #Since there are significant interactions, use the following notation for the Tukey posthoc
-grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Treat, data = meso_lm_temp)
+grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Treat, data = meso_lm)
 pairs(grpMeans_length_1, simple = list("SR", "Treat"))
-grpMeans_length_2 <- emmeans(lmer_length_2, ~ SR*Treat, data = meso_lm_temp)
+grpMeans_length_2 <- emmeans(lmer_length_2, ~ SR*Treat, data = meso_lm)
 pairs(grpMeans_length_2, simple = list("SR", "Treat"))
 
-#Shell thickness: note for this model I received a singular fit when OS_block was nested within OS, where OS variance = 0 --> removed OS from model as per Matuschek
-lmer_thick_1 <- lmer(diff_Th ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm_temp) 
-lmer_thick_2 <- lmer(finTh ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm_temp)
+#Shell thickness: 
+lmer_thick_1 <- lmer(diff_Th ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm) 
+lmer_thick_2 <- lmer(finTh ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm)
 summary(lmer_thick_1)
 summary(lmer_thick_2)
 
@@ -635,14 +444,14 @@ Anova(lmer_thick_1, type = "III")
 Anova(lmer_thick_2, type = "III")
 
 #Since there are significant interactions, use the following notation for the Tukey posthoc
-grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR + Treat, data = meso_lm_temp)
+grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_thick_1, simple = list("SR", "Treat"))
-grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SR*Treat, data = meso_lm_temp)
+grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SR*Treat, data = meso_lm)
 pairs(grpMeans_thick_2, simple = list("SR", "Treat"))
 
-#Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
-lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm_temp) #<- removed initShW because it was non-significant
-lmer_ShW_2 <- lmer(finShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm_temp)
+#Shell weight:
+lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm) #<- removed initShW because it was non-significant
+lmer_ShW_2 <- lmer(finShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm)
 summary(lmer_ShW_1)
 summary(lmer_ShW_2)
 
@@ -658,14 +467,14 @@ Anova(lmer_ShW_1, type = "II") #<- ran Type II because interaction was non-signi
 Anova(lmer_ShW_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
-grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + Treat, data = meso_lm_temp)
+grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_ShW_1, simple = list("SR", "Treat"))
-grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SR + Treat, data = meso_lm_temp)
+grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_ShW_2, simple = list("SR", "Treat"))
 
 #Tissue weight
-lmer_TiW_1 <- lmer(diff_TiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm_temp) 
-lmer_TiW_2 <- lmer(finTiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm_temp)
+lmer_TiW_1 <- lmer(diff_TiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm) 
+lmer_TiW_2 <- lmer(finTiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm)
 summary(lmer_TiW_1)
 summary(lmer_TiW_2)
 
@@ -683,24 +492,24 @@ Anova(lmer_TiW_1, type = "II") #<- ran Type II because interaction was non-signi
 Anova(lmer_TiW_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
-grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm_temp)
+grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_TiW_1, simple = list("SR", "Treat"))
-grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SR + Treat, data = meso_lm_temp)
+grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_TiW_2, simple = list("SR", "Treat"))
 
-#Feeding rate: I'm just going to analyze the final per capita weekly feeding rate. Note that because tank is your unit of replication here, 
+#Feeding rate: I'm  going to analyze the final per capita weekly feeding rate. Note that because tank is your unit of replication here, 
 #you don't need it as a random effect
-lmer_food_temp_1 <- lmer(meanPer_cap ~ SR*Treat + (1|SP), data = meso_food_tank_temp)
+lmer_food_temp_1 <- lmer(meanPer_cap ~ SR*Treat + (1|SP), data = meso_food_tank)
 summary(lmer_food_temp_1)
 plot(lmer_food_temp_1)
 visreg(lmer_food_temp_1, "SR", by = "Treat")
 Anova(lmer_food_temp_1, type = "II") #<- ran with Type II beacuse interaction was non-significant
-grpMeans_food_1 <- emmeans(lmer_food_temp_1, ~ SR*Treat, data = meso_food_tank_temp)
+grpMeans_food_1 <- emmeans(lmer_food_temp_1, ~ SR*Treat, data = meso_food_tank)
 pairs(grpMeans_food_1, simple = list("SR", "Treat"))
 
 #Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
 #Because I have averaged the survival within tanks, tank is now my 'unit of observation' 
-meso_surv_1 <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv_temp)
+meso_surv_1 <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv)
 summary(meso_surv_1)
 
 #Verify assumptions of model (dispersal increases as the variables increase...)
@@ -709,138 +518,8 @@ visreg(meso_surv_1, "SR", by = "Treat")
 Anova(meso_surv_1, type = "III") 
 
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
-grpMeans_surv_1 <- emmeans(meso_surv_1, ~ SR + Treat, data = meso_clean_surv_temp)
+grpMeans_surv_1 <- emmeans(meso_surv_1, ~ SR + Treat, data = meso_clean_surv)
 pairs(grpMeans_surv_1, simple = list("SR", "Treat"))
-
-#Build linear mixed effects models for fact exp----
-#Fixed effects: SR, Temp, pH & intxns
-#Random effects: Tank & Sp (1|Tank), (1|SP)
-lmer_length_1 <- lmer(diff_l ~ SR*Temp + pH + initL + (1|Tank) + (1|SP), data = meso_lm_fact)
-lmer_length_2 <- lmer(finL ~ SR*Temp + pH + initL + (1|Tank) + (1|SP), data = meso_lm_fact)
-summary(lmer_length_1)
-summary(lmer_length_2)
-
-#Verify assumptions of model
-plot(lmer_length_1)
-visreg(lmer_length_1, "SR", by = "Treat")
-visreg(lmer_length_1, "initL", by = "SR", overlay = TRUE)
-visreg(lmer_length_1, "initL", by = "Treat", overlay = TRUE)
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_length_1, type = "III")
-Anova(lmer_length_2, type = "III") 
-
-#Since there are significant interactions, use the following notation for the Tukey posthoc
-grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Temp, data = meso_lm_fact)
-pairs(grpMeans_length_1, simple = list("SR", "Temp"))
-grpMeans_length_2 <- emmeans(lmer_length_2, ~ SR*Temp, data = meso_lm_fact)
-pairs(grpMeans_length_2, simple = list("SR", "Temp"))
-
-#Shell thickness: 
-lmer_thick_1 <- lmer(diff_Th ~ SR*Temp + SR*pH + initTh + (1|Tank), data = meso_lm_fact) #<- (1|SP) was singular fit so removed it
-lmer_thick_2 <- lmer(finTh ~ SR*Temp + SR*pH + initTh + (1|Tank), data = meso_lm_fact)
-summary(lmer_thick_1)
-summary(lmer_thick_2)
-
-#Verify assumptions of model
-plot(lmer_thick_1)
-visreg(lmer_thick_1, "SR", by = "Temp")
-visreg(lmer_thick_1, "iniTh", by = "SR", overlay = TRUE)
-visreg(lmer_thick_1, "initTh", by = "Temp", overlay = TRUE)
-plot(lmer_thick_2)
-visreg(lmer_thick_2, "SP", by = "Temp")
-visreg(lmer_thick_1, "initTh", by = "SP", overlay = TRUE)
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_thick_1, type = "III")
-Anova(lmer_thick_2, type = "III")
-
-#Since there are significant interactions, use the following notation for the Tukey posthoc
-grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR*Temp + SR*pH, data = meso_lm_fact)
-pairs(grpMeans_thick_1, simple = list("SR", "Temp", "pH"))
-grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SR*Temp + SP*pH, data = meso_lm_fact)
-pairs(grpMeans_thick_2, simple = list("SR", "Temp", "pH"))
-
-#Shell weight: importantly, I dropped (1|SP) from this model due to singular fit
-lmer_ShW_1 <- lmer(diff_ShW ~ SR + Temp*pH + (1|Tank) + (1|SP), data = meso_lm_fact) #<- removed interactions & initShW b/c non-significant
-lmer_ShW_2 <- lmer(finShW ~ SR + Temp*pH + initShW + (1|Tank) + (1|SP), data = meso_lm_fact)
-summary(lmer_ShW_1)
-summary(lmer_ShW_2)
-
-#Verify assumptions of model
-plot(lmer_ShW_1)
-visreg(lmer_ShW_1, "SR", by = "Temp")
-visreg(lmer_ShW_1, "initShW", by = "SR", overlay = TRUE)
-visreg(lmer_ShW_1, "initShW", by = "Temp", overlay = TRUE)
-plot(lmer_ShW_2)
-visreg(lmer_ShW_2, "SP", by = "Temp")
-visreg(lmer_ShW_1, "initShW", by = "SP", overlay = TRUE)
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_ShW_1, type = "III") 
-Anova(lmer_ShW_2, type = "III")
-
-#Since there are no significant interactions, use the following notation for the Tukey posthoc
-grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ pH*Temp, data = meso_lm_fact)
-pairs(grpMeans_ShW_1, simple = list("Temp", "pH"))
-grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SP + Temp, data = meso_lm_fact)
-pairs(grpMeans_ShW_2, simple = list("SP", "Temp"))
-
-#Tissue weight
-lmer_TiW_1 <- lmer(diff_TiW ~ SR*Temp + pH + (1|Tank) + (1|SP), data = meso_lm_fact) #<- removed init TiW because non-significant
-lmer_TiW_2 <- lmer(finTiW ~ SR*Temp + pH + initTiW + (1|Tank) + (1|SP), data = meso_lm_fact) 
-summary(lmer_TiW_1)
-summary(lmer_TiW_2)
-
-#Verify assumptions of model
-plot(lmer_TiW_1)
-visreg(lmer_TiW_1, "SR", by = "Temp")
-visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
-visreg(lmer_TiW_1, "initTiW", by = "Temp", overlay = TRUE)
-plot(lmer_TiW_2)
-visreg(lmer_TiW_2, "SP", by = "Temp")
-visreg(lmer_TiW_1, "initTiW", by = "SP", overlay = TRUE)
-
-#Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_TiW_1, type = "III")
-Anova(lmer_TiW_2, type = "III") 
-
-#Since there are significant interactions, use the following notation for the Tukey posthoc
-grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR*Temp + pH, data = meso_lm_fact)
-pairs(grpMeans_TiW_1, simple = list("SR", "Temp", "pH"))
-grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SP*Treat + pH, data = meso_lm_fact)
-pairs(grpMeans_TiW_2, simple = list("SP", "Temp", "pH"))
-
-#Feeding rate: I'm just going to analyze the final per capita weekly feeding rate. Note that because tank is your unit of replication here, 
-#you don't need it as a random effect
-lmer_food_fact_1 <- lmer(meanPer_cap ~ SR*pH + Temp + (1|SP), data = meso_food_tank_fact)
-summary(lmer_food_fact_1)
-plot(lmer_food_fact_1)
-visreg(lmer_food_fact_1, "SR", by = "Temp")
-visreg(lmer_food_fact_1, "SR", by = "pH")
-Anova(lmer_food_fact_1, type = "III")
-grpMeans_food_1 <- emmeans(lmer_food_fact_1, ~ SR*pH + Temp, data = meso_food_tank_fact)
-pairs(grpMeans_food_1, simple = list("SR", "Temp", "pH"))
-
-#Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
-#Because I have averaged the survival within tanks, tank is now my 'unit of observation' 
-meso_surv_1 <- lm(cumsurv ~ SR*Temp + pH, data = meso_clean_surv_fact) #<- removed (1|SP) because singular fit
-summary(meso_surv_1)
-
-#Verify assumptions of model (dispersal increases as the variables increase...)
-plot(meso_surv_1)
-plot(meso_surv_2)
-visreg(lmer_surv_1, "SR", by = "OR")
-visreg(lmer_surv_2, "SP", by = "OS")
-
-Anova(meso_surv_1, type = "III") 
-Anova(meso_surv_2, type = "III") 
-
-#Since there are no positive interactions, use the following notation for the Tukey posthoc
-grpMeans_surv_1 <- emmeans(meso_surv_1, ~ SR + Temp + pH, data = meso_clean_surv_fact)
-pairs(grpMeans_surv_1, simple = list("SR", "Temp", "pH"))
-grpMeans_surv_2 <- emmeans(meso_surv_2, ~ SP + Temp + pH, data = meso_clean_surv_fact)
-pairs(grpMeans_surv_2, simple = list("SP", "Temp", "pH"))
 
 #Remove this at the end of your process once you're decided to not run the survival analysis for anything, since data violate assumptions----
 sfit <- survfit(Surv(days_diff, Dead) ~ SR + Temp, data = meso_surv_temp)
