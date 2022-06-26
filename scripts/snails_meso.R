@@ -404,9 +404,7 @@ rm(initL_aov, initTh_aov, initTiW_aov, initShW_aov)
 #Fixed effects: SR, Treat & intxn
 #Random effects: Tank & Sp (1|Tank), (1|SP)
 lmer_length_1 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm)
-lmer_length_2 <- lmer(finL ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm)
 summary(lmer_length_1)
-summary(lmer_length_2)
 
 #Verify assumptions of model
 plot(lmer_length_1)
@@ -416,86 +414,59 @@ visreg(lmer_length_1, "initL", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_length_1, type = "III")
-Anova(lmer_length_2, type = "III") 
 
 #Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Treat, data = meso_lm)
 pairs(grpMeans_length_1, simple = list("SR", "Treat"))
-grpMeans_length_2 <- emmeans(lmer_length_2, ~ SR*Treat, data = meso_lm)
-pairs(grpMeans_length_2, simple = list("SR", "Treat"))
 
 #Shell thickness: 
 lmer_thick_1 <- lmer(diff_Th ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm) 
-lmer_thick_2 <- lmer(finTh ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm)
 summary(lmer_thick_1)
-summary(lmer_thick_2)
 
 #Verify assumptions of model
 plot(lmer_thick_1)
 visreg(lmer_thick_1, "SR", by = "Treat")
 visreg(lmer_thick_1, "iniTh", by = "SR", overlay = TRUE)
 visreg(lmer_thick_1, "initTh", by = "Treat", overlay = TRUE)
-plot(lmer_thick_2)
-visreg(lmer_thick_2, "SP", by = "Treat")
-visreg(lmer_thick_1, "initTh", by = "SP", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_thick_1, type = "III")
-Anova(lmer_thick_2, type = "III")
 
 #Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_thick_1, simple = list("SR", "Treat"))
-grpMeans_thick_2 <- emmeans(lmer_thick_2, ~ SR*Treat, data = meso_lm)
-pairs(grpMeans_thick_2, simple = list("SR", "Treat"))
 
 #Shell weight:
 lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm) #<- removed initShW because it was non-significant
-lmer_ShW_2 <- lmer(finShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm)
 summary(lmer_ShW_1)
-summary(lmer_ShW_2)
 
 #Verify assumptions of model
 plot(lmer_ShW_1)
 visreg(lmer_ShW_1, "SR", by = "Treat")
-plot(lmer_ShW_2)
-visreg(lmer_ShW_2, "SR", by = "Treat")
-visreg(lmer_ShW_2, "initShW", by = "SR", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_ShW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
-Anova(lmer_ShW_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
 grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_ShW_1, simple = list("SR", "Treat"))
-grpMeans_ShW_2 <- emmeans(lmer_ShW_2, ~ SR + Treat, data = meso_lm)
-pairs(grpMeans_ShW_2, simple = list("SR", "Treat"))
 
 #Tissue weight
 lmer_TiW_1 <- lmer(diff_TiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm) 
-lmer_TiW_2 <- lmer(finTiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm)
 summary(lmer_TiW_1)
-summary(lmer_TiW_2)
 
 #Verify assumptions of model
 plot(lmer_TiW_1)
 visreg(lmer_TiW_1, "SR", by = "Treat")
 visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
 visreg(lmer_TiW_1, "initTiW", by = "Treat", overlay = TRUE)
-plot(lmer_TiW_2)
-visreg(lmer_TiW_2, "SR", by = "Treat")
-visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_TiW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
-Anova(lmer_TiW_2, type = "II") #<- ran Type II because interaction was non-significant with Type III
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
 grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_TiW_1, simple = list("SR", "Treat"))
-grpMeans_TiW_2 <- emmeans(lmer_TiW_2, ~ SR + Treat, data = meso_lm)
-pairs(grpMeans_TiW_2, simple = list("SR", "Treat"))
 
 #Feeding rate: I'm  going to analyze the final per capita weekly feeding rate. Note that because tank is your unit of replication here, 
 #you don't need it as a random effect
@@ -503,9 +474,6 @@ lmer_food_temp_1 <- lmer(meanPer_cap ~ SR*Treat + (1|SP), data = meso_food_tank)
 summary(lmer_food_temp_1)
 plot(lmer_food_temp_1)
 visreg(lmer_food_temp_1, "SR", by = "Treat")
-Anova(lmer_food_temp_1, type = "II") #<- ran with Type II beacuse interaction was non-significant
-grpMeans_food_1 <- emmeans(lmer_food_temp_1, ~ SR*Treat, data = meso_food_tank)
-pairs(grpMeans_food_1, simple = list("SR", "Treat"))
 
 #Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
 #Because I have averaged the survival within tanks, tank is now my 'unit of observation' 

@@ -71,6 +71,13 @@ ind <- seq(1, nrow(diff), by=2)
 diff_sum <- diff[ind, ] %>% 
   summarize(mean_90th_diff = mean(diff), sd_90th_diff = sd(diff))
 
+#Calculate the average variability in each region dueing the summer (May-Sept)
+var_nan <- lighthouse %>% 
+  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
+  filter(station == "Departure Bay, Nanaimo") %>% 
+  group_by(month) %>% 
+  summarize(mean_90th = mean(temp90th), sd_90th = sd(temp90th))
+    
 #Visualize temps from May - Sept
 months <- c(5:10)
 
