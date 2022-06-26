@@ -35,4 +35,4 @@ cal <- ggscatter(reg_clean_cal, x = "SW", y = "DW") +
 
 both <- plot_grid(nan + theme(axis.title.x = element_blank()), cal, nrow = 2)
  
-ggsave(both, file = "plots/supp_figs/FigS3.pdf", height = 8, width = 8, dpi = 300)
+ggsave(both, file = "plots/supp_figs/FigS4_weight_regressions.pdf", height = 8, width = 8, dpi = 300)

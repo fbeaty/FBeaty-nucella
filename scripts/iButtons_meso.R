@@ -313,8 +313,8 @@ rm(DF_T1, DF_T2, DF_T3, DF_T4, DF_T5, DF_T6, DF_T7, DF_T8, DF_T9,
 #Also create a column with the treatments for each tank
 #Remove tanks where all snails died at the start due to temp malfunction: 3, 5, 6,
 #Also classify Tank 16 (which was supposed to be a 12) as a 15 degree treatment because you could never really bring that tank's temp down due to equipment issues
-#Also remove tanks 19, 20 & 22 because their temp data don't match the daily YSI measurements
 #Also remove 2018-08-09 from Tank 19 and 2018-08-06 from Tank 9 because of temp outliers that don't match YSI data 
+#June 2022 update: remove all acidified treatments
 
 all_cleaned <- all %>%
   select(Date, Value, Tank) %>% 
@@ -326,28 +326,22 @@ all_cleaned <- all %>%
          Day = day(Date)) %>% 
   filter(Date != "2018-07-31" & Date != "2018-08-13" & Date!= "2018-08-24" & Date != "2018-09-18") %>% 
   filter(Date > "2018-07-23" & Date <= "2018-09-02",
-         Tank != 3 & Tank != 5 & Tank != 6 & Tank != 19 & Tank != 20 & Tank != 22) %>% 
-  filter(!((Tank == 19 & Date == "2018-08-09" & Value == 30) | (Tank == 19 & Date == "2018-08-09" & Value == 27.0) | 
-             (Tank == 9 & Date == "2018-08-06" & Value == 30.5))) %>% 
-  mutate(Treat = as.factor(ifelse(Tank == 1, "19A",
-                                  ifelse(Tank == 2, "22A",
-                                        ifelse(Tank == 4, "15A", 
-                                               ifelse(Tank == 7, "15A",
-                                                      ifelse(Tank == 8, "22A",
-                                                             ifelse(Tank == 9, "12A",
-                                                                    ifelse(Tank == 10, "19A",
-                                                                          ifelse(Tank == 11, "15A",
-                                                                                ifelse(Tank == 12, "12A", 
-                                                                                      ifelse(Tank == 13, "19A",
-                                                                                            ifelse(Tank == 14, "15A",
-                                                                                                  ifelse(Tank == 15, "22A", 
-                                                                                                        ifelse(Tank == 16, "15A",
-                                                                                                               ifelse(Tank == 17, "15L",
-                                                                                                                     ifelse(Tank == 18, "22L",
-                                                                                                                                  ifelse(Tank == 21, "15L",
-                                                                                                                                        ifelse(Tank == 23, "22L", 
-                                                                                                                                             ifelse(Tank == 24, "15L", 
-                                                                                                                                                  NA))))))))))))))))))))
+         Tank != 3 & Tank != 5 & Tank != 6 & Tank != 17 & Tank != 18 & Tank != 19 & Tank != 20 & Tank != 21 & Tank != 22 & Tank != 23 & Tank != 24) %>% 
+  filter(!(Tank == 9 & Date == "2018-08-06" & Value == 30.5)) %>% 
+  mutate(Treat = as.factor(ifelse(Tank == 1, "19",
+                                  ifelse(Tank == 2, "22",
+                                        ifelse(Tank == 4, "15", 
+                                               ifelse(Tank == 7, "15",
+                                                      ifelse(Tank == 8, "22",
+                                                             ifelse(Tank == 9, "12",
+                                                                    ifelse(Tank == 10, "19",
+                                                                          ifelse(Tank == 11, "15",
+                                                                                ifelse(Tank == 12, "12", 
+                                                                                      ifelse(Tank == 13, "19",
+                                                                                            ifelse(Tank == 14, "15",
+                                                                                                  ifelse(Tank == 15, "22", 
+                                                                                                        ifelse(Tank == 16, "15",
+                                                                                                               NA)))))))))))))))
 
 
 
@@ -369,7 +363,7 @@ treat_meso_iButton <- ggplot(all_treat, aes(Date, avgtemp, fill = Treat)) +
   labs(x = "Date, 2018", y = "Temp (Celsius)") +
   theme_cowplot(16)
 
-ggsave(treat_meso_iButton, file = "plots/iButtons/treat_meso_iButton.pdf", height = 5, width = 9, dpi = 300)
+ggsave(treat_meso_iButton, file = "plots/supp_figs/FigS3_treat_meso_iButton.pdf", height = 5, width = 9, dpi = 300)
 
 #Now create a second set of plots for just the Aug 1 - Sept 2, which you'll use to calculate the temp averages----
 all_treat_subset <- all_treat %>% 

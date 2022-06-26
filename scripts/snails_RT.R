@@ -181,7 +181,7 @@ xaxistitle <- ggdraw() + draw_label("Stage", fontface = "plain", x = 0.43, hjust
 RV_combined_stage_title <- plot_grid(RV_stage, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
 
 #Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
-ggsave(RV_combined_stage_title, file = "plots/snails/RT/RV_stage.pdf", height = 14, width = 12, dpi = 300)
+ggsave(RV_combined_stage_title, file = "plots/supp_figs/FigS5_RV_stage.pdf", height = 14, width = 12, dpi = 300)
 
 
 #Create new dataframe for growth analysis & region visuals with init size, change in growth metrics, and fixed & random effects for every snail----
@@ -580,7 +580,7 @@ comb_init_figs <- plot_grid(init_length + theme(legend.position = "none", axis.t
 xaxistitle <- ggdraw() + draw_label("Initial size", fontface = "plain", x = 0.43, hjust = 0, size = 16)
 comb_init_figs <- plot_grid(comb_init_figs, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
 
-ggsave(comb_init_figs, file = "plots/snails/RT/initial_size.pdf", height = 12, width = 12, dpi = 300)
+ggsave(comb_init_figs, file = "plots/supp_figs/FigS6_initial_size.pdf", height = 12, width = 12, dpi = 300)
 
 #Visualize the change in RVs grouped by OS & SP----
 plot_OS_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){

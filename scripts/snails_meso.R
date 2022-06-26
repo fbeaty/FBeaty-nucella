@@ -224,7 +224,7 @@ xaxistitle <- ggdraw() + draw_label("Stage", fontface = "plain", x = 0.43, hjust
 meso_growth_temp_comb <- plot_grid(meso_stage_temp, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
 
 #Make sure in your caption for this figure you reference that you're visualizing the mean metrics across blocks with sites pooled (i.e. n = 7-8)
-ggsave(meso_growth_temp_comb, file = "plots/snails/meso/meso_stage_temp.pdf", height = 14, width = 12, dpi = 300)
+ggsave(meso_growth_temp_comb, file = "plots/supp_figs/FigS7_meso_stage_temp.pdf", height = 14, width = 12, dpi = 300)
 
 #Create new dataframe for growth analysis with init size, change in growth metrics, and fixed & random effects for every snail----
 #Calculate the difference in growth (this time by ID rather than block, as in previous code), and change labels to initL etc
