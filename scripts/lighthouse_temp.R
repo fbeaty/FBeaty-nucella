@@ -72,19 +72,29 @@ diff_sum <- diff[ind, ] %>%
   summarize(mean_90th_diff = mean(diff), sd_90th_diff = sd(diff))
 
 #Calculate the average variability in each region dueing the summer (May-Sept)
-var_nan <- lighthouse %>% 
-  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
-  filter(station == "Departure Bay, Nanaimo") %>% 
-  group_by(month) %>% 
-  summarize(mean_90th = mean(temp90th), sd_90th = sd(temp90th))
-    
+var_nan <- departure_1 %>% 
+  mutate(station = as.factor(station),
+         year = as.factor(year),
+         month = as.factor(month),
+         date = as.yearmon(paste(year, month), "%Y %m")) %>% 
+  summarize(mean_month = mean(temp), sd_month = sd(temp))
+
+var_cal <- egg_1 %>% 
+  mutate(station = as.factor(station),
+         year = as.factor(year),
+         month = as.factor(month),
+         date = as.yearmon(paste(year, month), "%Y %m")) %>% 
+  summarize(mean_month = mean(temp), sd_month = sd(temp))
+
+meanvar <- var_nan %>% 
+  rbind(var_cal)
 #Visualize temps from May - Sept
-months <- c(5:10)
+months <- c(5:9)
 
 summer <- lighthouse %>% 
   filter(month %in% months)
 
-ggplot(summer, aes(date, temp90th, group = station)) + 
+ggplot(summer, aes(date, avgtemp, group = station)) + 
   geom_line(aes(colour = station), size = 0.7) +
   scale_colour_manual(values = c("coral", "skyblue")) +
   labs(x = "Month", y = "90th percentile SST (°C)") +
