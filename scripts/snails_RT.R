@@ -451,7 +451,7 @@ plot(lmer_ShW_1)
 visreg(lmer_ShW_1, "SR", by = "OR")
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_ShW_1, type = "II")
+Anova(lmer_ShW_1, type = "III")
 
 #Since there are positive interactions, use the following notation for the Tukey posthoc
 grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ OR*SR, data = RV_lm)
