@@ -3,10 +3,6 @@
 #The analysis code is based on Alyssa's code (see slack & scripts folder in this project, jan 25 2022)
 #Last updated by FB Jan 2022
 
-
-#Load packages----
-
-
 #Upload & clean iButton data from data folder----
 #Load & clean ibutton data from Kwak and Pruth
 #Kwak first timeseries (init-mid) using Cass's code (see Slack convo)
@@ -25,7 +21,7 @@ for (i in 1:length(files)) {
 
 #Now add a line that indicates it's Kwak
 DF_K1<- DF_K1 %>% 
-  mutate(SP = "Kwak") %>% 
+  mutate(SP = "Kwakshua") %>% 
   setNames(., c("DT" , "Time" , "Value" , "Temp" , "Date" , "SP"))
 
 #delete any days when the ibuttons were recording in the lab. For Kwak remove first 6 rows, 06-04, 06-05, 
@@ -118,7 +114,7 @@ calvert_df <- rbind(DF_K1, DF_P1) %>%
 all_df <- rbind(nanaimo_df, calvert_df) %>% 
   mutate(TideHeight = ifelse(SP == "Cedar", 1.15, 
                              ifelse(SP == "Heron", 0.925,
-                                    ifelse(SP == "Kwak", 1.30,
+                                    ifelse(SP == "Kwakshua", 1.30,
                                            ifelse(SP == "Pruth", 1.65, ""))))) %>% 
   mutate(date.time = ymd_hms(paste(Date, Time))) %>% 
   select(Date, Time, date.time, SP, Temp, TideHeight)
@@ -166,7 +162,7 @@ all_df_corr <- all_df %>%
 #Nanaimo = 2019-04-11 - 2019-08-12
 
 all_df_corr_cal <- all_df_corr %>% 
-  filter(SP == "Kwak" | SP == "Pruth")
+  filter(SP == "Kwakshua" | SP == "Pruth")
 
 all_df_cal_tides <- merge(all_df_corr_cal, cal_tides, by = "Obs_date") %>% 
   mutate(in.water = ifelse(slev_m > TideHeight, 0, 1))%>% 
@@ -205,7 +201,7 @@ sum_air <- air %>%
   group_by(SP, Date) %>% 
   summarise(avgair=mean(Temp), maxair=max(Temp), sdair=sd(Temp), air90th=quantile(Temp, 0.90), 
             air99th=quantile(Temp, 0.99), air10th=quantile(Temp, 0.10)) %>% 
-  mutate(region = ifelse(c(SP == "Kwak" | SP == "Pruth"), "Calvert", "Nanaimo"),
+  mutate(region = ifelse(c(SP == "Kwakshua" | SP == "Pruth"), "Calvert", "Nanaimo"),
          region = as.factor(region)) %>% 
   ungroup()
 
@@ -213,14 +209,14 @@ sum_water <- water %>%
   group_by(SP, Date) %>% 
   summarise(avgwater=mean(Temp), maxwater=max(Temp), sdwater=sd(Temp), water90th=quantile(Temp, 0.90), 
             water99th=quantile(Temp, 0.99), water10th=quantile(Temp, 0.10)) %>% 
-  mutate(region = ifelse(c(SP == "Kwak" | SP == "Pruth"), "Calvert", "Nanaimo"),
+  mutate(region = ifelse(c(SP == "Kwakshua" | SP == "Pruth"), "Calvert", "Nanaimo"),
          region = as.factor(region)) %>% 
   ungroup()
 
 sum_both <- all_tides %>% 
   group_by(SP, Date) %>% 
   summarize(avgboth=mean(Temp), sdboth=sd(Temp), both90th=quantile(Temp, 0.90)) %>% 
-  mutate(region = ifelse(c(SP == "Kwak" | SP == "Pruth"), "Calvert", "Nanaimo"),
+  mutate(region = ifelse(c(SP == "Kwakshua" | SP == "Pruth"), "Calvert", "Nanaimo"),
          region = as.factor(region)) %>% 
   ungroup()
 
@@ -245,7 +241,7 @@ both_90 <- ggplot(sum_both, aes(Date, both90th, fill = SP)) +
   geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
   geom_hline(yintercept = 22, linetype = "dashed", alpha = 0.8, col = "grey") +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Date", y = "90th percentile temp (°C)", color = "Source Population") +
+  labs(x = "Date", y = "90th percentile temperature (°C)", color = "Outplant site") +
   theme_cowplot(16)+ theme(legend.position = c(0.1, 0.75))
 
 #Sites faceted
@@ -270,7 +266,7 @@ visreg(ancova_model)
 
 #Test whether temp significantly differed across sites within each region
 sum_both_cal <- sum_both %>% 
-  filter(SP == "Kwak" | SP == "Pruth")
+  filter(SP == "Kwakshua" | SP == "Pruth")
 
 sum_both_nan <- sum_both %>% 
   filter(SP == "Cedar" | SP == "Heron")
@@ -283,17 +279,18 @@ ancova_nan <-aov(both90th ~ SP + Date, data = sum_both_nan)
 Anova(ancova_nan, type="II")
 visreg(ancova_nan)
 
-#Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)----
+#Calculate the mean difference between Nan & Cal during the summer (i.e. May - September)----
 diff <- sum_both %>% 
   mutate(month = month(Date)) %>% 
   filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
   group_by(region, month) %>% 
-  summarize(mean_90th = mean(both90th), meanavg = mean(avgboth)) %>% 
+  summarize(mean_90th = mean(both90th), meanavg = mean(avgboth), sdavg = sd(avgboth)) %>% 
   arrange(month) %>% 
   ungroup() %>% 
   group_by(month) %>% 
   mutate(diff_90th = mean_90th - lead(mean_90th, default = first(mean_90th)),
-         diff_avg = meanavg - lead(meanavg, default = first(meanavg))) %>% 
+         diff_avg = meanavg - lead(meanavg, default = first(meanavg)),
+         diff_sd = sdavg - lead(sdavg, default = first(sdavg))) %>% 
   ungroup()
 
 #Remove every even row from diff dataframe, then calculate the mean & sd of the 90th percentile diff
@@ -301,6 +298,13 @@ ind <- seq(1, nrow(diff), by=2)
 diff_sum <- diff[ind, ] %>% 
   summarize(mean_90th_diff = mean(diff_90th), sd_90th_diff = sd(diff_90th),
             mean_avg_diff = mean(diff_avg), sd_avg_diff = sd(diff_avg))
+
+#Calculate the average & sd for mean & 90th at each region
+diff_sd <- sum_both %>% 
+  mutate(month = month(Date)) %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  group_by(region) %>% 
+  summarize(mean_avg = mean(avgboth), sd_avg = sd(avgboth), mean_90th = mean(both90th), sd_90th = sd(both90th))
 
 #Now calculate the difference for the Calvert & Nanaimo sites
 diff_cal <- sum_both_cal %>% 

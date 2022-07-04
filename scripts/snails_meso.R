@@ -299,18 +299,18 @@ plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
     theme_cowplot(16)
 }
 
-length_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in SL (mm)") + 
+length_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell length growth (mm)") + 
   labs(colour = "Source Region", fill = "Source Region") + draw_plot_label("A", 0.4, 11.5, fontface = "plain")
-thick_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ST (mm)") +
+thick_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell thickness growth (mm)") +
   draw_plot_label("B", 0.4, 0.5, fontface = "plain")
-ShW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in ShW (g)")+
+ShW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell weight growth (g)")+
   draw_plot_label("C", 0.4, 0.7, fontface = "plain")
-TiW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in TiW (g)")+
+TiW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Tissue weight growth (g)")+
   draw_plot_label("D", 0.4, 1.4, fontface = "plain")
 SG_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
 Feed_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")+
   draw_plot_label("E", 0.4, 1.4, fontface = "plain")
-Surv_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival(%)")+
+Surv_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)")+
   draw_plot_label("F", 0.4, 100, fontface = "plain")
 
 meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
@@ -326,7 +326,7 @@ meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = 
 xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
 meso_temp_comb_title_SR_box <- plot_grid(meso_temp_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
-ggsave(meso_temp_comb_title_SR_box, file = "plots/snails/meso/Fig_5_meso_temp_SR_box.pdf", height = 8, width = 17, dpi = 300)
+ggsave(meso_temp_comb_title_SR_box, file = "plots/snails/meso/Fig_3_meso_temp_SR_box.pdf", height = 8, width = 17, dpi = 300)
 
 #Visualize change in growth & final phenotype grouped by SR for temp----
 length_temp_SR_box_fin <- plot_temp_box(meso_lm_block, Treat, meanfinL, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Mean SL (mm)") + labs(colour = "Source Region", fill = "Source Region")
@@ -476,24 +476,31 @@ pairs(grpMeans_TiW_1, simple = list("SR", "Treat"))
 
 #Feeding rate: I'm  going to analyze the final per capita weekly feeding rate. Note that because tank is your unit of replication here, 
 #you don't need it as a random effect
-lmer_food_temp_1 <- lmer(meanPer_cap ~ SR*Treat + (1|SP), data = meso_food_tank)
-summary(lmer_food_temp_1)
-plot(lmer_food_temp_1)
-visreg(lmer_food_temp_1, "SR", by = "Treat")
+lmer_food_temp <- lmer(meanPer_cap ~ SR*Treat + (1|SP), data = meso_food_tank)
+lmer_food_temp_2 <- lmer(meanPer_cap ~ SR*Treat + (1|SP) + (1|Tank), data = meso_food_tank)
+
+summary(lmer_food_temp)
+plot(lmer_food_temp)
+visreg(lmer_food_temp, "SR", by = "Treat")
+visreg(lmer_food_temp_2, "SR", by = "Treat")
+
+
+Anova(lmer_food_temp)
+Anova(lmer_food_temp_2, type = "II")
 
 #Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
 #Because I have averaged the survival within tanks, tank is now my 'unit of observation' 
-meso_surv_1 <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv)
-summary(meso_surv_1)
+meso_surv <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv)
+summary(meso_surv)
 
 #Verify assumptions of model (dispersal increases as the variables increase...)
-plot(meso_surv_1)
-visreg(meso_surv_1, "SR", by = "Treat")
-Anova(meso_surv_1, type = "III") 
+plot(meso_surv)
+visreg(meso_surv, "SR", by = "Treat")
+Anova(meso_surv, type = "III") 
 
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
-grpMeans_surv_1 <- emmeans(meso_surv_1, ~ SR + Treat, data = meso_clean_surv)
-pairs(grpMeans_surv_1, simple = list("SR", "Treat"))
+grpMeans_surv <- emmeans(meso_surv, ~ SR + Treat, data = meso_clean_surv)
+pairs(grpMeans_surv, simple = list("SR", "Treat"))
 
 #Remove this at the end of your process once you're decided to not run the survival analysis for anything, since data violate assumptions----
 sfit <- survfit(Surv(days_diff, Dead) ~ SR + Temp, data = meso_surv_temp)
