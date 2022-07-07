@@ -100,3 +100,32 @@ ggplot(summer, aes(date, avgtemp, group = station)) +
   labs(x = "Month", y = "90th percentile SST (°C)") +
   theme_cowplot(16) + theme(legend.position = "top", legend.justification = "right")
 
+#Calculate the number of days where temp > 15 in Nanaimo & Calvert
+fifteen_nan <- departure_1 %>% 
+  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
+  filter(temp > 15)
+nineteen_nan <- departure_1 %>% 
+  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
+  filter(temp > 19)
+summer_nan <- departure_1 %>% 
+  filter(month == 6 | month == 7 | month == 8 | month == 9)
+
+#780/2901 = 27% of the time (annual)
+#780/974 = 75% of the time during the summer temps exceed 15
+#136/974 = 14% of the time temps exceed 19 in the summer
+
+fifteen_cal <- egg_1 %>% 
+  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
+  filter(temp > 15)
+nineteen_cal <- egg_1 %>% 
+  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
+  filter(temp > 19)
+summer_cal <- egg_1 %>% 
+  filter(month == 6 | month == 7 | month == 8 | month == 9)
+
+#94/2398 = 4.0 % of the time in the year
+#94/902 = 10% of the time during the summer
+#temps never exceeded 19 in the summer
+
+plot(fifteen_nan$date, fifteen_nan$temp)
+
