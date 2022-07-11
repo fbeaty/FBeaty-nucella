@@ -473,8 +473,7 @@ grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ OR*SR, data = RV_lm)
 pairs(grpMeans_TiW_1, simple = list("OR", "SR"))
 
 #Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
-#Because I have averaged the survival within blocks, block is now my 'unit of observation' and OS is the only random effect
-lmer_surv_1 <- lmer(cumsurv ~ OR*SR + (1|OS), data = RV_cumsurv_final) #<- removed 1|SP because singular fit
+lmer_surv_1 <- lmer(cumsurv ~ OR*SR +  (1|OS), data = RV_cumsurv_final) #<- removed 1|SP and block because singular fit
 summary(lmer_surv_1)
 #Verify assumptions of model (dispersal increases as the variables increase...)
 plot(lmer_surv_1)

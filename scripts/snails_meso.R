@@ -148,8 +148,11 @@ meso_clean_surv_1 <- meso_clean_surv %>%
   arrange(SR, SP, Treat, Tank, Stage)
 
 meso_clean_surv <- meso_clean_surv_1 %>% 
-  filter(Stage == "Final")
+  filter(Stage == "Final") 
 
+meso_clean_binom <- meso_clean_surv %>% 
+  mutate(n_snl_died = ifelse(n_snl <= 7, 7-n_snl, 8-n_snl))
+    
 #Calculate the average & SD of metrics to visualize across the 2 time periods ----
 #Note: Because submerged weight was only collected in the middle of the experiment, changes to tissue & shell weight are only reflective of
 #the growth between mid & final stages (reference this in figure captions?)
@@ -474,23 +477,17 @@ Anova(lmer_TiW_1, type = "II") #<- ran Type II because interaction was non-signi
 grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_TiW_1, simple = list("SR", "Treat"))
 
-#Feeding rate: I'm  going to analyze the final per capita weekly feeding rate. Note that because tank is your unit of replication here, 
-#you don't need it as a random effect
-lmer_food_temp <- lmer(meanPer_cap ~ SR*Treat + (1|SP), data = meso_food_tank)
-lmer_food_temp_2 <- lmer(meanPer_cap ~ SR*Treat + (1|SP) + (1|Tank), data = meso_food_tank)
+#Feeding rate: I'm  going to analyze the final per capita weekly feeding rate. 
+lmer_food_temp <- lmer(meanPer_cap ~ SR*Treat + (1|SP) + (1|Tank), data = meso_food_tank)
 
 summary(lmer_food_temp)
 plot(lmer_food_temp)
 visreg(lmer_food_temp, "SR", by = "Treat")
-visreg(lmer_food_temp_2, "SR", by = "Treat")
-
 
 Anova(lmer_food_temp)
-Anova(lmer_food_temp_2, type = "II")
 
-#Survival: since these data are proportion, you have to run a generalized mixed-effects model, with the RV_survival df
-#Because I have averaged the survival within tanks, tank is now my 'unit of observation' 
-meso_surv <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv)
+#Survival: 
+meso_surv <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv) #I removed 1|Tank because of singular fit
 summary(meso_surv)
 
 #Verify assumptions of model (dispersal increases as the variables increase...)
