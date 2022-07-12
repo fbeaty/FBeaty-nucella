@@ -1,7 +1,7 @@
 #This script will make a figure with my study sites identified
 
 #Load packages----
-pkgs <- c("sf", "ggplot2", "bcmaps", "dplyr", "tidyverse", "ggspatial", "ggpubr", "cowplot")
+pkgs <- c("sf", "ggplot2", "dplyr", "tidyverse", "ggspatial", "ggpubr", "cowplot")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
@@ -57,7 +57,7 @@ label_cal <- st_sfc(st_point(c(-128.1, 51.3)), crs = 4326)
 label_cal_trans <-st_transform(label_cal, crs = target_crs)
 label_cal_trans_coord <- st_coordinates(label_cal_trans)
 
-label_nan <- st_sfc(st_point(c(-124.05, 49.38)), crs = 4326)
+label_nan <- st_sfc(st_point(c(-123.90, 49.38)), crs = 4326)
 label_nan_trans <-st_transform(label_nan, crs = target_crs)
 label_nan_trans_coord <- st_coordinates(label_nan_trans)
 
@@ -95,7 +95,7 @@ calvert <- ggplot() +
   coord_sf(xlim = disp_win_coord_cal[,'X'], ylim = disp_win_coord_cal[,'Y'],
            expand = FALSE) +
   annotate(geom = "text", x = label_cal_trans_coord[,'X'], y = label_cal_trans_coord[,'Y'], 
-           label = "Calvert Island", fontface = "bold", color = "wheat", size = 5) +
+           label = "Central\nCoast", fontface = "bold", color = "wheat", size = 5) +
   labs(y = "", x = "") +
   theme(panel.background = element_rect(fill = "skyblue4",
                                         color = "skyblue4"),
@@ -112,7 +112,7 @@ nanaimo <- ggplot() +
   coord_sf(xlim = disp_win_coord_nan[,'X'], ylim = disp_win_coord_nan[,'Y'],
            expand = FALSE) +
   annotate(geom = "text", x = label_nan_trans_coord[,'X'], y = label_nan_trans_coord[,'Y'], 
-           label = "Nanaimo", fontface = "bold", color = "wheat", size = 5) +
+           label = "Strait of Georgia", fontface = "bold", color = "wheat", size = 5) +
   labs(y = "", x = "") +
   theme(panel.background = element_rect(fill = "skyblue4",
                                         color = "skyblue4"),
