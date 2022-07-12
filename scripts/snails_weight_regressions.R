@@ -24,14 +24,14 @@ nan <- ggscatter(reg_clean_nan, x = "SW", y = "DW") +
   stat_regline_equation(label.y = 18, aes(label = ..rr.label..)) +
   geom_smooth(method = "lm", se=FALSE, color = "black") +
   facet_wrap(~Site) + 
-  labs(y = "DW (g)")
+  labs(y = "Dry Shell Weight (g)")
 
 cal <- ggscatter(reg_clean_cal, x = "SW", y = "DW") + 
   stat_regline_equation(label.y = 5) +
   stat_regline_equation(label.y = 4.5, aes(label = ..rr.label..)) +
   geom_smooth(method = "lm", se=FALSE, color = "black") +
   facet_wrap(~Site) +
-  labs(y = "DW (g)", x = "SW (g)")
+  labs(y = "Dry Shell Weight (g)", x = "Submerged Weight (g)")
 
 both <- plot_grid(nan + theme(axis.title.x = element_blank()), cal, nrow = 2)
  

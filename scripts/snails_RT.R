@@ -480,6 +480,7 @@ plot(lmer_surv_1)
 visreg(lmer_surv_1, "SR", by = "OR")
 
 Anova(lmer_surv_1, type = "II")
+Anova(lmer_surv_1, type = "III")
 
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
 grpMeans_surv_1 <- emmeans(lmer_surv_1, ~ OR + SR, data = RV_lm)

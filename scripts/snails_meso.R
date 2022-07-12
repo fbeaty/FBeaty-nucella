@@ -63,7 +63,7 @@ meso_clean <- meso_base %>%
                       ifelse(SP == "Heron", heron_reg(SW),
                              ifelse(SP == "Kwak", kwak_reg(SW),
                                     ifelse(SP == "Pruth", pruth_reg(SW), NA)))),
-         SR = as.factor(ifelse(SP == "Cedar" | SP == "Heron", "Nanaimo", "Calvert")),
+         SR = as.factor(ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast")),
          SP = as.factor(SP),
          Stage = as.factor(Stage),
          Treat = as.factor(ifelse(Tank == 9 | Tank == 12, "12",
@@ -123,7 +123,7 @@ meso_food_clean <-meso_feed %>%
                                   ifelse(Tank == 4 | Tank == 7 | Tank == 11 | Tank == 14 | Tank == 16, "15",
                                                 ifelse(Tank == 1 | Tank == 10 | Tank == 13, "19",
                                                        ifelse(Tank == 2 | Tank == 8 | Tank == 15, "22", NA)))))) %>% 
-  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Nanaimo", "Calvert")) %>% 
+  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast")) %>% 
   select(Date, Tank, SR, SP, tank_sp, Treat, Per_cap)
 
 #Now summarize the average feeding rate for each tank_sp
@@ -149,9 +149,6 @@ meso_clean_surv_1 <- meso_clean_surv %>%
 
 meso_clean_surv <- meso_clean_surv_1 %>% 
   filter(Stage == "Final") 
-
-meso_clean_binom <- meso_clean_surv %>% 
-  mutate(n_snl_died = ifelse(n_snl <= 7, 7-n_snl, 8-n_snl))
     
 #Calculate the average & SD of metrics to visualize across the 2 time periods ----
 #Note: Because submerged weight was only collected in the middle of the experiment, changes to tissue & shell weight are only reflective of
@@ -326,7 +323,7 @@ meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = 
                                   NULL,
                                   ncol = 4, nrow = 2, rel_widths = c(1,1,1,0.3), axis = "lb", align = "hv")
 
-xaxistitle_treat <- ggdraw() + draw_label("Treatment", fontface = "plain", x = 0.5, hjust = 0, size = 16)
+xaxistitle_treat <- ggdraw() + draw_label("Temperature °C", fontface = "plain", x = 0.5, hjust = 0, size = 16)
 meso_temp_comb_title_SR_box <- plot_grid(meso_temp_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(meso_temp_comb_title_SR_box, file = "plots/snails/meso/Fig_3_meso_temp_SR_box.pdf", height = 8, width = 17, dpi = 300)
@@ -454,7 +451,7 @@ plot(lmer_ShW_1)
 visreg(lmer_ShW_1, "SR", by = "Treat")
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_ShW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
+Anova(lmer_ShW_1, type = "III") 
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
 grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + Treat, data = meso_lm)
@@ -471,7 +468,7 @@ visreg(lmer_TiW_1, "initTiW", by = "SR", overlay = TRUE)
 visreg(lmer_TiW_1, "initTiW", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
-Anova(lmer_TiW_1, type = "II") #<- ran Type II because interaction was non-significant with Type III
+Anova(lmer_TiW_1, type = "III") 
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
 grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm)
@@ -484,7 +481,7 @@ summary(lmer_food_temp)
 plot(lmer_food_temp)
 visreg(lmer_food_temp, "SR", by = "Treat")
 
-Anova(lmer_food_temp)
+Anova(lmer_food_temp, type = "III")
 
 #Survival: 
 meso_surv <- lmer(cumsurv ~ SR*Treat + (1|SP), data = meso_clean_surv) #I removed 1|Tank because of singular fit
