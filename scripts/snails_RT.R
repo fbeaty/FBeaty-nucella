@@ -50,6 +50,7 @@ RV_alive <- RV_base %>%
   mutate(Date = as.Date(Date, format = "%m-%d-%Y"),
          Stage = factor(Stage, levels = c("Init", "Mid", "Final")),
          SR = as.factor(SR),
+         SR = ifelse(SR == "Nanaimo", "Strait of Georgia", "Central Coast"),
          SP = as.factor(SP),
          OR = as.factor(OR),
          OS = factor(OS, levels = c("Kwak", "Pruth", "Cedar", "Heron")),
@@ -512,10 +513,10 @@ RV_surv <- RV_survival %>%
                                           ifelse(Stage == "Init" & OS == "Pruth", 0,
                                                  ifelse(Stage == "Mid" & OS == "Pruth", 77,
                                                         ifelse(Stage == "Final" & OS == "Pruth", 136, 
-                                                               ifelse(Stage == "Init" & OR == "Nanaimo", 0,
-                                                                      ifelse(Stage == "Mid" & OR == "Nanaimo", 69,
-                                                                             ifelse(Stage == "Final" & OR == "Nanaimo", 125, NA)))))))))) %>% 
-  mutate(SR = ifelse(SR == "Calvert", "CALVERT", "NANAIMO"))
+                                                               ifelse(Stage == "Init" & OR == "Strait of Georgia", 0,
+                                                                      ifelse(Stage == "Mid" & OR == "Strait of Georgia", 69,
+                                                                             ifelse(Stage == "Final" & OR == "Strait of Georgia", 125, NA)))))))))) %>% 
+  mutate(SR = ifelse(SR == "Calvert", "CALVERT", "STRAIT OF GEORGIA"))
 
   
 #Analyse whether source region affects survival in the two outplanted regions 
