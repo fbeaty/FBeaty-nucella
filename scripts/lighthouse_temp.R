@@ -19,7 +19,7 @@ egg_1 <- egg[ , c(1,3)] %>%
   rename("date" = "DATE (YYYY-MM-DD)", "temp" = "TEMPERATURE ( C )") %>% 
   mutate(date = ymd(date),
          temp = as.numeric(temp),
-         station = "Egg Island, Calvert",
+         station = "Egg Island, Central Coast",
          year = year(date),
          month = month(date)) %>% 
   filter(date > "2012-01-01" & date < "2020-01-01", 
@@ -30,7 +30,7 @@ departure_1 <- departure[ , c(1,3)] %>%
   rename("date" = "DATE (YYYY-MM-DD)", "temp" = "TEMPERATURE ( C )") %>% 
   mutate(date = ymd(date),
          temp = as.numeric(temp),
-         station = "Departure Bay, Nanaimo",
+         station = "Departure Bay, Strait of Georgia",
          year = year(date),
          month = month(date)) %>% 
   filter(date > "2012-01-01" & date < "2020-01-01", 
