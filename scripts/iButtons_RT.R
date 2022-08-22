@@ -3,6 +3,12 @@
 #The analysis code is based on Alyssa's code (see slack & scripts folder in this project, jan 25 2022)
 #Last updated by FB Jan 2022
 
+#Load packages----
+pkgs <- c("tidyverse", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
+          "emmeans", "lme4", "RVAideMemoire")
+lapply(pkgs, library, character.only = TRUE)
+rm(pkgs)
+
 #Upload & clean iButton data from data folder----
 #Load & clean ibutton data from Kwak and Pruth
 #Kwak first timeseries (init-mid) using Cass's code (see Slack convo)
@@ -221,7 +227,6 @@ sum_both <- all_tides %>%
   ungroup()
 
 #Visualize temps----
-
 water_90 <- ggplot(sum_water, aes(Date, water90th, fill = SP)) + 
   geom_line (aes(colour = SP), size = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
@@ -250,7 +255,7 @@ water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   theme_bw() + labs(x = "Date", y = "90th percentile temperature, water (°C)") +
   facet_grid(. ~ SP) +
-  my_theme
+  theme_cowplot(16)
 
 ggsave(both_90, file = "plots/iButtons/both_90percentile.pdf", width = 8, height = 6, dpi = 300)
 
@@ -259,6 +264,10 @@ ggsave(both_90, file = "plots/iButtons/both_90percentile.pdf", width = 8, height
 #Load the packages required for this at each stage cause they seem to interact weirdly with one another
 
 library('car')
+region_ibutton_lm <- lmer(both90th ~ Date + region + (1|SP), data = sum_both)
+
+Anova(region_ibutton_lm, type = "II")
+
 ancova_model <- aov(both90th ~ Date + region, data = sum_both)
 Anova(ancova_model, type="II")
 visreg(ancova_model)
