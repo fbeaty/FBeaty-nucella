@@ -53,6 +53,7 @@ RV_alive <- RV_base %>%
          SR = ifelse(SR == "Nanaimo", "Strait of Georgia", "Central Coast"),
          SP = as.factor(SP),
          OR = as.factor(OR),
+         OR = ifelse(OR == "Nanaimo", "Strait of Georgia", "Central Coast"),
          OS = factor(OS, levels = c("Kwak", "Pruth", "Cedar", "Heron")),
          Block = as.factor(Block),
          ShW = ifelse(SP == "CEDAR", cedar_reg(SW), 
@@ -72,6 +73,7 @@ RV_survival <- RV_base %>%
          SR = as.factor(SR),
          SP = as.factor(SP),
          OR = as.factor(OR),
+         OR = ifelse(OR == "Nanaimo", "Strait of Georgia", "Central Coast"),
          OS = as.factor(OS),
          Block = as.factor(Block)) %>% 
   select(Date, Stage, SR, SP, OR, OS, Block, ID, DIED)
@@ -257,21 +259,21 @@ plot_OR_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
 
 #Create boxplots with change in growth
 length_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell length growth (mm)") +
-  labs(colour = "Source Region", fill = "Source Region") + draw_plot_label("A", 0.4, 15, fontface = "plain")
+  labs(colour = "Source Region", fill = "Source Region") + draw_plot_label("D", 0.4, 15, fontface = "plain")
 thick_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell thickness growth (mm)") +
-  draw_plot_label("B", 0.4, 2.4, fontface = "plain")
+  draw_plot_label("E", 0.4, 2.4, fontface = "plain")
 ShW_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell weight growth (g)") +
   draw_plot_label("C", 0.4, 5.2, fontface = "plain")
 TiW_OR_box <- plot_OR_RT_box(RV_lm_block, OR, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Tissue weight growth (g)") +
-  draw_plot_label("D", 0.4, 1.3, fontface = "plain")
+  draw_plot_label("B", 0.4, 1.3, fontface = "plain")
 CSurv_OR_box <- plot_OR_RT_box(RV_cumsurv_final, OR, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)") +
-  draw_plot_label("E", 0.4, 100, fontface = "plain")
+  draw_plot_label("A", 0.4, 100, fontface = "plain")
 
-RV_combined_OR_box <- plot_grid(length_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                thick_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+RV_combined_OR_box <- plot_grid(CSurv_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                TiW_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
                                 ShW_OR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                TiW_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                CSurv_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                length_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                thick_OR_box + theme(legend.position = "none", axis.title.x = element_blank()),
                                 get_legend(length_OR_box),
                                 ncol = 3, nrow = 2, axis = "lb", align = "hv") 
 
@@ -414,7 +416,7 @@ ggplot(RV_lm, aes(Block, diff_l_i, group = SR, colour = SR)) +
 #I chose to model the interactions w/ initL when there was a significant interaction between initL & SR or OR, so I created a multiple regression model
 #according to https://stats.stackexchange.com/questions/281528/dealing-with-model-assumption-violation-homogeneity-of-regression-coefficients
 #If initL or interactions were non-significant (e.g. lmer_length_2), I dropped those terms from the model
-lmer_length_1 <- lmer(diff_l ~ OR*SR + initL*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_length_1 <- lmer(diff_l ~ OR*SR + initL + (1|OS/OS_block) + (1|SP), data = RV_lm)
 summary(lmer_length_1)
 
 #Verify assumptions of model
@@ -429,7 +431,7 @@ grpMeans_length_1 <- emmeans(lmer_length_1, ~ OR*SR, data = RV_lm)
 pairs(grpMeans_length_1, simple = list("OR", "SR"))
 
 #Shell thickness: 
-lmer_thick_1 <- lmer(diff_Th ~ OR*SR + initTh*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_thick_1 <- lmer(diff_Th ~ OR*SR + initTh + (1|OS/OS_block) + (1|SP), data = RV_lm)
 summary(lmer_thick_1)
 
 #Verify assumptions of model (dispersal increases as the variables increase...)
@@ -444,7 +446,7 @@ grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ OR*SR, data = RV_lm)
 pairs(grpMeans_thick_1, simple = list("OR", "SR"))
 
 #Shell weight: 
-lmer_ShW_1 <- lmer(diff_ShW ~ OR*SR + initShW*SR + (1|OS/OS_block) + (1|SP), data = RV_lm)
+lmer_ShW_1 <- lmer(diff_ShW ~ OR*SR + initShW + (1|OS/OS_block) + (1|SP), data = RV_lm)
 summary(lmer_ShW_1)
 
 #Verify assumptions of model (dispersal increases as the variables increase...)
@@ -484,7 +486,7 @@ Anova(lmer_surv_1, type = "II")
 Anova(lmer_surv_1, type = "III")
 
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
-grpMeans_surv_1 <- emmeans(lmer_surv_1, ~ OR + SR, data = RV_lm)
+grpMeans_surv_1 <- emmeans(lmer_surv_1, ~ OR*SR, data = RV_lm)
 pairs(grpMeans_surv_1, simple = list("OR", "SR"))
 
 #Remove all the unneeded objects for survival analysis----

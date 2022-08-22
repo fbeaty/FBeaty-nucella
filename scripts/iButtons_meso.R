@@ -379,11 +379,15 @@ treat_subset<- ggplot(all_treat_subset, aes(Date, avgtemp, fill = Treat)) +
 
 ggsave(treat_subset, file = "plots/iButtons/treat_subset.pdf", height = 5, width = 9, dpi = 300)
 
-#Now calculate the average & sd per treatment for you to put into the table
+#Now calculate the average & sd per treatment for you to put into the table----
 treat_values <- all_treat %>% 
   group_by(Treat) %>% 
   summarize(avgtemp = mean(avgtemp), sdtemp = sd(sdtemp)) %>% 
   ungroup()
+
+max_treat <- all_treat %>% 
+  group_by(Treat) %>% 
+  summarize(maxtemp = max(avgtemp))
 
 treat_subset <- all_treat_subset %>% 
   group_by(Treat) %>% 

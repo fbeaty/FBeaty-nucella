@@ -300,28 +300,28 @@ plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
 }
 
 length_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell length growth (mm)") + 
-  labs(colour = "Source Region", fill = "Source Region") + draw_plot_label("A", 0.4, 11.5, fontface = "plain")
+  labs(colour = "Source Region", fill = "Source Region") + draw_plot_label("E", 0.4, 11.5, fontface = "plain")
 thick_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell thickness growth (mm)") +
-  draw_plot_label("B", 0.4, 0.5, fontface = "plain")
+  draw_plot_label("F", 0.4, 0.5, fontface = "plain")
 ShW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell weight growth (g)")+
-  draw_plot_label("C", 0.4, 0.7, fontface = "plain")
+  draw_plot_label("D", 0.4, 0.7, fontface = "plain")
 TiW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Tissue weight growth (g)")+
-  draw_plot_label("D", 0.4, 1.4, fontface = "plain")
+  draw_plot_label("C", 0.4, 1.4, fontface = "plain")
 SG_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
 Feed_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")+
-  draw_plot_label("E", 0.4, 1.4, fontface = "plain")
+  draw_plot_label("B", 0.4, 1.4, fontface = "plain")
 Surv_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)")+
-  draw_plot_label("F", 0.4, 100, fontface = "plain")
+  draw_plot_label("A", 0.4, 100, fontface = "plain")
 
-meso_temp_comb_SR_box <- plot_grid(length_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
-                                  thick_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
-                                  ShW_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(),  axis.title.x = element_blank()), 
-                                  get_legend(length_temp_SR_box),
-                                  TiW_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  Feed_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
-                                  Surv_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+meso_temp_comb_SR_box <- plot_grid(Surv_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()),
+                                   Feed_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                   TiW_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(),  axis.title.x = element_blank()), 
+                                  get_legend(TiW_temp_SR_box),
+                                  ShW_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  length_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                  thick_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
                                   NULL,
-                                  ncol = 4, nrow = 2, rel_widths = c(1,1,1,0.3), axis = "lb", align = "hv")
+                                  ncol = 4, nrow = 2, rel_widths = c(1,1,1,0.35), axis = "lb", align = "hv")
 
 xaxistitle_treat <- ggdraw() + draw_label("Temperature °C", fontface = "plain", x = 0.5, hjust = 0, size = 16)
 meso_temp_comb_title_SR_box <- plot_grid(meso_temp_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
@@ -443,7 +443,7 @@ grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR + Treat, data = meso_lm)
 pairs(grpMeans_thick_1, simple = list("SR", "Treat"))
 
 #Shell weight:
-lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + (1|Tank) + (1|SP), data = meso_lm) #<- removed initShW because it was non-significant
+lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm) 
 summary(lmer_ShW_1)
 
 #Verify assumptions of model

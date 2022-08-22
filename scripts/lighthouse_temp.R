@@ -46,6 +46,14 @@ lighthouse <- rbind(egg_1, departure_1) %>%
   ungroup() %>% 
   mutate(date = as.yearmon(paste(year, month), "%Y %m"))
 
+lighthouse_annual <- rbind(egg_1, departure_1) %>% 
+  mutate(station = as.factor(station),
+         year = as.factor(year),
+         month = as.factor(month)) %>% 
+  group_by(station, year) %>% 
+  summarize(annltemp = mean(temp), annl_90th = quantile(temp, 0.90)) %>% 
+  ungroup()
+
 #Visualize the data----
 both <- ggplot(lighthouse, aes(date, temp90th, group = station)) + 
   geom_line(aes(colour = station), size = 0.7) +
