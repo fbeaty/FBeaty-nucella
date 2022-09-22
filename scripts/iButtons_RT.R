@@ -257,7 +257,7 @@ water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) +
   facet_grid(. ~ SP) +
   theme_cowplot(16)
 
-ggsave(both_90, file = "plots/iButtons/both_90percentile.pdf", width = 8, height = 6, dpi = 300)
+ggsave(both_90, file = "plots/iButtons/Fig_2_both_90percentile.pdf", width = 8, height = 6, dpi = 300)
 
 #Test whether the 90th percentile is significantly different across regions over time----
 #Use an ancova to test difference with time as the covariate (as per https://www.r-bloggers.com/2021/07/how-to-perform-ancova-in-r/)
@@ -288,8 +288,18 @@ ancova_nan <-aov(both90th ~ SP + Date, data = sum_both_nan)
 Anova(ancova_nan, type="II")
 visreg(ancova_nan)
 
-#Calculate the mean difference between Nan & Cal during the summer (i.e. May - September)----
+#Calculate the mean difference between Nan & Cal during the summer (i.e. May - August)----
+#Shorten dataset to Nanaimo start date and Calvert end date so you're comparing the same range of dates across regions:
+#Start April 12th (i.e. 2019-04-12)
+#Eng August second (i.e. 2019-08-02)
+#THIS IS THE ONE YOU USED IN YOUR PAPER AS OF SEPT 21st
 diff <- sum_both %>% 
+  filter("2019-04-11" < Date & Date < "2019-08-02") %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(region) %>% 
+  summarize(mean_90th = mean(both90th), sd_90th = sd(both90th))
+
+diff_2 <- sum_both %>% 
   mutate(month = month(Date)) %>% 
   filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
   group_by(region, month) %>% 
@@ -301,6 +311,8 @@ diff <- sum_both %>%
          diff_avg = meanavg - lead(meanavg, default = first(meanavg)),
          diff_sd = sdavg - lead(sdavg, default = first(sdavg))) %>% 
   ungroup()
+
+
 
 #Remove every even row from diff dataframe, then calculate the mean & sd of the 90th percentile diff
 ind <- seq(1, nrow(diff), by=2)
