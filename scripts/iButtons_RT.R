@@ -257,7 +257,7 @@ water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) +
   facet_grid(. ~ SP) +
   theme_cowplot(16)
 
-ggsave(both_90, file = "plots/iButtons/Fig_2_both_90percentile.pdf", width = 8, height = 6, dpi = 300)
+ggsave(both_90, file = "plots/iButtons/Fig_3_both_90percentile.pdf", width = 10, height = 8, dpi = 300)
 
 #Test whether the 90th percentile is significantly different across regions over time----
 #Use an ancova to test difference with time as the covariate (as per https://www.r-bloggers.com/2021/07/how-to-perform-ancova-in-r/)
