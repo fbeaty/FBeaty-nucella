@@ -25,7 +25,7 @@ for (i in 1:length(files)) {
   DF_K1 <- rbind(Kwak_1,DF_K1) # add it to your list	
 }	
 
-#Now add a line that indicates it's Kwak
+#Now add a line that indicates it's Kwakshua
 DF_K1<- DF_K1 %>% 
   mutate(SP = "Kwakshua") %>% 
   setNames(., c("DT" , "Time" , "Value" , "Temp" , "Date" , "SP"))
