@@ -1,6 +1,6 @@
 #Visualizing the long-term temperature data at Calvert & Nanaimo
 #Data downloaded from https://open.canada.ca/data/en/dataset/719955f2-bf8e-44f7-bc26-6bd623e82884
-#Last edited Jan 2022
+#Last edited Sept 2022
 
 #Load in necessary packages----
 install.packages("janitor")

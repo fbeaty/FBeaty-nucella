@@ -1,7 +1,5 @@
 #iButtons script, 
-#The cleaning code is based on Cass & my code (see RT_2 folder for more elaborate code, I simplified it here)
-#The analysis code is based on Alyssa's code (see slack & scripts folder in this project, jan 25 2022)
-#Last updated by FB Jan 2022
+#Last updated by FB Sept 2022
 
 #Load packages----
 pkgs <- c("tidyverse", "lubridate", "car", "visreg", "cowplot", "survminer", "survival",
@@ -11,7 +9,7 @@ rm(pkgs)
 
 #Upload & clean iButton data from data folder----
 #Load & clean ibutton data from Kwak and Pruth
-#Kwak first timeseries (init-mid) using Cass's code (see Slack convo)
+#Kwak first timeseries (init-mid) 
 #The Kwak and Pruth data comes from the cleaned folders (I had to change the years for some of the ibuttons
 #which were programmed to start at 2000). For Cedar and Heron the unaltered files are in the 'Original> Combined>Heron or Cedar folders.
 
@@ -128,7 +126,7 @@ all_df <- rbind(nanaimo_df, calvert_df) %>%
 #Export to data folder
 write.csv(all_df, "data/iButtons/all_cleaned.csv")
 
-#Remove objects/variables not needed from hereon----
+#Remove objects/variables not needed from hereonin----
 #Remove unnecessary objects
 rm(calvert_df, Cedar_1, DF_C1, DF_H1, DF_K1, DF_P1, Heron_1, Kwak_1, nanaimo_df, Pruth_1,
    dates_excl, files, files_C1, files_H1, files_P1, i)
