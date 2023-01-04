@@ -179,7 +179,7 @@ meso_growth_tank_sample <- meso_growth_tank %>%
 #Final Calvert Pruth 2 only has 1 snail --> no SD
 #Final Calvert Pruth 22 only has 1 snail --> no SD
 
-#Visualize the RVs over time by SP for temp exp----
+#Supplemental figures: Visualize the RVs over time by SP for temp exp----
 plot_temp_stage <- function(df, x, y, grp, clr.values, lbl.y){
   temp_plot <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
     stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
@@ -287,7 +287,7 @@ meso_temp_sampl <- meso_lm_block %>%
   group_by(SP, Treat) %>% 
   summarize(n_tanks = n())
 
-#Visualize change in growth across treatments grouped by SR for temp exp----
+#Figures 2 & 4: visualize change in growth across treatments grouped by SR for temp exp----
 #The datapoints being visualized are each tank  within each treatment for each SR :) The correct unit of replication! 
 plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
   ggplot(df, aes({{x}}, {{y}}, fill = {{grp}}, colour = {{grp}})) + 
@@ -302,7 +302,8 @@ plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
 length_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell length growth (mm)") + 
   labs(colour = "Source Region", fill = "Source Region") + draw_plot_label("(e)", 0.4, 11.5, fontface = "plain")
 thick_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in shell lip thickness (mm)") +
-  draw_plot_label("(f)", 0.4, 0.5, fontface = "plain")
+  draw_plot_label("(f)", 0.4, 0.5, fontface = "plain") +
+  geom_hline(yintercept=0.0,linetype = "dashed", col = "grey")
 ShW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell weight growth (g)")+
   draw_plot_label("(d)", 0.4, 0.7, fontface = "plain")
 TiW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Tissue weight growth (g)")+

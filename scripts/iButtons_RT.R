@@ -14,7 +14,7 @@ rm(pkgs)
 #which were programmed to start at 2000). For Cedar and Heron the unaltered files are in the 'Original> Combined>Heron or Cedar folders.
 
 DF_K1 <- data.frame()	
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_RT/Cleaned/Combined/Kwak_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="data/iButton_RT/Cleaned/Combined/Kwak_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   Kwak_1<- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -37,7 +37,7 @@ DF_K1 <- DF_K1 %>%
 
 #Now do the same code with the Pruth data sets from the first time point
 DF_P1 <- data.frame()	
-files_P1 <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_RT/Cleaned/Combined/Pruth_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files_P1 <- list.files(path="data/iButton_RT/Cleaned/Combined/Pruth_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files_P1)) {	
   Pruth_1<- read.csv(as.character(files_P1[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -60,7 +60,7 @@ DF_P1 <- DF_P1 %>%
 #Load & clean ibutton data from Heron and Cedar (at Calvert)
 
 DF_H1 <- data.frame()	
-files_H1 <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_RT/Original/Combined/Heron", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files_H1 <- list.files(path="data/iButton_RT/Original/Combined/Heron", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files_H1)) {	
   Heron_1<- read.csv(as.character(files_H1[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 14)	
@@ -85,7 +85,7 @@ DF_H1 <- DF_H1 %>%
 #Now with Cedar! 
 DF_C1 <- data.frame()	
 
-files_C1 <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_RT/Original/Combined/Cedar", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files_C1 <- list.files(path="data/iButton_RT/Original/Combined/Cedar", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files_C1)) {	
   Cedar_1<- read.csv(as.character(files_C1[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 14)	
@@ -256,6 +256,30 @@ water_90_facet<- ggplot(data = sum_water, aes(Date, water90th, fill = SP)) +
   theme_cowplot(16)
 
 ggsave(both_90, file = "plots/iButtons/Fig_3_both_90percentile.pdf", width = 10, height = 8, dpi = 300)
+
+#Now create a new dataframe that's melted (long) and visualize both the mean and 90th percentil----
+sum_long <- sum_both %>% 
+  gather(metric, value, c(avgboth, both90th), factor_key = TRUE) %>% 
+  mutate(metric = fct_relevel(metric, c("both90th", "avgboth")),
+         region = ifelse(region == "Nanaimo", "Strait of Georgia", "Central Coast"),
+         SP = fct_relevel(SP, c("Kwakshua", "Pruth", "Cedar", "Heron")))
+levels(sum_long$metric) <- c("90th percentile", "Mean")
+
+sum_long_facet<- ggplot(data = sum_long, aes(Date, value, colour = SP)) + 
+  geom_line(aes(colour = SP, linetype = metric), size = 0.7) +
+  scale_colour_manual(values = c("skyblue", "skyblue3", "coral", "coral3")) +
+  geom_hline(yintercept = 12, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 15, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 22, linetype = "dashed", alpha = 0.8, col = "grey") +
+  labs(x = "Date", y = "Temperature (°C)", colour = "Outplant site", linetype = "Temperature metric") +
+  facet_wrap(. ~ SP, ncol = 2) +
+  theme_cowplot(16)+ 
+  theme(legend.position = c(0.06, 0.9), legend.direction = "horizontal",
+        strip.background = element_blank(), strip.text.x = element_blank())
+
+ggsave(sum_long_facet, file = "plots/iButtons/Fig_3_90percentil_mean.pdf", width = 10, height = 8, dpi = 300)
+
 
 #Test whether the 90th percentile is significantly different across regions over time----
 #Use an ancova to test difference with time as the covariate (as per https://www.r-bloggers.com/2021/07/how-to-perform-ancova-in-r/)
