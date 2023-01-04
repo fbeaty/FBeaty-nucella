@@ -3,14 +3,16 @@
 #Last updated Jan 2022
 
 #Load packages----
-pkgs <- c("viridis", "dplyr", "lattice", "readr", "MuMIn", "tidyr", "lubridate", "ggplot2", "purrr", "tidyverse", "stringr", "ggpubr")
+pkgs <- c("viridis", "dplyr", "lattice", "readr", "MuMIn", 
+          "lubridate", "ggplot2", "purrr", "cowplot", "stringr", "ggpubr")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
 #Load in csv files from CH 2 analysis folder ----
+#Note: Jan 4 2023 I removed Fiona/School/ from the file path because I changed my Dropbox folder organization
 DF_T1 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T1 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -22,7 +24,7 @@ for (i in 1:length(files)) {
 
 DF_T2 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank2", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank2", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T2 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -34,7 +36,7 @@ for (i in 1:length(files)) {
 
 DF_T3 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank3", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank3", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T3 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -46,7 +48,7 @@ for (i in 1:length(files)) {
 
 DF_T4 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank4", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank4", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T4 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -58,7 +60,7 @@ for (i in 1:length(files)) {
 
 DF_T5 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank5", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank5", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T5 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -70,7 +72,7 @@ for (i in 1:length(files)) {
 
 DF_T6 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank6", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank6", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T6 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -82,7 +84,7 @@ for (i in 1:length(files)) {
 
 DF_T7 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank7", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank7", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T7 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -94,7 +96,7 @@ for (i in 1:length(files)) {
 
 DF_T8 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank8", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank8", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T8 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -106,7 +108,7 @@ for (i in 1:length(files)) {
 
 DF_T9 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank9", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank9", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T9 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -118,7 +120,7 @@ for (i in 1:length(files)) {
 
 DF_T10 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank10", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank10", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T10 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -130,7 +132,7 @@ for (i in 1:length(files)) {
 
 DF_T11 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank11", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank11", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T11 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -142,7 +144,7 @@ for (i in 1:length(files)) {
 
 DF_T12 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank12", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank12", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T12 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -154,7 +156,7 @@ for (i in 1:length(files)) {
 
 DF_T13 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank13", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank13", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T13 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -165,7 +167,7 @@ for (i in 1:length(files)) {
 }
 
 DF_T14 <- data.frame()	
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank14", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank14", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T14 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -177,7 +179,7 @@ for (i in 1:length(files)) {
 
 DF_T15 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank15", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank15", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T15 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -189,7 +191,7 @@ for (i in 1:length(files)) {
 
 DF_T16 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank16", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank16", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T16 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -201,7 +203,7 @@ for (i in 1:length(files)) {
 
 DF_T17 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank17", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank17", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T17 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -213,7 +215,7 @@ for (i in 1:length(files)) {
 
 DF_T18 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank18", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank18", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T18 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -225,7 +227,7 @@ for (i in 1:length(files)) {
 
 DF_T19 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank19", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank19", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T19 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -237,7 +239,7 @@ for (i in 1:length(files)) {
 
 DF_T20 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank20", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank20", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T20 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -249,7 +251,7 @@ for (i in 1:length(files)) {
 
 DF_T21 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank21", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank21", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T21 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -261,7 +263,7 @@ for (i in 1:length(files)) {
 
 DF_T22 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank22", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank22", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T22 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -273,7 +275,7 @@ for (i in 1:length(files)) {
 
 DF_T23 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank23", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank23", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T23 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -285,7 +287,7 @@ for (i in 1:length(files)) {
 
 DF_T24 <- data.frame()	
 
-files <- list.files(path="/Users/fionabeaty/Dropbox/Fiona/School/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank24", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
+files <- list.files(path="/Users/fionabeaty/Dropbox/Chapter 2 - Local Adaptation/Ch2 Data Analysis/iButton_meso/Tank24", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
 for (i in 1:length(files)) {	
   T24 <- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
@@ -347,11 +349,15 @@ all_cleaned <- all %>%
 
 #Now create new dataframe with the summarized temps/treatment----
 #Remove the tanks that jumped at the start of the experiment
+#Change the order of the Treat factor to align with figure results
 all_treat <- all_cleaned %>% 
   group_by(Treat, Year, Month, Day) %>% 
   summarize(avgtemp = mean(Value), sdtemp = sd(Value)) %>% 
-  mutate(Date = ymd(paste(Year, Month, Day))) %>% 
+  mutate(Date = ymd(paste(Year, Month, Day)),
+         Treat = fct_relevel(Treat, c("22", "19", "15", "12"))) %>% 
   ungroup()
+
+str(all_treat)
 
 #Now visualize data across treatments----
 #Set theme aesthetics for font sizes
