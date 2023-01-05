@@ -63,6 +63,23 @@ both <- ggplot(lighthouse, aes(date, temp90th, group = station)) +
 
 ggsave(both, file = "plots/lighthouse/both_lighthouse_stations.pdf", height = 5, width = 9, dpi = 300)
 
+#Now create a new dataframe that's melted (long) and visualize both the mean and 90th percentile----
+sum_long <- lighthouse %>% 
+  gather(metric, value, c(temp90th, avgtemp), factor_key = TRUE)
+levels(sum_long$metric) <- c("90th percentile", "Mean")
+
+sum_long_facet<- ggplot(data = sum_long, aes(date, value, colour = station)) + 
+  geom_line(aes(colour = station, linetype = metric), size = 0.7) +
+  geom_hline(yintercept = 12, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 15, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 22, linetype = "dashed", alpha = 0.8, col = "grey") +
+  scale_colour_manual(values = c("coral", "skyblue")) +
+  labs(x = "Year", y = "Sea surface temperature (°C)", colour = "Station", linetype = "Temperature metric") +
+  theme_cowplot(16) + theme(legend.position = "top", legend.box = "vertical", legend.justification = "right") 
+
+ggsave(sum_long_facet, file = "plots/lighthouse/both_lighthouse_mean90th.pdf", height = 5, width = 9, dpi = 300)
+
 #Calculate the mean difference between Dep & Egg during the summer (i.e. May - September)----
 diff <- lighthouse %>% 
   filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
