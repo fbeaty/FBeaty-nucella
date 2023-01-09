@@ -319,7 +319,8 @@ diff <- sum_both %>%
   filter("2019-04-11" < Date & Date < "2019-08-02") %>% 
   mutate(month = month(Date)) %>% 
   group_by(region) %>% 
-  summarize(mean_90th = mean(both90th), sd_90th = sd(both90th))
+  summarize(mean_90th = mean(both90th), sd_90th = sd(both90th),
+            mean_avg = mean(avgboth), sd_avg = sd(avgboth))
 
 diff_2 <- sum_both %>% 
   mutate(month = month(Date)) %>% 
@@ -334,13 +335,11 @@ diff_2 <- sum_both %>%
          diff_sd = sdavg - lead(sdavg, default = first(sdavg))) %>% 
   ungroup()
 
-
-
 #Remove every even row from diff dataframe, then calculate the mean & sd of the 90th percentile diff
 ind <- seq(1, nrow(diff), by=2)
 diff_sum <- diff[ind, ] %>% 
-  summarize(mean_90th_diff = mean(diff_90th), sd_90th_diff = sd(diff_90th),
-            mean_avg_diff = mean(diff_avg), sd_avg_diff = sd(diff_avg))
+  summarize(mean_90th_diff = mean(mean_90th), sd_90th_diff = sd(mean_90th),
+            mean_avg_diff = mean(mean_avg), sd_avg_diff = sd(mean_avg))
 
 #Calculate the average & sd for mean & 90th at each region
 diff_sd <- sum_both %>% 

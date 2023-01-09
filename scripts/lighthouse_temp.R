@@ -84,17 +84,20 @@ ggsave(sum_long_facet, file = "plots/lighthouse/both_lighthouse_mean90th.pdf", h
 diff <- lighthouse %>% 
   filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
   group_by(station, date) %>% 
-  summarize(mean_90th = mean(temp90th)) %>% 
+  summarize(mean_90th = mean(temp90th),
+            mean_avg = mean(avgtemp)) %>% 
   arrange(date) %>% 
   ungroup() %>% 
   group_by(date) %>% 
-  mutate(diff = mean_90th - lead(mean_90th, default = first(mean_90th))) %>% 
+  mutate(diff_90th = mean_90th - lead(mean_90th, default = first(mean_90th)),
+         diff_avg = mean_avg - lead(mean_avg, default = first(mean_avg))) %>% 
   ungroup()
 
 #Remove every even row from diff dataframe, then calculate the mean & sd of the 90th percentile diff
 ind <- seq(1, nrow(diff), by=2)
 diff_sum <- diff[ind, ] %>% 
-  summarize(mean_90th_diff = mean(diff), sd_90th_diff = sd(diff))
+  summarize(mean_90th_diff = mean(diff_90th), sd_90th_diff = sd(diff_90th),
+            mean_avg_diff = mean(diff_avg), sd_avg_diff = sd(diff_avg))
 
 #Calculate the average variability in each region dueing the summer (May-Sept)
 var_nan <- departure_1 %>% 
@@ -125,7 +128,7 @@ ggplot(summer, aes(date, avgtemp, group = station)) +
   labs(x = "Month", y = "90th percentile SST (°C)") +
   theme_cowplot(16) + theme(legend.position = "top", legend.justification = "right")
 
-#Calculate the number of days where temp > 15 in Nanaimo & Calvert
+#Calculate the number of days where temp > 15 in Nanaimo & Calvert----
 fifteen_nan <- departure_1 %>% 
   filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
   filter(temp > 15)
