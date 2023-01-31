@@ -8,6 +8,8 @@ pkgs <- c("viridis", "dplyr", "lattice", "readr", "MuMIn",
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
 
+#testing this script
+
 #Load in csv files from CH 2 analysis folder ----
 #Note: Jan 4 2023 I removed Fiona/School/ from the file path because I changed my Dropbox folder organization
 DF_T1 <- data.frame()	
