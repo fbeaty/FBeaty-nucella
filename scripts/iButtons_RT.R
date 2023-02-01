@@ -19,6 +19,7 @@ files <- list.files(path="data/iButton_RT/Cleaned/Combined/Kwak_1", pattern="*.c
 for (i in 1:length(files)) {	
   Kwak_1<- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
   Kwak_1$Date <- as.Date(paste(Kwak_1$Date.Time), formate = "%Y-%m-%d")
+  Kwak_1$button <- i
   Kwak_1 <- data.frame(Kwak_1)	
   DF_K1 <- rbind(Kwak_1,DF_K1) # add it to your list	
 }	
@@ -26,7 +27,7 @@ for (i in 1:length(files)) {
 #Now add a line that indicates it's Kwakshua
 DF_K1<- DF_K1 %>% 
   mutate(SP = "Kwakshua") %>% 
-  setNames(., c("DT" , "Time" , "Value" , "Temp" , "Date" , "SP"))
+  setNames(., c("DT" , "Time" , "Value" , "Temp" , "Date" , "SP", "Button"))
 
 #delete any days when the ibuttons were recording in the lab. For Kwak remove first 6 rows, 06-04, 06-05, 
 DF_K1 <- DF_K1 %>% 
@@ -187,7 +188,7 @@ all_tides <- rbind(all_df_cal_tides, all_df_nan_tides) %>%
 #Export files to csv for further analysis
 write.csv(all_tides, "data/iButtons/all_tides.csv")
 
-#Remove objects that aren't needed going forward
+#Remove objects that aren't needed going forward----
 rm(cal_tides, nan_tides, all_df_cal_tides, all_df_corr, all_df_corr_cal,
    all_df_corr_nan, all_df_nan_tides, all_df)
 
@@ -226,19 +227,19 @@ sum_both <- all_tides %>%
 
 #Visualize temps----
 water_90 <- ggplot(sum_water, aes(Date, water90th, fill = SP)) + 
-  geom_line (aes(colour = SP), size = 0.7) +
+  geom_line (aes(colour = SP), linewidth = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(x = "Date", y = "90th percentile temperature, water (°C)", color = "Source Population") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 air_90 <- ggplot(sum_air, aes(Date, air90th, fill = SP)) + 
-  geom_line (aes(colour = SP), size = 0.7) +
+  geom_line (aes(colour = SP), linewidth = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(x = "Date", y = "90th percentile temperature, air (°C)", color = "Source Population") +
   theme_cowplot(16)+ theme(legend.position = c(0.1, 0.75))
 
 both_90 <- ggplot(sum_both, aes(Date, both90th, fill = SP)) + 
-  geom_line (aes(colour = SP), size = 0.7) +
+  geom_line (aes(colour = SP), linewidth = 0.7) +
   geom_hline(yintercept = 12, linetype = "dashed", alpha = 0.8, col = "grey") +
   geom_hline(yintercept = 15, linetype = "dashed", alpha = 0.8, col = "grey") +
   geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
