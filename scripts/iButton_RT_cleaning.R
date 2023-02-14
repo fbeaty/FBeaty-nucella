@@ -189,6 +189,7 @@ air <- march_tides %>%
   filter(in.water == 1)
 
 water <- march_tides %>% 
+  rbind(april_tides) %>% 
   filter(in.water == 0)
 
 ## Summarize values by site & dates & add a column for region
@@ -205,6 +206,16 @@ sum_water <- water %>%
   ungroup()
 
 #Visualise air & water temps!
+ggplot(sum_water, aes(Date, avgwater)) + 
+  geom_point (colour = "skyblue") +
+  labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+ggplot(sum_air, aes(Date, avgair)) + 
+  geom_point (colour = "skyblue") +
+  labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
 air_90 <- ggplot(sum_air, aes(Date, air90th, fill = SP)) + 
   geom_line (linewidth = 0.7) +
   scale_colour_manual(values = "skyblue") +
@@ -216,12 +227,13 @@ water_90 <- ggplot(sum_water, aes(Date, avgwater)) +
   labs(x = "Date", y = "90th percentile temperature, water (°C)", color = "Source Population") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
-ggplot(sum_water, aes(Date, avgwater)) + 
-  geom_point (colour = "skyblue") +
-  labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
-  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+#What if we just visualized the mean hourly temps and then inserted grey bars to visualize high tide----
+sum_hour <- kwak_corr_3 %>% 
+  group_by(Date, Obs_date) %>% 
+  summarise(avgtemp=mean(Temp), maxtemp=max(Temp), sdtemp=sd(Temp), temp90th=quantile(Temp, 0.90)) %>% 
+  ungroup() 
 
-ggplot(sum_air, aes(Date, avgair)) + 
+ggplot(sum_hour, aes(Date, avgtemp)) + 
   geom_point (colour = "skyblue") +
   labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
