@@ -369,7 +369,7 @@ ggplot(july_3, aes(Obs_date, avgtemp)) +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 july_3 <- july_3 %>% 
-  mutate(in.water = ifelse(avgtemp > 15.7, 1, 0))
+  mutate(in.water = ifelse(avgtemp > 15.4, 1, 0))
 
 july_4 <- sum_hour %>% 
   filter(Date > "2019-07-19" & Date < "2019-08-01") 
