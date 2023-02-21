@@ -12,10 +12,10 @@ rm(pkgs)
 #Kwak first timeseries (init-mid) 
 #The Kwak and Pruth data comes from the cleaned folders (I had to change the years for some of the ibuttons
 #which were programmed to start at 2000). For Cedar and Heron the unaltered files are in the 'Original> Combined>Heron or Cedar folders.
-
 DF_K1 <- data.frame()	
 files <- list.files(path="data/iButton_RT/Cleaned/Combined/Kwak_1", pattern="*.csv", full.names=TRUE, recursive=FALSE)	
 
+#Note: because some of the Kwakshua iButtons were off, you added a 'Button' column to be able to adjust files by hours & days
 for (i in 1:length(files)) {	
   Kwak_1<- read.csv(as.character(files[i]),header = TRUE, sep = ",", stringsAsFactors = FALSE, skip = 0)	
   Kwak_1$Date <- as.Date(paste(Kwak_1$Date.Time), formate = "%Y-%m-%d")
@@ -27,13 +27,13 @@ for (i in 1:length(files)) {
 #Now add a line that indicates it's Kwakshua
 DF_K1<- DF_K1 %>% 
   mutate(SP = "Kwakshua") %>% 
-  setNames(., c("DT" , "Time" , "Value" , "Temp" , "Date" , "SP", "Button"))
+  setNames(., c("DT" , "Time" , "Value" , "Temp" , "Date" , "Button", "SP"))
 
 #delete any days when the ibuttons were recording in the lab. For Kwak remove first 6 rows, 06-04, 06-05, 
 DF_K1 <- DF_K1 %>% 
-  filter(Date != "2019-03-20") %>% 
-  filter(Date != "2019-03-21") %>% 
-  filter(Date != "2019-06-04") %>% 
+  #filter(Date != "2019-03-20") %>% 
+  #filter(Date != "2019-03-21") %>% 
+  #filter(Date != "2019-06-04") %>% 
   filter(Date != "2019-06-05")
 
 #Now do the same code with the Pruth data sets from the first time point
@@ -81,7 +81,11 @@ dates_excl <- c("2019-04-04", "2019-04-05", "2019-04-06", "2019-04-07", "2019-04
                 "2019-08-18", "2019-08-19", "2019-08-20", "2019-08-21", "2019-08-22")
 
 DF_H1 <- DF_H1 %>% 
-  filter(!Date %in% dates_excl)
+  mutate(Date  = as.character(Date)) %>% 
+  filter(!Date %in% dates_excl) %>% 
+  mutate(Date = as.Date(Date))
+
+str(DF_H1)
 
 #Now with Cedar! 
 DF_C1 <- data.frame()	
@@ -100,9 +104,390 @@ DF_C1<- DF_C1 %>%
   setNames(., c("DT" , "Value" , "Temp" , "Date" , "SP"))
 
 DF_C1 <- DF_C1 %>% 
-  filter(!Date %in% dates_excl)
+  mutate(Date  = as.character(Date)) %>% 
+  filter(!Date %in% dates_excl) %>% 
+  mutate(Date = as.Date(Date))
 
-#Try cleaning up the Pruth dataframe for the hourly analysis & separation into water & air----
+#Kwak: Clean up Kwak dataframe for hourly analysis----
+Kwak <- DF_K1 %>% 
+  #filter(Date != "2019-03-20") %>% 
+  #filter(Date != "2019-03-21") %>% 
+  #filter(Date != "2019-06-04") %>% 
+  filter(Date != "2019-06-05") %>% 
+  mutate(Time_2 = parse_time(Time, "%I:%M:%S %p")) %>% 
+  mutate(Time = format(Time_2, format = "%H:%M:%S")) %>% 
+  select(Date, Time, SP, Temp, Button) %>% 
+  mutate(TideHeight = 1.20) %>% 
+  mutate(date.time = ymd_hms(paste(Date, Time))) %>% 
+  select(Date, Time, date.time, SP, Temp, TideHeight, Button)
+
+#Combine the datasets by the time column but the all_df reports time at different minute increments than the 
+#exported csv, which reports on the 00 min. So, I rounded the minutes to the hour by replacing them with '00'
+kwak_corr <- Kwak %>% 
+  mutate(time_corr = format(date.time, format = "%H"),
+         time_corr = paste0(time_corr, ":00:00"),
+         time_corr = format(time_corr, format = "%H:%M:%S"),
+         Obs_date = as.POSIXct(paste(Date, time_corr)),
+         ID = row_number()) %>% 
+  select(SP, Temp, TideHeight, Date, Time, date.time, Obs_date, Button, ID)
+
+#Kwak: Adjust the iButtons with incorrect dates/hours----
+#The following Buttons are off by the following amounts:
+#Buttons 3 and 7 are 11 hours ahead --> have to subtract 11 hours from the Time and Date columns
+#Buttons 2 and 6 were measuring in the second half but dates were in the first half so I added 77 days
+#I adjusted the hours for 2, 6, 10, and 13 so that their high tides align
+hrs <- hours(11)
+hrs_2_6 <- hours(10)
+hrs_13 <- hours(1)
+days_2_6 <- days(77)
+
+kwak_corr_1 <- kwak_corr %>% 
+  mutate(Obs_date = if_else(Button == 7, Obs_date - hrs, 
+                            if_else(Button == 3, Obs_date - hrs, Obs_date)),
+         Date = if_else(Button == 7, as.Date(ymd_hms(Obs_date)), 
+                        if_else(Button == 3, as.Date(ymd_hms(Obs_date)), Date))) 
+
+#Now adjust the days for 2 and 6
+kwak_corr_2 <- kwak_corr_1 %>% 
+  mutate(Obs_date = if_else(Button == 2, Obs_date + days_2_6, 
+                            if_else(Button == 6, Obs_date + days_2_6, Obs_date)),
+         Date = if_else(Button == 2, as.Date(ymd_hms(Obs_date)), 
+                        if_else(Button == 6, as.Date(ymd_hms(Obs_date)), Date)))
+
+#Now adjust the hours for 13
+kwak_corr_3 <- kwak_corr_2 %>% 
+  mutate(Obs_date = if_else(Button == 2, Obs_date - hrs_2_6, 
+                            if_else(Button == 6, Obs_date - hrs_2_6,
+                                    if_else(Button == 13, Obs_date - hrs_13, Obs_date))),
+         Date = if_else(Button == 2, as.Date(ymd_hms(Obs_date)), 
+                        if_else(Button == 6, as.Date(ymd_hms(Obs_date)),
+                                if_else(Button == 13, as.Date(ymd_hms(Obs_date)), Date)))) %>% 
+  filter(Date > "2019-03-20" & Date < "2019-08-03")
+
+ggplot(kwak_corr_3, aes(Obs_date, Temp, fill = Button)) + 
+  geom_point (aes(colour = Button)) +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+#Kwak: What if we just visualized the mean hourly temps and then inserted grey bars to visualize high tide----
+sum_hour <- kwak_corr_3 %>% 
+  group_by(Date, Obs_date) %>% 
+  summarise(avgtemp=mean(Temp), maxtemp=max(Temp), sdtemp=sd(Temp), temp90th=quantile(Temp, 0.90)) %>% 
+  ungroup() 
+
+ggplot(sum_hour, aes(Date, avgtemp)) + 
+  geom_point (colour = "skyblue") +
+  labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+#Kwak: Go through each month and add 0 if average hourly iButton is under water and 1 if it's in the air based on temperature data ----
+#Start with March
+march_1 <- sum_hour %>% 
+  filter(Date > "2019-03-01" & Date < "2019-03-26")
+
+ggplot(march_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 8.8, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 7, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+march_1 <- march_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 8.8, 1, 
+                           ifelse(avgtemp < 7, 1, 0)))
+
+march_2 <- sum_hour %>% 
+  filter(Date > "2019-03-25" & Date < "2019-03-27") 
+
+ggplot(march_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 9.2, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+march_2 <- march_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 9.2, 1, 0))
+
+march_3 <- sum_hour %>% 
+  filter(Date > "2019-03-26" & Date < "2019-04-01") %>% 
+  mutate(in.water = 0)
+
+march_tides <- rbind(march_1, march_2, march_3)
+
+#Now try with April
+april <- sum_hour %>% 
+  filter(Date > "2019-03-31" & Date < "2019-05-01")
+
+ggplot(april, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_1 <- april %>% 
+  filter(Date > "2019-04-06" & Date < "2019-04-14")
+
+ggplot(april_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 9.3, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_1 <- april_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 9.3, 1, 0))
+
+april_2 <- sum_hour %>% 
+  filter(Date > "2019-04-13" & Date < "2019-04-22") 
+
+ggplot(april_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 9.3, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 7.7, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_2 <- april_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 9.3, 1, 
+                           ifelse(avgtemp < 7.7, 1, 0)))
+
+april_3 <- sum_hour %>% 
+  filter(Date > "2019-04-21" & Date < "2019-04-28") 
+
+ggplot(april_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 10.1, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_3 <- april_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 10.1, 1, 0))
+
+april_4 <- sum_hour %>% 
+  filter(Date > "2019-04-27" & Date < "2019-05-01") %>% 
+  mutate(in.water = 0)
+
+april_5 <- sum_hour %>% 
+  filter(Date > "2019-03-31" & Date < "2019-04-07") %>% 
+  mutate(in.water = 0)
+
+april_tides <- rbind(april_1, april_2, april_3, april_4, april_5)
+
+#Now May!
+may <- sum_hour %>% 
+  filter(Date > "2019-04-30" & Date < "2019-06-01")
+
+ggplot(may, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_1 <- may %>% 
+  filter(Date > "2019-04-30" & Date < "2019-05-9")
+
+ggplot(may_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 10.8, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_1 <- may_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 10.8, 1, 0))
+
+may_2 <- sum_hour %>% 
+  filter(Date > "2019-05-08" & Date < "2019-05-19") 
+
+ggplot(may_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 12.4, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_2 <- may_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 12.4, 1, 0))
+
+may_3 <- sum_hour %>% 
+  filter(Date > "2019-05-18" & Date < "2019-05-27") 
+
+ggplot(may_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 13.3, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_3 <- may_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 13.3, 1, 0))
+
+may_4 <- sum_hour %>% 
+  filter(Date > "2019-05-26" & Date < "2019-05-31") %>% 
+  mutate(in.water = 0)
+
+ggplot(may_4, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_tides <- rbind(may_1, may_2, may_3, may_4)
+
+#Now June!
+june <- sum_hour %>% 
+  filter(Date > "2019-05-31" & Date < "2019-07-01")
+
+ggplot(june, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_1 <- june %>% 
+  filter(Date > "2019-05-31" & Date < "2019-06-11")
+
+ggplot(june_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 13.3, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_1 <- june_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 13.3, 1, 0))
+
+june_2 <- sum_hour %>% 
+  filter(Date > "2019-06-10" & Date < "2019-06-14") 
+
+ggplot(june_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 14.3, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_2 <- june_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 14.3, 1, 0))
+
+june_3 <- sum_hour %>% 
+  filter(Date > "2019-06-13" & Date < "2019-06-17") 
+
+ggplot(june_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 14.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 12.8, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_3 <- june_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 14.5, 1, 0))
+
+june_4 <- sum_hour %>% 
+  filter(Date > "2019-06-16" & Date < "2019-06-24") 
+
+ggplot(june_4, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 14, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_4 <- june_4 %>% 
+  mutate(in.water = ifelse(avgtemp > 14, 1, 0))
+
+june_5 <- sum_hour %>% 
+  filter(Date > "2019-06-23" & Date < "2019-07-01") 
+
+ggplot(june_5, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_5 <- june_5 %>% 
+  mutate(in.water =  0)
+
+june_tides <- rbind(june_1, june_2, june_3, june_4, june_5)
+
+#Now July!
+july <- sum_hour %>% 
+  filter(Date > "2019-06-30" & Date < "2019-08-01")
+
+ggplot(july, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_1 <- july %>% 
+  filter(Date > "2019-07-04" & Date < "2019-07-10")
+
+ggplot(july_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 15.1, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_1 <- july_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 15.1, 1, 0))
+
+july_2 <- sum_hour %>% 
+  filter(Date > "2019-07-09" & Date < "2019-07-16") 
+
+ggplot(july_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 17.3, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_2 <- july_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 17.3, 1, 0))
+
+july_3 <- sum_hour %>% 
+  filter(Date > "2019-07-15" & Date < "2019-07-20") 
+
+ggplot(july_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 15.49, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_3 <- july_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 15.49, 1, 0))
+
+july_4 <- sum_hour %>% 
+  filter(Date > "2019-07-19" & Date < "2019-08-01") 
+
+ggplot(july_4, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 17, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_4 <- july_4 %>% 
+  mutate(in.water = ifelse(avgtemp > 17, 1, 0))
+
+july_5 <- sum_hour %>% 
+  filter(Date > "2019-06-30" & Date < "2019-07-05") %>% 
+  mutate(in.water =  0)
+
+july_tides <- rbind(july_1, july_2, july_3, july_4, july_5)
+
+#Now august!
+august <- sum_hour %>% 
+  filter(Date > "2019-07-31" & Date < "2019-09-01") %>% 
+  mutate(in.water = ifelse(avgtemp > 15.8, 1, 0))
+
+ggplot(august, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 15.8, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+august_tides <- rbind(august)
+
+#Kwak: Now combine the monthly datasets and visualize with different colours for air and water----
+comb_months_k <- march_tides %>% 
+  rbind(april_tides, may_tides, june_tides, july_tides, august_tides) %>% 
+  mutate(in.water = factor(ifelse(in.water == 0, "water", "air")),
+         SP = "Kwakshua") 
+
+ggplot(comb_months_k, aes(Obs_date, avgtemp, colour = in.water)) + 
+  geom_point () +
+  scale_colour_manual(values = c("grey84", "skyblue")) +
+  #geom_line(aes(group = "all")) +
+  labs(x = "Date", y = "temperature (°C)", colour = "medium") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+#Pruth: Clean up the Pruth dataframe for the hourly analysis & separation into water & air----
 #delete any days when the ibuttons were recording in the lab.
 #Separate the date into date and time, add tidal height column
 Pruth <- DF_P1 %>% 
@@ -127,7 +512,7 @@ ggplot(pruth_corr, aes(Obs_date, Temp)) +
   labs(x = "Date", y = "temperature (°C)") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
-#What if we just visualized the mean hourly temps and then inserted grey bars to visualize high tide----
+#Pruth: What if we just visualized the mean hourly temps and then inserted grey bars to visualize high tide----
 sum_hour_p <- pruth_corr %>% 
   group_by(Date, Obs_date) %>% 
   summarise(avgtemp=mean(Temp), maxtemp=max(Temp), sdtemp=sd(Temp), temp90th=quantile(Temp, 0.90)) %>% 
@@ -138,7 +523,7 @@ ggplot(sum_hour_p, aes(Date, avgtemp)) +
   labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
-#Go through each month and add 0 if average hourly iButton is under water and 1 if it's in the air based on temperature data ----
+#Pruth: Go through each month and add 0 if average hourly iButton is under water and 1 if it's in the air based on temperature data ----
 #Start with March
 march_1 <- sum_hour_p %>% 
   filter(Date > "2019-03-01" & Date < "2019-03-27")
@@ -420,10 +805,254 @@ july_tides <- rbind(july_1, july_2, july_3, july_4, july_5)
 
 #There is only August 1st for Pruth so I included it in July
 
-#Now combine the monthly datasets and visualize with different colours for air and water----
-comb_months <- march_tides %>% 
+#Pruth: Now combine the monthly datasets and visualize with different colours for air and water----
+comb_months_p <- march_tides %>% 
   rbind(april_tides, may_tides, june_tides, july_tides) %>% 
-  mutate(in.water = factor(ifelse(in.water == 0, "water", "air"))) 
+  mutate(in.water = factor(ifelse(in.water == 0, "water", "air")),
+         SP = "Pruth") 
+
+ggplot(comb_months_p, aes(Obs_date, avgtemp, colour = in.water)) + 
+  geom_point () +
+  scale_colour_manual(values = c("grey84", "skyblue")) +
+  #geom_line(aes(group = "all")) +
+  labs(x = "Date", y = "temperature (°C)", colour = "medium") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+#Heron: Clean up the Heron dataframe for the hourly analysis & separation into water & air----
+#delete any days when the ibuttons were recording in the lab.
+#Separate the date into date and time, add tidal height column
+heron <- DF_H1 %>% 
+  mutate(test = parse_date_time(DT, "%d/%m/%y %I:%M:%S %p")) %>% 
+  mutate(Time = format(test, format = "%H:%M:%S")) %>% 
+  select(Date, Time, SP, Temp) %>% 
+  mutate(date.time = ymd_hms(paste(Date, Time))) %>% 
+  select(Date, Time, date.time, SP, Temp)
+
+#Combine the datasets by the time column but the all_df reports time at different minute increments than the 
+#exported csv, which reports on the 00 min. So, I rounded the minutes to the hour by replacing them with '00'
+heron_corr <- heron %>% 
+  mutate(time_corr = format(date.time, format = "%H"),
+         time_corr = paste0(time_corr, ":00:00"),
+         time_corr = format(time_corr, format = "%H:%M:%S"),
+         Obs_date = as.POSIXct(paste(Date, time_corr))) %>% 
+  select(SP, Temp, Date, Time, date.time, Obs_date)
+
+ggplot(heron_corr, aes(Obs_date, Temp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+#Heron: What if we just visualized the mean hourly temps and then inserted grey bars to visualize high tide----
+sum_hour_h <- heron_corr %>% 
+  group_by(Date, Obs_date) %>% 
+  summarise(avgtemp=mean(Temp), maxtemp=max(Temp), sdtemp=sd(Temp), temp90th=quantile(Temp, 0.90)) %>% 
+  ungroup() 
+
+ggplot(sum_hour_h, aes(Date, avgtemp)) + 
+  geom_point (colour = "skyblue") +
+  labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+#Heron: Go through each month and add 0 if average hourly iButton is under water and 1 if it's in the air based on temperature data ----
+#Now try with April
+april <- sum_hour_h %>% 
+  filter(Date > "2019-03-31" & Date < "2019-05-01")
+
+ggplot(april, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_1 <- april %>% 
+  filter(Date > "2019-03-31" & Date < "2019-04-20")
+
+ggplot(april_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 11, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_1 <- april_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 11, 1, 0))
+
+april_2 <- sum_hour_h %>% 
+  filter(Date > "2019-04-19" & Date < "2019-04-28") 
+
+ggplot(april_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 11.3, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_2 <- april_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 11.3, 1, 0))
+
+april_3 <- sum_hour_h %>% 
+  filter(Date > "2019-04-27" & Date < "2019-05-01") %>% 
+  mutate(in.water = 0)
+
+april_tides <- rbind(april_1, april_2, april_3)
+
+#Now May!
+may <- sum_hour_h %>% 
+  filter(Date > "2019-04-30" & Date < "2019-06-01")
+
+ggplot(may, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_1 <- may %>% 
+  filter(Date > "2019-04-30" & Date < "2019-05-16")
+
+ggplot(may_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 14.8, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_1 <- may_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 14.8, 1, 0))
+
+may_2 <- sum_hour_h %>% 
+  filter(Date > "2019-05-15" & Date < "2019-05-26") 
+
+ggplot(may_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 16, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_2 <- may_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 16, 1, 0))
+
+may_3 <- sum_hour_h %>% 
+  filter(Date > "2019-05-25" & Date < "2019-06-01") 
+
+ggplot(may_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 16.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_3 <- may_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 16.5, 1, 0))
+
+may_tides <- rbind(may_1, may_2, may_3)
+
+#Now June!
+june <- sum_hour_h %>% 
+  filter(Date > "2019-05-31" & Date < "2019-07-01")
+
+ggplot(june, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_1 <- june %>% 
+  filter(Date > "2019-05-31" & Date < "2019-06-11")
+
+ggplot(june_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 17.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_1 <- june_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 17.5, 1, 0))
+
+june_2 <- sum_hour_h %>% 
+  filter(Date > "2019-06-10" & Date < "2019-06-18") 
+
+ggplot(june_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 18.7, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_2 <- june_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 18.7, 1, 0))
+
+june_3 <- sum_hour_h %>% 
+  filter(Date > "2019-06-17" & Date < "2019-06-23") 
+
+ggplot(june_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 17.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_3 <- june_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 17.5, 1, 0))
+
+june_4 <- sum_hour_h %>% 
+  filter(Date > "2019-06-22" & Date < "2019-07-01") 
+
+ggplot(june_4, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 18.9, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_4 <- june_4 %>% 
+  mutate(in.water = ifelse(avgtemp > 18.9, 1, 0))
+
+june_tides <- rbind(june_1, june_2, june_3, june_4)
+
+#Now July!
+july <- sum_hour_h %>% 
+  filter(Date > "2019-06-30" & Date < "2019-08-01")
+
+ggplot(july, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_1 <- july %>% 
+  filter(Date > "2019-06-30" & Date < "2019-07-22")
+
+ggplot(july_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 18.4, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_1 <- july_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 18.4, 1, 0))
+
+july_2 <- sum_hour_h %>% 
+  filter(Date > "2019-07-21" & Date < "2019-08-01") 
+
+ggplot(july_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 20, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_2 <- july_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 20, 1, 0))
+
+july_tides <- rbind(july_1, july_2)
+
+#Now aug!
+aug <- sum_hour_h %>% 
+  filter(Date > "2019-07-31" & Date < "2019-09-01")
+
+ggplot(aug, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 18.7, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+aug <- aug %>% 
+  mutate(in.water = ifelse(avgtemp > 18.7, 1, 0))
+
+aug_tides <- rbind(aug)
+#Heron: Now combine the monthly datasets and visualize with different colours for air and water----
+comb_months_h <- april_tides %>% 
+  rbind(may_tides, june_tides, july_tides, aug_tides) %>% 
+  mutate(in.water = factor(ifelse(in.water == 0, "water", "air")),
+         SP = "Heron") 
 
 ggplot(comb_months, aes(Obs_date, avgtemp, colour = in.water)) + 
   geom_point () +
@@ -432,28 +1061,348 @@ ggplot(comb_months, aes(Obs_date, avgtemp, colour = in.water)) +
   labs(x = "Date", y = "temperature (°C)", colour = "medium") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
-comb_water <- comb_months %>% 
+#Cedar: Clean up the Cedar dataframe for the hourly analysis & separation into water & air----
+#delete any days when the ibuttons were recording in the lab.
+#Separate the date into date and time, add tidal height column
+Cedar <- DF_C1 %>% 
+  mutate(test = parse_date_time(DT, "%d/%m/%y %I:%M:%S %p")) %>% 
+  mutate(Time = format(test, format = "%H:%M:%S")) %>% 
+  select(Date, Time, SP, Temp) %>% 
+  mutate(date.time = ymd_hms(paste(Date, Time))) %>% 
+  select(Date, Time, date.time, SP, Temp)
+
+#Combine the datasets by the time column but the all_df reports time at different minute increments than the 
+#exported csv, which reports on the 00 min. So, I rounded the minutes to the hour by replacing them with '00'
+Cedar_corr <- Cedar %>% 
+  mutate(time_corr = format(date.time, format = "%H"),
+         time_corr = paste0(time_corr, ":00:00"),
+         time_corr = format(time_corr, format = "%H:%M:%S"),
+         Obs_date = as.POSIXct(paste(Date, time_corr))) %>% 
+  select(SP, Temp, Date, Time, date.time, Obs_date)
+
+ggplot(Cedar_corr, aes(Obs_date, Temp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+#Cedar: What if we just visualized the mean hourly temps and then inserted grey bars to visualize high tide----
+sum_hour_c <- Cedar_corr %>% 
+  group_by(Date, Obs_date) %>% 
+  summarise(avgtemp=mean(Temp), maxtemp=max(Temp), sdtemp=sd(Temp), temp90th=quantile(Temp, 0.90)) %>% 
+  ungroup() 
+
+ggplot(sum_hour_c, aes(Date, avgtemp)) + 
+  geom_point (colour = "skyblue") +
+  labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+#Cedar: Go through each month and add 0 if average hourly iButton is under water and 1 if it's in the air based on temperature data ----
+#Now try with April
+april <- sum_hour_c %>% 
+  filter(Date > "2019-03-31" & Date < "2019-05-01")
+
+ggplot(april, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_1 <- april %>% 
+  filter(Date > "2019-03-31" & Date < "2019-04-20")
+
+ggplot(april_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 10.8, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 8.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_1 <- april_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 10.8, 1, 
+                           ifelse(avgtemp < 8.5, 1, 0)))
+
+april_2 <- sum_hour_c %>% 
+  filter(Date > "2019-04-19" & Date < "2019-05-01") 
+
+ggplot(april_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 11.6, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+april_2 <- april_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 11.6, 1, 0))
+
+april_tides <- rbind(april_1, april_2)
+
+#Now May!
+may <- sum_hour_c %>% 
+  filter(Date > "2019-04-30" & Date < "2019-06-01")
+
+ggplot(may, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_1 <- may %>% 
+  filter(Date > "2019-04-30" & Date < "2019-05-04")
+
+ggplot(may_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 14.8, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_1 <- may_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 14.8, 1, 0))
+
+may_2 <- sum_hour_c %>% 
+  filter(Date > "2019-05-03" & Date < "2019-05-10") 
+
+ggplot(may_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 13, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_2 <- may_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 13, 1, 0))
+
+may_3 <- sum_hour_c %>% 
+  filter(Date > "2019-05-09" & Date < "2019-05-21") 
+
+ggplot(may_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 16.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_3 <- may_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 16.5, 1, 0))
+
+may_4 <- sum_hour_c %>% 
+  filter(Date > "2019-05-20" & Date < "2019-05-26") 
+
+ggplot(may_4, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 15.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_4 <- may_4 %>% 
+  mutate(in.water = ifelse(avgtemp > 15.5, 1, 0))
+
+may_5 <- sum_hour_c %>% 
+  filter(Date > "2019-05-25" & Date < "2019-06-01") 
+
+ggplot(may_5, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+may_5 <- may_5 %>% 
+  mutate(in.water = ifelse(avgtemp > 19, 1, 0))
+
+may_tides <- rbind(may_1, may_2, may_3, may_4, may_5)
+
+#Now June!
+june <- sum_hour_c %>% 
+  filter(Date > "2019-05-31" & Date < "2019-07-01")
+
+ggplot(june, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_1 <- june %>% 
+  filter(Date > "2019-05-31" & Date < "2019-06-12")
+
+ggplot(june_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 17.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_1 <- june_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 17.5, 1, 0))
+
+june_2 <- sum_hour_c %>% 
+  filter(Date > "2019-06-11" & Date < "2019-06-24") 
+
+ggplot(june_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 19.2, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_2 <- june_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 19.2, 1, 0))
+
+june_3 <- sum_hour_c %>% 
+  filter(Date > "2019-06-23" & Date < "2019-07-01") 
+
+ggplot(june_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 20.3, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+june_3 <- june_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 20.3, 1, 0))
+
+june_tides <- rbind(june_1, june_2, june_3)
+
+#Now July!
+july <- sum_hour_c %>% 
+  filter(Date > "2019-06-30" & Date < "2019-08-01")
+
+ggplot(july, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_1 <- july %>% 
+  filter(Date > "2019-06-30" & Date < "2019-07-07")
+
+ggplot(july_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 21, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_1 <- july_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 21, 1, 0))
+
+july_2 <- sum_hour_c %>% 
+  filter(Date > "2019-07-06" & Date < "2019-07-22") 
+
+ggplot(july_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 19.6, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_2 <- july_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 19.6, 1, 0))
+
+july_3 <- sum_hour_c %>% 
+  filter(Date > "2019-07-21" & Date < "2019-08-01") 
+
+ggplot(july_3, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 20.6, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_3 <- july_3 %>% 
+  mutate(in.water = ifelse(avgtemp > 20.6, 1, 0))
+
+july_tides <- rbind(july_1, july_2, july_3)
+
+#Now aug!
+aug <- sum_hour_c %>% 
+  filter(Date > "2019-07-31" & Date < "2019-09-01")
+
+ggplot(aug, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 18.7, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+aug_1 <- sum_hour_c %>% 
+  filter(Date > "2019-07-31" & Date < "2019-08-08")
+
+ggplot(aug_1, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 19.9, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+aug_1 <- aug_1 %>% 
+  mutate(in.water = ifelse(avgtemp > 19.9, 1, 0))
+
+aug_2 <- sum_hour_c %>% 
+  filter(Date > "2019-08-07" & Date < "2019-08-30")
+
+ggplot(aug_2, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 19.6, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+aug_2 <- aug_2 %>% 
+  mutate(in.water = ifelse(avgtemp > 19.6, 1, 0))
+
+aug_tides <- rbind(aug_1, aug_2)
+
+#Cedar: Now combine the monthly datasets and visualize with different colours for air and water----
+comb_months_c <- april_tides %>% 
+  rbind(may_tides, june_tides, july_tides, aug_tides) %>% 
+  mutate(in.water = factor(ifelse(in.water == 0, "water", "air")),
+         SP = "Cedar") 
+
+ggplot(comb_months_c, aes(Obs_date, avgtemp, colour = in.water)) + 
+  geom_point () +
+  scale_colour_manual(values = c("grey84", "skyblue")) +
+  #geom_line(aes(group = "all")) +
+  labs(x = "Date", y = "temperature (°C)", colour = "medium") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+
+#Remove monthly objects----
+rm(april, april_1, april_2, april_3, april_4, april_5, aug, aug_1, aug_2, july, july_1, july_2, july_3, july_4,
+   july_5, june, june_1, june_2, june_3, june_4, june_5, march_1, march_2, march_3, may, may_1, may_2, may_3, may_4,
+   may_5)
+
+#Now combine & visualize all the summarized iButton temps by hour separated into air & water across the 4 SPs----
+comb_hour_sep <- comb_months_k %>% 
+  rbind(comb_months_p, comb_months_h, comb_months_c) %>% 
+  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast"))
+
+pcomb_hour_sep <- ggplot(comb_hour_sep, aes(Obs_date, avgtemp, colour = in.water)) + 
+  geom_point () +
+  scale_colour_manual(values = c("grey84", "grey30")) +
+  facet_grid(. ~ SP) +
+  #geom_line(aes(group = "all")) +
+  labs(x = "Date", y = "hourly temperature (°C)", colour = "") +
+  theme_cowplot(16) + theme(legend.position = c(0.8, 0.9), 
+                            strip.background = element_blank())
+
+ggsave(pcomb_hour_sep, file = "plots/iButtons/hr_water_air.pdf", width = 14, height = 6, dpi = 300)
+
+comb_hour_sep_water <- comb_hour_sep %>% 
+  filter(in.water == "water")
+
+ggplot(comb_hour_sep_water, aes(Obs_date, avgtemp, colour = SP)) + 
+  geom_point(aes(colour = SP), size = 1) +
+  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+  labs(x = "Date", y = "Mean daily temperature (°C)", linetype = "Temperature metric") +
+  facet_wrap(. ~ SR) +
+  theme_cowplot(16) + theme(legend.position = c(0.06, 0.7), strip.background = element_blank(),
+                            strip.text = element_text(size = 18))
+
+#Now visualize the combined hourly separated iButtons by water and air----
+comb_water <- comb_hour_sep %>% 
   filter(in.water == "water") %>% 
-  group_by(Date) %>% 
+  group_by(SP, Date) %>% 
   summarize(avgdaily = mean(avgtemp), daily90th = mean(temp90th)) 
 
 comb_water_long <- comb_water %>% 
   gather(metric, value, c(avgdaily, daily90th), factor_key = TRUE) %>% 
-  mutate(metric = fct_relevel(metric, c("daily90th", "avgdaily")))
+  mutate(metric = fct_relevel(metric, c("daily90th", "avgdaily")),
+         SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast"))
 levels(comb_water_long$metric) <- c("90th percentile", "Mean")
 
-ggplot(data = comb_water_long, aes(Date, value)) + 
-  geom_line(colour = "skyblue", aes(linetype = metric), linewidth = 0.7) +
-  #scale_colour_manual(values = c("skyblue", "skyblue3", "coral", "coral3")) +
-  #geom_hline(yintercept = 12, linetype = "dashed", alpha = 0.8, col = "grey") +
-  #geom_hline(yintercept = 15, linetype = "dashed", alpha = 0.8, col = "grey") +
-  #geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
-  #geom_hline(yintercept = 22, linetype = "dashed", alpha = 0.8, col = "grey") +
-  labs(x = "Date", y = "Temperature (°C)", linetype = "Temperature metric") +
-  #facet_wrap(. ~ SP, ncol = 2) +
-  theme_cowplot(16)
-# theme(legend.position = c(0.06, 0.9), legend.direction = "horizontal",
-# strip.background = element_blank(), strip.text.x = element_blank())
+p_hr_sep_water <- ggplot(data = comb_water_long, aes(Date, value, colour = SP)) + 
+  geom_line(aes(colour = SP, linetype = metric), linewidth = 0.7) +
+  scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+  labs(x = "Date", y = "Mean daily water temperature (°C)", linetype = "Temperature metric") +
+  facet_wrap(. ~ SR) +
+  theme_cowplot(16) + theme(legend.position = c(0.06, 0.7), strip.background = element_blank(),
+                            strip.text = element_text(size = 18))
+
+ggsave(p_hr_sep_water, file = "plots/iButtons/hr_water.pdf", width = 14, height = 6, dpi = 300)
+
 
 #Still haven't figured out the best way to visualize the air data... do later! 
 comb_air <- comb_months %>% 
@@ -487,7 +1436,6 @@ ggplot(summarized_comb, aes(Date, avgdaily, colour = in.water)) +
   scale_colour_manual(values = c("grey84", "skyblue")) +
   labs(x = "Date", y = "temperature (°C)", colour = "medium") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
-
 
 
 #Merge & export the datasets----
