@@ -1393,15 +1393,17 @@ comb_water_long <- comb_water %>%
          SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast"))
 levels(comb_water_long$metric) <- c("90th percentile", "Mean")
 
-p_hr_sep_water <- ggplot(data = comb_water_long, aes(Date, value, colour = SP)) + 
-  geom_line(aes(colour = SP, linetype = metric), linewidth = 0.7) +
+comb_water_long_mean <- comb_water_long %>% 
+  filter(metric == "Mean")
+
+p_hr_sep_water <- ggplot(data = comb_water_long_mean, aes(Date, value, colour = SP)) + 
+  geom_line(aes(colour = SP), linewidth = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
   labs(x = "Date", y = "Mean daily water temperature (°C)", linetype = "Temperature metric") +
-  facet_wrap(. ~ SR) +
   theme_cowplot(16) + theme(legend.position = c(0.06, 0.7), strip.background = element_blank(),
                             strip.text = element_text(size = 18))
 
-ggsave(p_hr_sep_water, file = "plots/iButtons/hr_water.pdf", width = 14, height = 6, dpi = 300)
+ggsave(p_hr_sep_water, file = "plots/iButtons/hr_water_mean.pdf", width = 10, height = 6, dpi = 300)
 
 
 #Still haven't figured out the best way to visualize the air data... do later! 
