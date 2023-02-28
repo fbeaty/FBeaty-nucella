@@ -129,11 +129,12 @@ ggplot(summer, aes(date, avgtemp, group = station)) +
   theme_cowplot(16) + theme(legend.position = "top", legend.justification = "right")
 
 #Calculate the number of days where temp > 15 in Nanaimo & Calvert----
+#Calculating this for April, May, June, July because that's the date range that overlaps best with the RT study
 fifteen_nan <- departure_1 %>% 
-  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7) %>% 
   filter(temp > 15)
 nineteen_nan <- departure_1 %>% 
-  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7) %>% 
   filter(temp > 19)
 summer_nan <- departure_1 %>% 
   filter(month == 6 | month == 7 | month == 8 | month == 9)

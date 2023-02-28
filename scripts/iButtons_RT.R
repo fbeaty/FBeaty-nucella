@@ -1054,7 +1054,7 @@ comb_months_h <- april_tides %>%
   mutate(in.water = factor(ifelse(in.water == 0, "water", "air")),
          SP = "Heron") 
 
-ggplot(comb_months, aes(Obs_date, avgtemp, colour = in.water)) + 
+ggplot(comb_months_h, aes(Obs_date, avgtemp, colour = in.water)) + 
   geom_point () +
   scale_colour_manual(values = c("grey84", "skyblue")) +
   #geom_line(aes(group = "all")) +
@@ -1381,64 +1381,37 @@ ggplot(comb_hour_sep_water, aes(Obs_date, avgtemp, colour = SP)) +
   theme_cowplot(16) + theme(legend.position = c(0.06, 0.7), strip.background = element_blank(),
                             strip.text = element_text(size = 18))
 
-#Now visualize the combined hourly separated iButtons by water and air----
+#Now calculate the daily iButton temperatures separated by water and air----
 comb_water <- comb_hour_sep %>% 
   filter(in.water == "water") %>% 
   group_by(SP, Date) %>% 
-  summarize(avgdaily = mean(avgtemp), daily90th = mean(temp90th)) 
+  summarize(avgdaily = mean(avgtemp), daily90th = mean(temp90th)) %>% 
+  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast"))
 
-comb_water_long <- comb_water %>% 
-  gather(metric, value, c(avgdaily, daily90th), factor_key = TRUE) %>% 
-  mutate(metric = fct_relevel(metric, c("daily90th", "avgdaily")),
-         SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast"))
-levels(comb_water_long$metric) <- c("90th percentile", "Mean")
+comb_air <- comb_hour_sep %>% 
+  filter(in.water == "air") %>% 
+  group_by(SP, Date) %>% 
+  summarize(avgdaily = mean(avgtemp), daily90th = mean(temp90th)) %>% 
+  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast"))
 
-comb_water_long_mean <- comb_water_long %>% 
-  filter(metric == "Mean")
+comb_both <- comb_hour_sep %>% 
+  group_by(SP, Date) %>% 
+  summarize(avgdaily = mean(avgtemp), daily90th = mean(temp90th)) %>% 
+  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast"))
 
-p_hr_sep_water <- ggplot(data = comb_water_long_mean, aes(Date, value, colour = SP)) + 
+#Now visualize the daily water and air temperatures----
+p_hr_sep_water <- ggplot(data = comb_water, aes(Date, avgdaily, colour = SP)) + 
   geom_line(aes(colour = SP), linewidth = 0.7) +
   scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
-  labs(x = "Date", y = "Mean daily water temperature (°C)", linetype = "Temperature metric") +
+  geom_hline(yintercept = 12, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 15, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 22, linetype = "dashed", alpha = 0.8, col = "grey") +
+  labs(x = "Date", y = "Mean daily water temperature (°C)", colour = "Outplant site") +
   theme_cowplot(16) + theme(legend.position = c(0.06, 0.7), strip.background = element_blank(),
                             strip.text = element_text(size = 18))
 
 ggsave(p_hr_sep_water, file = "plots/iButtons/hr_water_mean.pdf", width = 10, height = 6, dpi = 300)
-
-
-#Still haven't figured out the best way to visualize the air data... do later! 
-comb_air <- comb_months %>% 
-  filter(in.water == "air") %>% 
-  group_by(Date) %>% 
-  summarize(avgdaily = mean(avgtemp), daily90th = mean(temp90th)) 
-
-comb_air_long <- comb_air %>% 
-  gather(metric, value, c(avgdaily, daily90th), factor_key = TRUE) %>% 
-  mutate(metric = fct_relevel(metric, c("daily90th", "avgdaily")))
-levels(comb_air_long$metric) <- c("90th percentile", "Mean")
-
-ggplot(data = comb_air_long, aes(Date, value)) + 
-  geom_line(colour = "skyblue", aes(linetype = metric), linewidth = 0.7) +
-  labs(x = "Date", y = "Temperature (°C)", linetype = "Temperature metric") +
-  theme_cowplot(16)
-
-ggplot(comb_water, aes(Date, avgdaily)) + 
-  geom_line (colour = "skyblue") +
-  #geom_line(aes(group = "all")) +
-  labs(x = "Date", y = "mean daily temperature (°C)", colour = "medium") +
-  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
-
-#Now try summarizing the daily temp but grouped by air & water
-summarized_comb <- comb_months %>% 
-  group_by(in.water, Date) %>% 
-  summarize(avgdaily = mean(avgtemp), daily90th = mean(temp90th))
-
-ggplot(summarized_comb, aes(Date, avgdaily, colour = in.water)) + 
-  geom_point () +
-  scale_colour_manual(values = c("grey84", "skyblue")) +
-  labs(x = "Date", y = "temperature (°C)", colour = "medium") +
-  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
-
 
 #Merge & export the datasets----
 #Start with the Nanaimo datasets & split the DT column into separate date & time columns
@@ -1654,6 +1627,135 @@ visreg(ancova_nan)
 #Start April 12th (i.e. 2019-04-12)
 #Eng August second (i.e. 2019-08-02)
 #THIS IS THE ONE YOU USED IN YOUR PAPER AS OF SEPT 21st
+
+#First calculate the maximum air temperature experienced across all sites
+max_temp <- comb_hour_sep %>% 
+  group_by(SP) %>% 
+  summarize (max = max(avgtemp))
+
+#March 2023 update: changed the df to be comb_water_long_mean rather than sum_both
+diff_both_avg <- comb_hour_sep %>% 
+  filter("2019-04-11" < Date & Date < "2019-08-03") %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(SR) %>% 
+  summarize(mean = mean(avgtemp), sd = sd(avgtemp)) %>% 
+  mutate(metric = "mean",
+         medium = "both")
+
+diff_both_90th <- comb_hour_sep %>% 
+  filter("2019-04-11" < Date & Date < "2019-08-03") %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(SR) %>% 
+  summarize(mean = mean(temp90th), sd = sd(temp90th)) %>% 
+  mutate(metric = "percentile_90th",
+         medium = "both")
+
+diff_water_avg <- comb_hour_sep %>% 
+  filter(in.water == "water") %>% 
+  filter("2019-04-11" < Date & Date < "2019-08-03") %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(SR) %>% 
+  summarize(mean = mean(avgtemp), sd = sd(avgtemp)) %>% 
+  mutate(metric = "mean",
+         medium = "water")
+
+diff_water_90th <- comb_hour_sep %>% 
+  filter(in.water == "water") %>% 
+  filter("2019-04-11" < Date & Date < "2019-08-03") %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(SR) %>% 
+  summarize(mean = mean(temp90th), sd = sd(temp90th)) %>% 
+  mutate(metric = "percentile_90th",
+         medium = "water")
+
+diff_air_avg <- comb_hour_sep %>% 
+  filter(in.water == "air") %>% 
+  filter("2019-04-11" < Date & Date < "2019-08-03") %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(SR) %>% 
+  summarize(mean = mean(avgtemp), sd = sd(avgtemp)) %>% 
+  mutate(metric = "mean",
+         medium = "air")
+
+diff_air_90th <- comb_hour_sep %>% 
+  filter(in.water == "air") %>% 
+  filter("2019-04-11" < Date & Date < "2019-08-03") %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(SR) %>% 
+  summarize(mean = mean(temp90th), sd = sd(temp90th)) %>% 
+  mutate(metric = "percentile_90th",
+         medium = "air")
+
+#Combine these into one df
+comb_diff <- diff_water_avg %>% 
+  rbind(diff_water_90th, diff_air_avg, diff_air_90th, diff_both_avg, diff_both_90th)
+
+#Calculate the proportion of time cages were emersed versus immersed at each site ----
+#Do this by grouping them by region then site and dividing the length of the air by length of SP, then length of water by length of SP
+prop_emersed_immersed <- comb_hour_sep %>% 
+  group_by(SR, SP, in.water) %>% 
+  summarize(duration_in.water = length(in.water)) %>% 
+  mutate(prop = ifelse(SP == "Kwakshua",
+                       ifelse(in.water == "air", 301/(2903+301)*100, 2903/(2903+301)*100), 
+                       ifelse(SP == "Pruth",
+                              ifelse(in.water == "air", 432/(2697+432)*100, 2697/(2697+432)*100), 
+                              ifelse(SP == "Cedar", 
+                                     ifelse(in.water == "air", 485/(2491+485)*100, 2491/(2491+485)*100), 
+                                     ifelse(SP == "Heron",
+                                            ifelse(in.water == "air", 379/(2597+379)*100, 2597/(379+2597)*100), 0)))))
+
+prop_meso_surpass <- comb_hour_sep %>% 
+  filter(in.water == "water") %>% 
+  mutate(sur_12 = ifelse(avgtemp >= 12, "Y", "N"),
+         sur_15 = ifelse(avgtemp >= 15, "Y", "N"),
+         sur_19 = ifelse(avgtemp >= 19, "Y", "N"),
+         sur_22 = ifelse(avgtemp >= 22, "Y", "N")) %>% 
+  group_by()
+
+sur_12 <- prop_meso_surpass %>% 
+  group_by(SR, SP, sur_12) %>% 
+  summarize(length_t = length(sur_12)) %>% 
+  ungroup() %>% 
+  group_by(SR, SP) %>% 
+  mutate(prop = length_t/ sum(length_t)*100,
+         temp = "twelve") %>% 
+  filter(sur_12 == "Y") %>% 
+  select(-sur_12)
+
+sur_15 <- prop_meso_surpass %>% 
+  group_by(SR, SP, sur_15) %>% 
+  summarize(length_t = length(sur_15)) %>% 
+  ungroup() %>% 
+  group_by(SR, SP) %>% 
+  mutate(prop = length_t/ sum(length_t)*100,
+         temp = "fifteen") %>% 
+  filter(sur_15 == "Y") %>% 
+  select(-sur_15)
+
+sur_19 <- prop_meso_surpass %>% 
+  group_by(SR, SP, sur_19) %>% 
+  summarize(length_t = length(sur_19)) %>% 
+  ungroup() %>% 
+  group_by(SR, SP) %>% 
+  mutate(prop = length_t/ sum(length_t)*100,
+         temp = "nineteen") %>% 
+  filter(sur_19 == "Y") %>% 
+  select(-sur_19)
+
+sur_22 <- prop_meso_surpass %>% 
+  group_by(SR, SP, sur_22) %>% 
+  summarize(length_t = length(sur_22)) %>% 
+  ungroup() %>% 
+  group_by(SR, SP) %>% 
+  mutate(prop = length_t/ sum(length_t)*100,
+         temp = "twentytwo") %>% 
+  filter(sur_22 == "Y") %>% 
+  select(-sur_22)
+
+prop_meso_surpass_2 <- sur_12 %>% 
+  rbind(sur_15, sur_19, sur_22) 
+
+#Old----
 diff <- sum_both %>% 
   filter("2019-04-11" < Date & Date < "2019-08-02") %>% 
   mutate(month = month(Date)) %>% 
