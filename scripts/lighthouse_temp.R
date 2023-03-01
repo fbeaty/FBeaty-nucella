@@ -130,28 +130,49 @@ ggplot(summer, aes(date, avgtemp, group = station)) +
 
 #Calculate the number of days where temp > 15 in Nanaimo & Calvert----
 #Calculating this for April, May, June, July because that's the date range that overlaps best with the RT study
+twelve_nan <- departure_1 %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  filter(temp >= 12)
 fifteen_nan <- departure_1 %>% 
-  filter(month == 4 | month == 5 | month == 6 | month == 7) %>% 
-  filter(temp > 15)
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  filter(temp >= 15)
 nineteen_nan <- departure_1 %>% 
-  filter(month == 4 | month == 5 | month == 6 | month == 7) %>% 
-  filter(temp > 19)
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  filter(temp >= 19)
+twentwo_nan <- departure_1 %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  filter(temp >= 22)
 summer_nan <- departure_1 %>% 
-  filter(month == 6 | month == 7 | month == 8 | month == 9)
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8)
 
-#780/2901 = 27% of the time (annual)
-#780/974 = 75% of the time during the summer temps exceed 15
-#136/974 = 14% of the time temps exceed 19 in the summer
+#twelve: 947/1221 = 77.6
+#fifteen: 689/1221 = 56.4
+#nineteen: 146/1221 = 11.7
+#twentytwo: 0%
 
+143/1221*100
+
+twelve_cal <- egg_1 %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  filter(temp >= 12)
 fifteen_cal <- egg_1 %>% 
-  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
-  filter(temp > 15)
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  filter(temp >= 15)
 nineteen_cal <- egg_1 %>% 
-  filter(month == 6 | month == 7 | month == 8 | month == 9) %>% 
-  filter(temp > 19)
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  filter(temp >= 19)
+twentwo_cal <- egg_1 %>% 
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8) %>% 
+  filter(temp >= 22)
 summer_cal <- egg_1 %>% 
-  filter(month == 6 | month == 7 | month == 8 | month == 9)
+  filter(month == 4 | month == 5 | month == 6 | month == 7 | month == 8)
 
+#twelve: 633/1119 = 56.9%
+#fifteen 106/1119 = 9.53%
+#nineteen: 0%
+#twentytwo: 0%
+
+106/1112*100
 #94/2398 = 4.0 % of the time in the year
 #94/902 = 10% of the time during the summer
 #temps never exceeded 19 in the summer
