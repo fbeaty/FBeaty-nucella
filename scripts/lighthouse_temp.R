@@ -3,7 +3,6 @@
 #Last edited Sept 2022
 
 #Load in necessary packages----
-install.packages("janitor")
 pkgs <- c("janitor", "dplyr", "tidyverse", "ggplot2", "zoo", "lubridate", "cowplot")
 lapply(pkgs, library, character.only = TRUE)
 rm(pkgs)
@@ -69,7 +68,7 @@ sum_long <- lighthouse %>%
 levels(sum_long$metric) <- c("90th percentile", "Mean")
 
 sum_long_facet<- ggplot(data = sum_long, aes(date, value, colour = station)) + 
-  geom_line(aes(colour = station, linetype = metric), size = 0.7) +
+  geom_line(aes(colour = station, linetype = metric), linewidth = 0.7) +
   geom_hline(yintercept = 12, linetype = "dashed", alpha = 0.8, col = "grey") +
   geom_hline(yintercept = 15, linetype = "dashed", alpha = 0.8, col = "grey") +
   geom_hline(yintercept = 19, linetype = "dashed", alpha = 0.8, col = "grey") +
