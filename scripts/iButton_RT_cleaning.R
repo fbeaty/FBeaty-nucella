@@ -84,17 +84,6 @@ ggplot(kwak_corr_3, aes(Obs_date, Temp, fill = Button)) +
   labs(x = "Date", y = "temperature (°C)") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
-#Test whether the ibutton times line up with the other tides----
-#Trial with a week in May when there were large tides (May 15-22)
-#Buttons 1 and 4 are identical
-select_k <- kwak_corr_3 %>% 
-  filter(Date > "2019-03-18" & Date < "2019-03-31") 
-
-ggplot(select_k, aes(Obs_date, Temp, fill = Button)) + 
-  geom_point (aes(colour = Button)) +
-  labs(x = "Date", y = "temperature (°C)") +
-  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
-
 #What if we just visualized the mean hourly temps and then inserted grey bars to visualize high tide----
 sum_hour <- kwak_corr_3 %>% 
   group_by(Date, Obs_date) %>% 
@@ -477,50 +466,59 @@ cal_tides <- read_csv("data/iButtons/08863_PruthBay_20190301.csv") %>%
 
 cal_tides <- as.data.frame(cal_tides)
 
-#Because the tidal station is in a different region, the dates/times are slightly off our iButton data
+#The dates/times are slightly off our iButton data
 #Add 3 days and 3 hours to the cal_tides data
-cal_days <- days(3)
-cal_hours <- hours(3)
+#cal_days <- days(3)
+#cal_hours <- hours(3)
 
-cal_tides_1 <- cal_tides %>% 
-  filter(Date > "2019-03-01" & Date < "2019-08-09") %>% 
-  mutate(Obs_date = Obs_date + cal_days + cal_hours) %>% 
-  select(Obs_date, slev_m)
-
-cal_tides_2 <- cal_tides_1 %>% 
-  filter(Obs_date > "2019-03-18" & Obs_date < "2019-03-31")
-
-#First visualize the tides data by themselves and find the high and low tide times
-ggplot(cal_tides_1, aes(Obs_date, slev_m)) + 
-  geom_point() +
-  labs(x = "Date", y = "sea level") +
-  geom_hline(yintercept = 1.20, linetype = "dashed", alpha = 0.8, col = "grey") +
-  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+#cal_tides_1 <- cal_tides %>% 
+#  filter(Date > "2019-03-01" & Date < "2019-08-09") %>% 
+#  mutate(Obs_date = Obs_date + cal_days + cal_hours) %>% 
+#  select(Obs_date, slev_m)
 
 #Now match up whether the times line up with the iButtons times
 
 #Now join them and assign whether the iButton is in the water (0) or air (1)
 str(kwak_corr_3)
-str(cal_tides_1)
+str(cal_tides)
 
 #Because the date.time objects weren't merging properly, I'm converting both Obs_date columns into characters
 kwak_corr_3$Obs_date <- as.character(kwak_corr_3$Obs_date)
-cal_tides_1$Obs_date <- as.character(cal_tides_1$Obs_date)
+cal_tides$Obs_date <- as.character(cal_tides$Obs_date)
 
-kwak_tides <- merge(kwak_corr_3, cal_tides_1, by = "Obs_date") %>% 
-  mutate(in.water = ifelse(slev_m > TideHeight, 0, 1))%>% 
-  filter(Date > "2019-03-20" & Date < "2019-06-06")
+kwak_tides <- merge(kwak_corr_3, cal_tides, by = "Obs_date") %>% 
+  mutate(in.water = ifelse(slev_m > TideHeight, 0, 1)) %>% 
+  filter(date.time > "2019-03-20" & date.time < "2019-06-06") %>% 
+  rename(Date = Date.x)
+
+#Test whether the ibutton times line up with the other tides----
+#Trial with a week in May when there were large tides (May 15-22)
+#Buttons 1 and 4 are identical
+select_k <- kwak_corr_3 %>% 
+  filter(Date > "2019-07-05" & Date < "2019-07-07") 
+
+ggplot(select_k, aes(Obs_date, Temp, fill = Button)) + 
+  geom_point (aes(colour = Button)) +
+  labs(x = "Date", y = "temperature (°C)") +
+  theme_cowplot(16)
+
+
+#Now subset the tides data
+cal_tides_2 <- cal_tides %>% 
+  filter(Obs_date > "2019-07-05" & Obs_date < "2019-07-07")
+
+#First visualize the tides data by themselves and find the high and low tide times
+ggplot(cal_tides_2, aes(Obs_date, slev_m)) + 
+  geom_point() +
+  labs(x = "Date", y = "sea level") +
+  geom_hline(yintercept = 1.20, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 #Now summarize air and water temp in Kwakshua----
-daily_comb <- comb_months %>% 
-  group_by()
-
-air <- comb_months %>% 
-  rbind(april_tides) %>% 
+air <- kwak_tides %>% 
   filter(in.water == 1)
 
-water <- march_tides %>% 
-  rbind(april_tides) %>% 
+water <- kwak_tides %>% 
   filter(in.water == 0)
 
 ## Summarize values by site & dates & add a column for region
@@ -544,7 +542,7 @@ ggplot(sum_water, aes(Date, avgwater)) +
 
 ggplot(sum_air, aes(Date, avgair)) + 
   geom_point (colour = "skyblue") +
-  labs(x = "Date", y = "avg daily temperature, water (°C)", color = "Source Population") +
+  labs(x = "Date", y = "avg daily temperature, air (°C)", color = "Source Population") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 air_90 <- ggplot(sum_air, aes(Date, air90th, fill = SP)) + 
