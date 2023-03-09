@@ -1,10 +1,12 @@
 #Bootstrapping my models! Based on Padfield code
 #https://padpadpadpad.github.io/rTPC/articles/bootstrapping_models.html
 
-#Here we want to work with the following dataframes:
-#meso_subset
-#CC_TiW
-#SoG_TiW
+#Run this one after the TPC_meso so you have the right dataframes in your system
+
+#TiW: Briere works well
+#ShW: Briere misses lower CI for SoG and no error for 22 on CC, quadratic works just fine
+#l: Briere has skewed variance in the lower and at 22... 
+#fr: Briere works well for CC but again, low variance in the 22 but I think it's accurate in this case
 
 # load packages----
 library(boot)
@@ -17,56 +19,148 @@ library(patchwork)
 library(minpack.lm)
 
 
-#CC: Load the data----
-d <- CC_TiW %>% 
-  rename(rate = TiW) %>% 
-  select(temp, rate)
+#CC_TiW: Quadratic: Fit data----
+# fit with Gaussian model
+d_fit <- nest(CC_TiW, data = c(temp, rate)) %>%
+  mutate(quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+                                              data = .x,
+                                              iter = c(4,4,4),
+                                              start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 10,
+                                              start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 10,
+                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              supp_errors = 'Y',
+                                              convergence_count = FALSE)),
+         # create new temperature data
+         new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
+         # predict over that data,
+         preds =  map2(quadratic, new_data, ~augment(.x, newdata = .y)))
 
-#Visualize the data first
-ggplot(d, aes(temp, rate)) +
-  geom_point(size = 2, alpha = 0.5) +
+# unnest predictions
+d_preds_CC <- select(d_fit, preds) %>%
+  unnest(preds) %>% 
+  mutate(SR = "Central Coast")
+
+# plot data and predictions
+ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_CC, col = 'blue') +
+  geom_point(aes(temp, rate), CC_TiW, size = 2, alpha = 0.5) +
+  theme_bw(base_size = 12) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Shell growth rate',
+       title = 'Central Coast')
+
+#CC_TiW: Quadratic: refit model using nlsLM----
+fit_nlsLM <- minpack.lm::nlsLM(rate~quadratic_2008(temp = temp, a, b, c),
+                               data = CC_TiW,
+                               start = coef(d_fit$quadratic[[1]]),
+                               lower = get_lower_lims(CC_TiW$temp, CC_TiW$rate, model_name = 'quadratic_2008'),
+                               upper = get_upper_lims(CC_TiW$temp, CC_TiW$rate, model_name = 'quadratic_2008'),
+                               weights = rep(1, times = nrow(CC_TiW)))
+
+# bootstrap using case resampling
+boot1 <- Boot(fit_nlsLM, method = 'case')
+
+# look at the data
+head(boot1$t)
+
+hist(boot1, layout = c(2,2))
+
+#CC_TiW: quadratic: Now plot the bootstrapped models----
+#create predictions of each bootstrapped model
+boot1_preds <- boot1$t %>%
+  as.data.frame() %>%
+  drop_na() %>%
+  mutate(iter = 1:n()) %>%
+  group_by_all() %>%
+  do(data.frame(temp = seq(min(CC_TiW$temp), max(CC_TiW$temp), length.out = 100))) %>%
+  ungroup() %>%
+  mutate(pred = quadratic_2008(temp = temp, a, b, c))
+
+# calculate bootstrapped confidence intervals
+boot1_conf_preds_CC <- group_by(boot1_preds, temp) %>%
+  summarise(conf_lower = quantile(pred, 0.025),
+            conf_upper = quantile(pred, 0.975)) %>%
+  ungroup() %>% 
+  mutate(SR = "Central Coast")
+
+# plot bootstrapped CIs
+p_quadratic_CC_TiW <- ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_CC, col = 'blue') +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds_CC, fill = 'blue', alpha = 0.3) +
+  geom_point(aes(temp, rate), CC_TiW, size = 2, alpha = 0.5) +
+  theme_bw(base_size = 12) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Tissue weight growth',
+       title = 'Quadratic: CC')
+
+p_quadratic_CC_TiW
+
+#CC_TiW: quadratic: Estimate parameters & CI intervals ----
+extra_params <- calc_params(fit_nlsLM) %>%
+  pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
+
+ci_extra_params <- Boot(fit_nlsLM, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(fit_nlsLM)), R = 200, method = 'case') %>%
+  confint(., method = 'bca') %>%
+  as.data.frame() %>%
+  rename(conf_lower = 1, conf_upper = 2) %>%
+  rownames_to_column(., var = 'param') %>%
+  mutate(method = 'case bootstrap')
+
+ci_extra_params <- left_join(ci_extra_params, extra_params)
+
+ci_params_select_CC_TiW <- ci_extra_params %>% 
+  filter(param == "ctmax" | param == "topt") %>% 
+  mutate(SR = "Central Coast",
+         RV = "TiW",
+         model = "quadratic")
+
+ggplot(ci_params_select, aes(param, estimate)) +
+  geom_point(size = 4) +
+  geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
+  theme_bw() +
+  facet_wrap(~param, scales = 'free') +
+  scale_x_discrete('') +
+  labs(title = 'quadratic - CC')
+
+#SoG_TiW: quadratic: Fit data----
+# fit with Gaussian model
+d_fit <- nest(SoG_TiW, data = c(temp, rate)) %>%
+  mutate(quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+                                              data = .x,
+                                              iter = c(4,4,4),
+                                              start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 10,
+                                              start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 10,
+                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              supp_errors = 'Y',
+                                              convergence_count = FALSE)),
+         # create new temperature data
+         new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
+         # predict over that data,
+         preds =  map2(quadratic, new_data, ~augment(.x, newdata = .y)))
+
+# unnest predictions
+d_preds_SoG <- select(d_fit, preds) %>%
+  unnest(preds) %>% 
+  mutate(SR = "Strait of Georgia")
+
+# plot data and predictions
+ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_SoG, col = 'blue') +
+  geom_point(aes(temp, rate), SoG_TiW, size = 2, alpha = 0.5) +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
        y = 'Tissue growth rate',
-       title = 'Growth rate across temperatures')
-
-#CC: Gaussian: Fit data----
-# fit with Gaussian model
-d_fit <- nest(d, data = c(temp, rate)) %>%
-  mutate(gaussian = map(data, ~nls_multstart(rate~gaussian_1987(temp = temp, rmax, topt, a),
-                                             data = .x,
-                                             iter = c(4,4,4),
-                                             start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'gaussian_1987') - 10,
-                                             start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'gaussian_1987') + 10,
-                                             lower = get_lower_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
-                                             upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
-                                             supp_errors = 'Y',
-                                             convergence_count = FALSE)),
-         # create new temperature data
-         new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
-         # predict over that data,
-         preds =  map2(gaussian, new_data, ~augment(.x, newdata = .y)))
-
-# unnest predictions
-d_preds <- select(d_fit, preds) %>%
-  unnest(preds)
-
-# plot data and predictions
-ggplot() +
-  geom_line(aes(temp, .fitted), d_preds, col = 'blue') +
-  geom_point(aes(temp, rate), d, size = 2, alpha = 0.5) +
-  theme_bw(base_size = 12) +
-  labs(x = 'Temperature (ºC)',
-       y = 'Growth rate',
        title = 'Strait of Georgia')
 
-#CC: Gaussian: refit model using nlsLM----
-fit_nlsLM <- minpack.lm::nlsLM(rate~gaussian_1987(temp = temp, rmax, topt, a),
-                               data = d,
-                               start = coef(d_fit$gaussian[[1]]),
-                               lower = get_lower_lims(d$temp, d$rate, model_name = 'gaussian_1987'),
-                               upper = get_upper_lims(d$temp, d$rate, model_name = 'gaussian_1987'),
-                               weights = rep(1, times = nrow(d)))
+#SoG_TiW: quadratic: refit model using nlsLM----
+fit_nlsLM <- minpack.lm::nlsLM(rate~quadratic_2008(temp = temp, a, b, c),
+                               data = SoG_TiW,
+                               start = coef(d_fit$quadratic[[1]]),
+                               lower = get_lower_lims(SoG_TiW$temp, SoG_TiW$rate, model_name = 'quadratic_2008'),
+                               upper = get_upper_lims(SoG_TiW$temp, SoG_TiW$rate, model_name = 'quadratic_2008'),
+                               weights = rep(1, times = nrow(SoG_TiW)))
 
 # bootstrap using case resampling
 boot1 <- Boot(fit_nlsLM, method = 'case')
@@ -76,36 +170,37 @@ head(boot1$t)
 
 hist(boot1, layout = c(2,2))
 
-#CC: Gaussian: Now plot the bootstrapped models----
+#SoG_TiW: quadratic: Now plot the bootstrapped models----
 #create predictions of each bootstrapped model
 boot1_preds <- boot1$t %>%
   as.data.frame() %>%
   drop_na() %>%
   mutate(iter = 1:n()) %>%
   group_by_all() %>%
-  do(data.frame(temp = seq(min(d$temp), max(d$temp), length.out = 100))) %>%
+  do(data.frame(temp = seq(min(SoG_TiW$temp), max(SoG_TiW$temp), length.out = 100))) %>%
   ungroup() %>%
-  mutate(pred = gaussian_1987(temp = temp, rmax, topt, a))
+  mutate(pred = quadratic_2008(temp = temp, a, b, c))
 
 # calculate bootstrapped confidence intervals
-boot1_conf_preds <- group_by(boot1_preds, temp) %>%
+boot1_conf_preds_SoG <- group_by(boot1_preds, temp) %>%
   summarise(conf_lower = quantile(pred, 0.025),
             conf_upper = quantile(pred, 0.975)) %>%
-  ungroup()
+  ungroup() %>% 
+  mutate(SR = "Strait of Georgia")
 
 # plot bootstrapped CIs
-p_gaussian_sog <- ggplot() +
-  geom_line(aes(temp, .fitted), d_preds, col = 'blue') +
-  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds, fill = 'blue', alpha = 0.3) +
-  geom_point(aes(temp, rate), d, size = 2, alpha = 0.5) +
+p_quadratic_SoG_TiW <- ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_SoG, col = 'blue') +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds_SoG, fill = 'blue', alpha = 0.3) +
+  geom_point(aes(temp, rate), SoG_TiW, size = 2, alpha = 0.5) +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
        y = 'Tissue weight growth',
-       title = 'Gaussian: SoG')
+       title = 'Quadratic: SoG')
 
-p_gaussian_sog
+p_quadratic_SoG_TiW
 
-#CC: Gaussian: Estimate parameters & CI intervals ----
+#SoG_TiW: quadratic: Estimate parameters & CI intervals ----
 extra_params <- calc_params(fit_nlsLM) %>%
   pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
 
@@ -118,56 +213,92 @@ ci_extra_params <- Boot(fit_nlsLM, f = function(x){unlist(calc_params(x))}, labe
 
 ci_extra_params <- left_join(ci_extra_params, extra_params)
 
-ci_params_select <- ci_extra_params %>% 
-  filter(param == "ctmax" | param == "topt")
+ci_params_select_SoG_TiW <- ci_extra_params %>% 
+  filter(param == "ctmax" | param == "topt") %>% 
+  mutate(SR = "Strait of Georgia",
+         RV = "TiW",
+         model = "quadratic")
 
-param_gaussian_cc <- ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
   facet_wrap(~param, scales = 'free') +
   scale_x_discrete('') +
-  labs(title = 'Gaussian - CC')
+  labs(title = 'Quadratic - SoG')
 
-param_gaussian_cc
 
-#CC: Briere: Fit data----
+
+#Create combined TiW plot----
+preds_all <- d_preds_CC %>% 
+  rbind(d_preds_SoG) %>% 
+  mutate(SR = as.factor(SR))
+
+boot_conf_all <- boot1_conf_preds_CC %>% 
+  rbind(boot1_conf_preds_SoG) %>% 
+  mutate(SR = as.factor(SR))
+
+CC_TiW_2 <- CC_TiW %>% 
+  mutate(SR = "Central Coast")
+SoG_TiW_2 <- SoG_ShW %>% 
+  mutate(SR = "Strait of Georgia")
+
+TiW_all <- CC_TiW_2 %>% 
+  rbind(SoG_TiW_2)
+
+# plot data and model fit
+pTiW_quadratic <- ggplot() +
+  stat_summary(aes(y = rate, x = temp, col = SR), data = TiW_all, fun=mean, geom="point", size = 3) +
+  stat_summary(aes(y = rate, x = temp, col = SR), data = TiW_all, fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5) +
+  geom_line(aes(temp, .fitted, col = SR), preds_all, linewidth = 1) +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper, fill = SR), boot_conf_all,  alpha = 0.3) +
+  scale_colour_manual(values = c("skyblue", "coral")) +
+  scale_fill_manual(values = c("skyblue3", "coral3")) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Tissue weight growth (g)',
+       col = "Source Region",
+       fill = "Source Region") + 
+  theme_cowplot(16) + 
+  theme(legend.position = "none")
+
+#CC_ShW: Quadratic: Fit data----
 # fit with Gaussian model
-d_fit <- nest(d, data = c(temp, rate)) %>%
-  mutate(briere = map(data, ~nls_multstart(rate~briere2_1999(temp, tmin, tmax, a, b),
-                                             data = .x,
-                                             iter = c(4,4,4,4),
-                                             start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'briere2_1999') - 10,
-                                             start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'briere2_1999') + 10,
-                                             lower = get_lower_lims(.x$temp, .x$rate, model_name = 'briere2_1999'),
-                                             upper = get_upper_lims(.x$temp, .x$rate, model_name = 'briere2_1999'),
-                                             supp_errors = 'Y',
-                                             convergence_count = FALSE)),
+d_fit <- nest(CC_ShW, data = c(temp, rate)) %>%
+  mutate(quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+                                           data = .x,
+                                           iter = c(4,4,4),
+                                           start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 10,
+                                           start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 10,
+                                           lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                           upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                           supp_errors = 'Y',
+                                           convergence_count = FALSE)),
          # create new temperature data
          new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
          # predict over that data,
-         preds =  map2(briere, new_data, ~augment(.x, newdata = .y)))
+         preds =  map2(quadratic, new_data, ~augment(.x, newdata = .y)))
 
 # unnest predictions
-d_preds <- select(d_fit, preds) %>%
-  unnest(preds)
+d_preds_CC <- select(d_fit, preds) %>%
+  unnest(preds) %>% 
+  mutate(SR = "Central Coast")
 
 # plot data and predictions
 ggplot() +
-  geom_line(aes(temp, .fitted), d_preds, col = 'blue') +
-  geom_point(aes(temp, rate), d, size = 2, alpha = 0.5) +
+  geom_line(aes(temp, .fitted), d_preds_CC, col = 'blue') +
+  geom_point(aes(temp, rate), CC_ShW, size = 2, alpha = 0.5) +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
-       y = 'Growth rate',
-       title = 'Strait of Georgia')
+       y = 'Shell growth rate',
+       title = 'Central Coast')
 
-#CC: Briere: refit model using nlsLM----
-fit_nlsLM <- minpack.lm::nlsLM(rate~briere2_1999(temp, tmin, tmax, a, b),
-                               data = d,
-                               start = coef(d_fit$briere[[1]]),
-                               lower = get_lower_lims(d$temp, d$rate, model_name = 'briere2_1999'),
-                               upper = get_upper_lims(d$temp, d$rate, model_name = 'briere2_1999'),
-                               weights = rep(1, times = nrow(d)))
+#CC_ShW: Quadratic: refit model using nlsLM----
+fit_nlsLM <- minpack.lm::nlsLM(rate~quadratic_2008(temp = temp, a, b, c),
+                               data = CC_ShW,
+                               start = coef(d_fit$quadratic[[1]]),
+                               lower = get_lower_lims(CC_ShW$temp, CC_ShW$rate, model_name = 'quadratic_2008'),
+                               upper = get_upper_lims(CC_ShW$temp, CC_ShW$rate, model_name = 'quadratic_2008'),
+                               weights = rep(1, times = nrow(CC_ShW)))
 
 # bootstrap using case resampling
 boot1 <- Boot(fit_nlsLM, method = 'case')
@@ -177,36 +308,37 @@ head(boot1$t)
 
 hist(boot1, layout = c(2,2))
 
-#CC: Briere: Now plot the bootstrapped models----
+#CC_ShW: quadratic: Now plot the bootstrapped models----
 #create predictions of each bootstrapped model
 boot1_preds <- boot1$t %>%
   as.data.frame() %>%
   drop_na() %>%
   mutate(iter = 1:n()) %>%
   group_by_all() %>%
-  do(data.frame(temp = seq(min(d$temp), max(d$temp), length.out = 100))) %>%
+  do(data.frame(temp = seq(min(CC_ShW$temp), max(CC_ShW$temp), length.out = 100))) %>%
   ungroup() %>%
-  mutate(pred = briere2_1999(temp, tmin, tmax, a, b))
+  mutate(pred = quadratic_2008(temp = temp, a, b, c))
 
 # calculate bootstrapped confidence intervals
-boot1_conf_preds <- group_by(boot1_preds, temp) %>%
+boot1_conf_preds_CC <- group_by(boot1_preds, temp) %>%
   summarise(conf_lower = quantile(pred, 0.025),
             conf_upper = quantile(pred, 0.975)) %>%
-  ungroup()
+  ungroup() %>% 
+  mutate(SR = "Central Coast")
 
 # plot bootstrapped CIs
-p_briere_sog <- ggplot() +
-  geom_line(aes(temp, .fitted), d_preds, col = 'blue') +
-  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds, fill = 'blue', alpha = 0.3) +
-  geom_point(aes(temp, rate), d, size = 2, alpha = 0.5) +
+p_quadratic_CC <- ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_CC, col = 'blue') +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds_CC, fill = 'blue', alpha = 0.3) +
+  geom_point(aes(temp, rate), CC_ShW, size = 2, alpha = 0.5) +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
-       y = 'Tissue weight growth',
-       title = 'Briere: SoG')
+       y = 'Shell weight growth',
+       title = 'Quadratic: CC')
 
-p_briere_sog
+p_quadratic_CC
 
-#CC: Briere: Estimate parameters & CI intervals ----
+#CC_ShW: quadratic: Estimate parameters & CI intervals ----
 extra_params <- calc_params(fit_nlsLM) %>%
   pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
 
@@ -219,69 +351,58 @@ ci_extra_params <- Boot(fit_nlsLM, f = function(x){unlist(calc_params(x))}, labe
 
 ci_extra_params <- left_join(ci_extra_params, extra_params)
 
-ci_params_select <- ci_extra_params %>% 
-  filter(param == "ctmax" | param == "topt" | param == "tmax")
+ci_params_select_CC_ShW <- ci_extra_params %>% 
+  filter(param == "ctmax" | param == "topt") %>% 
+  mutate(SR = "Central Coast",
+         RV = "ShW",
+         model = "quadratic")
 
-param_briere_cc <- ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
   facet_wrap(~param, scales = 'free') +
   scale_x_discrete('') +
-  labs(title = 'Briere - CC')
+  labs(title = 'quadratic - CC')
 
-param_briere_cc
-
-#SoG: Load the data----
-d <- SoG_TiW %>% 
-  rename(rate = TiW) %>% 
-  select(temp, rate)
-
-#Visualize the data first
-ggplot(d, aes(temp, rate)) +
-  geom_point(size = 2, alpha = 0.5) +
-  theme_bw(base_size = 12) +
-  labs(x = 'Temperature (ºC)',
-       y = 'Tissue growth rate',
-       title = 'Growth rate across temperatures')
-
-#SoG: Gaussian: Fit data----
+#SoG_ShW: quadratic: Fit data----
 # fit with Gaussian model
-d_fit <- nest(d, data = c(temp, rate)) %>%
-  mutate(gaussian = map(data, ~nls_multstart(rate~gaussian_1987(temp = temp, rmax, topt, a),
-                                             data = .x,
-                                             iter = c(4,4,4),
-                                             start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'gaussian_1987') - 10,
-                                             start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'gaussian_1987') + 10,
-                                             lower = get_lower_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
-                                             upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
-                                             supp_errors = 'Y',
-                                             convergence_count = FALSE)),
+d_fit <- nest(SoG_ShW, data = c(temp, rate)) %>%
+  mutate(quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+                                           data = .x,
+                                           iter = c(4,4,4),
+                                           start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 10,
+                                           start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 10,
+                                           lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                           upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                           supp_errors = 'Y',
+                                           convergence_count = FALSE)),
          # create new temperature data
          new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
          # predict over that data,
-         preds =  map2(gaussian, new_data, ~augment(.x, newdata = .y)))
+         preds =  map2(quadratic, new_data, ~augment(.x, newdata = .y)))
 
 # unnest predictions
-d_preds <- select(d_fit, preds) %>%
-  unnest(preds)
+d_preds_SoG <- select(d_fit, preds) %>%
+  unnest(preds) %>% 
+  mutate(SR = "Strait of Georgia")
 
 # plot data and predictions
 ggplot() +
-  geom_line(aes(temp, .fitted), d_preds, col = 'blue') +
-  geom_point(aes(temp, rate), d, size = 2, alpha = 0.5) +
+  geom_line(aes(temp, .fitted), d_preds_SoG, col = 'blue') +
+  geom_point(aes(temp, rate), SoG_ShW, size = 2, alpha = 0.5) +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
-       y = 'Growth rate',
+       y = 'Shell growth rate',
        title = 'Strait of Georgia')
 
-#SoG: Gaussian: refit model using nlsLM----
-fit_nlsLM <- minpack.lm::nlsLM(rate~gaussian_1987(temp = temp, rmax, topt, a),
-                               data = d,
-                               start = coef(d_fit$gaussian[[1]]),
-                               lower = get_lower_lims(d$temp, d$rate, model_name = 'gaussian_1987'),
-                               upper = get_upper_lims(d$temp, d$rate, model_name = 'gaussian_1987'),
-                               weights = rep(1, times = nrow(d)))
+#SoG_ShW: quadratic: refit model using nlsLM----
+fit_nlsLM <- minpack.lm::nlsLM(rate~quadratic_2008(temp = temp, a, b, c),
+                               data = SoG_ShW,
+                               start = coef(d_fit$quadratic[[1]]),
+                               lower = get_lower_lims(SoG_ShW$temp, SoG_ShW$rate, model_name = 'quadratic_2008'),
+                               upper = get_upper_lims(SoG_ShW$temp, SoG_ShW$rate, model_name = 'quadratic_2008'),
+                               weights = rep(1, times = nrow(SoG_ShW)))
 
 # bootstrap using case resampling
 boot1 <- Boot(fit_nlsLM, method = 'case')
@@ -291,36 +412,37 @@ head(boot1$t)
 
 hist(boot1, layout = c(2,2))
 
-#SoG: Gaussian: Now plot the bootstrapped models----
+#SoG_ShW: quadratic: Now plot the bootstrapped models----
 #create predictions of each bootstrapped model
 boot1_preds <- boot1$t %>%
   as.data.frame() %>%
   drop_na() %>%
   mutate(iter = 1:n()) %>%
   group_by_all() %>%
-  do(data.frame(temp = seq(min(d$temp), max(d$temp), length.out = 100))) %>%
+  do(data.frame(temp = seq(min(SoG_ShW$temp), max(SoG_ShW$temp), length.out = 100))) %>%
   ungroup() %>%
-  mutate(pred = gaussian_1987(temp = temp, rmax, topt, a))
+  mutate(pred = quadratic_2008(temp = temp, a, b, c))
 
 # calculate bootstrapped confidence intervals
-boot1_conf_preds <- group_by(boot1_preds, temp) %>%
+boot1_conf_preds_SoG <- group_by(boot1_preds, temp) %>%
   summarise(conf_lower = quantile(pred, 0.025),
             conf_upper = quantile(pred, 0.975)) %>%
-  ungroup()
+  ungroup() %>% 
+  mutate(SR = "Strait of Georgia")
 
 # plot bootstrapped CIs
-p_gaussian_sog <- ggplot() +
-  geom_line(aes(temp, .fitted), d_preds, col = 'blue') +
-  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds, fill = 'blue', alpha = 0.3) +
-  geom_point(aes(temp, rate), d, size = 2, alpha = 0.5) +
+p_quadratic_SoG <- ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_SoG, col = 'blue') +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds_SoG, fill = 'blue', alpha = 0.3) +
+  geom_point(aes(temp, rate), SoG_ShW, size = 2, alpha = 0.5) +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
-       y = 'Tissue weight growth',
-       title = 'Gaussian: SoG')
+       y = 'Shell weight growth',
+       title = 'Quadratic: SoG')
 
-p_gaussian_sog
+p_quadratic_SoG
 
-#SoG: Gaussian: Estimate parameters & CI intervals ----
+#SoG_ShW: quadratic: Estimate parameters & CI intervals ----
 extra_params <- calc_params(fit_nlsLM) %>%
   pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
 
@@ -333,62 +455,92 @@ ci_extra_params <- Boot(fit_nlsLM, f = function(x){unlist(calc_params(x))}, labe
 
 ci_extra_params <- left_join(ci_extra_params, extra_params)
 
-ci_params_select <- ci_extra_params %>% 
-  filter(param == "ctmax" | param == "topt")
+ci_params_select_SoG_ShW <- ci_extra_params %>% 
+  filter(param == "ctmax" | param == "topt") %>% 
+  mutate(SR = "Strait of Georgia",
+         RV = "ShW",
+         model = "quadratic")
 
-param_gaussian_sog <- ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
   facet_wrap(~param, scales = 'free') +
   scale_x_discrete('') +
-  labs(title = 'Gaussian - SoG')
+  labs(title = 'Quadratic - SoG')
 
 
 
-#Visualize them together----
-param_sharpe_sog + param_gaussian_sog
+#Create combined ShW plot----
+preds_all <- d_preds_CC %>% 
+  rbind(d_preds_SoG) %>% 
+  mutate(SR = as.factor(SR))
 
+boot_conf_all <- boot1_conf_preds_CC %>% 
+  rbind(boot1_conf_preds_SoG) %>% 
+  mutate(SR = as.factor(SR))
 
+CC_ShW_2 <- CC_ShW %>% 
+  mutate(SR = "Central Coast")
+SoG_ShW_2 <- SoG_ShW %>% 
+  mutate(SR = "Strait of Georgia")
 
-#Sharpe: Fit data----
-# fit Sharpe-Schoolfield model
-d_fit <- nest(d, data = c(temp, rate)) %>%
-  mutate(sharpeschoolhigh = map(data, ~nls_multstart(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                                                     data = .x,
-                                                     iter = c(3,3,3,3),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)),
+ShW_all <- CC_ShW_2 %>% 
+  rbind(SoG_ShW_2)
+
+# plot data and model fit
+pShW_quadratic <- ggplot() +
+  stat_summary(aes(y = rate, x = temp, col = SR), data = ShW_all, fun=mean, geom="point", size = 3) +
+  stat_summary(aes(y = rate, x = temp, col = SR), data = ShW_all, fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5) +
+  geom_line(aes(temp, .fitted, col = SR), preds_all, linewidth = 1) +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper, fill = SR), boot_conf_all,  alpha = 0.3) +
+  scale_colour_manual(values = c("skyblue", "coral")) +
+  scale_fill_manual(values = c("skyblue3", "coral3")) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Shell weight growth (g)',
+       col = "Source Region",
+       fill = "Source Region") + 
+  theme_cowplot(16) + 
+  theme(legend.position = "none")
+
+#CC_l: Quadratic: Fit data----
+# fit with Gaussian model
+d_fit <- nest(CC_l, data = c(temp, rate)) %>%
+  mutate(quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+                                              data = .x,
+                                              iter = c(4,4,4),
+                                              start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 10,
+                                              start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 10,
+                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              supp_errors = 'Y',
+                                              convergence_count = FALSE)),
          # create new temperature data
          new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
          # predict over that data,
-         preds =  map2(sharpeschoolhigh, new_data, ~augment(.x, newdata = .y)))
+         preds =  map2(quadratic, new_data, ~augment(.x, newdata = .y)))
 
 # unnest predictions
-d_preds <- select(d_fit, preds) %>%
-  unnest(preds)
+d_preds_CC <- select(d_fit, preds) %>%
+  unnest(preds) %>% 
+  mutate(SR = "Central Coast")
 
 # plot data and predictions
 ggplot() +
-  geom_line(aes(temp, .fitted), d_preds, col = 'blue') +
-  geom_point(aes(temp, rate), d, size = 2, alpha = 0.5) +
+  geom_line(aes(temp, .fitted), d_preds_CC, col = 'blue') +
+  geom_point(aes(temp, rate), CC_l, size = 2, alpha = 0.5) +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
-       y = 'Growth rate',
-       title = 'Growth rate across temperatures')
+       y = 'Shell growth rate',
+       title = 'Central Coast')
 
-#Sharpe: refit model using nlsLN----
-# refit model using nlsLM
-fit_nlsLM <- minpack.lm::nlsLM(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                               data = d,
-                               start = coef(d_fit$sharpeschoolhigh[[1]]),
-                               lower = get_lower_lims(d$temp, d$rate, model_name = 'sharpeschoolhigh_1981'),
-                               upper = get_upper_lims(d$temp, d$rate, model_name = 'sharpeschoolhigh_1981'),
-                               weights = rep(1, times = nrow(d)))
+#CC_l: Quadratic: refit model using nlsLM----
+fit_nlsLM <- minpack.lm::nlsLM(rate~quadratic_2008(temp = temp, a, b, c),
+                               data = CC_l,
+                               start = coef(d_fit$quadratic[[1]]),
+                               lower = get_lower_lims(CC_l$temp, CC_l$rate, model_name = 'quadratic_2008'),
+                               upper = get_upper_lims(CC_l$temp, CC_l$rate, model_name = 'quadratic_2008'),
+                               weights = rep(1, times = nrow(CC_l)))
 
 # bootstrap using case resampling
 boot1 <- Boot(fit_nlsLM, method = 'case')
@@ -398,36 +550,37 @@ head(boot1$t)
 
 hist(boot1, layout = c(2,2))
 
-#Sharpe: Now plot bootstrapped model----
-# create predictions of each bootstrapped model
+#CC_l: quadratic: Now plot the bootstrapped models----
+#create predictions of each bootstrapped model
 boot1_preds <- boot1$t %>%
   as.data.frame() %>%
   drop_na() %>%
   mutate(iter = 1:n()) %>%
   group_by_all() %>%
-  do(data.frame(temp = seq(min(d$temp), max(d$temp), length.out = 100))) %>%
+  do(data.frame(temp = seq(min(CC_l$temp), max(CC_l$temp), length.out = 100))) %>%
   ungroup() %>%
-  mutate(pred = sharpeschoolhigh_1981(temp, r_tref, e, eh, th, tref = 15))
+  mutate(pred = quadratic_2008(temp = temp, a, b, c))
 
 # calculate bootstrapped confidence intervals
-boot1_conf_preds <- group_by(boot1_preds, temp) %>%
+boot1_conf_preds_CC <- group_by(boot1_preds, temp) %>%
   summarise(conf_lower = quantile(pred, 0.025),
             conf_upper = quantile(pred, 0.975)) %>%
-  ungroup()
+  ungroup() %>% 
+  mutate(SR = "Central Coast")
 
 # plot bootstrapped CIs
-p_sharpe_SoG <- ggplot() +
-  geom_line(aes(temp, .fitted), d_preds, col = 'blue') +
-  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds, fill = 'blue', alpha = 0.3) +
-  geom_point(aes(temp, rate), d, size = 2, alpha = 0.5) +
+p_quadratic_CC <- ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_CC, col = 'blue') +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds_CC, fill = 'blue', alpha = 0.3) +
+  geom_point(aes(temp, rate), CC_l, size = 2, alpha = 0.5) +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
-       y = 'Tissue Growth rate',
-       title = 'SoG: Sharpe-Schoolfield')
+       y = 'Shell length',
+       title = 'Quadratic: CC')
 
-p_sharpe_SoG
+p_quadratic_CC
 
-#Sharpe: Estimate parameters & CI intervals ----
+#CC_l: quadratic: Estimate parameters & CI intervals ----
 extra_params <- calc_params(fit_nlsLM) %>%
   pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
 
@@ -440,13 +593,430 @@ ci_extra_params <- Boot(fit_nlsLM, f = function(x){unlist(calc_params(x))}, labe
 
 ci_extra_params <- left_join(ci_extra_params, extra_params)
 
-ci_params_select <- ci_extra_params %>% 
-  filter(param == "ctmax" | param == "topt")
+ci_params_select_CC_l <- ci_extra_params %>% 
+  filter(param == "ctmax" | param == "topt") %>% 
+  mutate(SR = "Central Coast",
+         RV = "l",
+         model = "quadratic")
 
-param_sharpe_sog <- ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
   facet_wrap(~param, scales = 'free') +
   scale_x_discrete('') +
-  labs(title = 'Sharpe-Schoolfield - SoG')
+  labs(title = 'quadratic - CC')
+
+#SoG_l: quadratic: Fit data----
+# fit with Gaussian model
+d_fit <- nest(SoG_l, data = c(temp, rate)) %>%
+  mutate(quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+                                              data = .x,
+                                              iter = c(4,4,4),
+                                              start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 10,
+                                              start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 10,
+                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              supp_errors = 'Y',
+                                              convergence_count = FALSE)),
+         # create new temperature data
+         new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
+         # predict over that data,
+         preds =  map2(quadratic, new_data, ~augment(.x, newdata = .y)))
+
+# unnest predictions
+d_preds_SoG <- select(d_fit, preds) %>%
+  unnest(preds) %>% 
+  mutate(SR = "Strait of Georgia")
+
+# plot data and predictions
+ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_SoG, col = 'blue') +
+  geom_point(aes(temp, rate), SoG_l, size = 2, alpha = 0.5) +
+  theme_bw(base_size = 12) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Shell length',
+       title = 'Strait of Georgia')
+
+#SoG_l: quadratic: refit model using nlsLM----
+fit_nlsLM <- minpack.lm::nlsLM(rate~quadratic_2008(temp = temp, a, b, c),
+                               data = SoG_l,
+                               start = coef(d_fit$quadratic[[1]]),
+                               lower = get_lower_lims(SoG_l$temp, SoG_l$rate, model_name = 'quadratic_2008'),
+                               upper = get_upper_lims(SoG_l$temp, SoG_l$rate, model_name = 'quadratic_2008'),
+                               weights = rep(1, times = nrow(SoG_l)))
+
+# bootstrap using case resampling
+boot1 <- Boot(fit_nlsLM, method = 'case')
+
+# look at the data
+head(boot1$t)
+
+hist(boot1, layout = c(2,2))
+
+#SoG_l: quadratic: Now plot the bootstrapped models----
+#create predictions of each bootstrapped model
+boot1_preds <- boot1$t %>%
+  as.data.frame() %>%
+  drop_na() %>%
+  mutate(iter = 1:n()) %>%
+  group_by_all() %>%
+  do(data.frame(temp = seq(min(SoG_l$temp), max(SoG_l$temp), length.out = 100))) %>%
+  ungroup() %>%
+  mutate(pred = quadratic_2008(temp = temp, a, b, c))
+
+# calculate bootstrapped confidence intervals
+boot1_conf_preds_SoG <- group_by(boot1_preds, temp) %>%
+  summarise(conf_lower = quantile(pred, 0.025),
+            conf_upper = quantile(pred, 0.975)) %>%
+  ungroup() %>% 
+  mutate(SR = "Strait of Georgia")
+
+# plot bootstrapped CIs
+p_quadratic_SoG <- ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_SoG, col = 'blue') +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds_SoG, fill = 'blue', alpha = 0.3) +
+  geom_point(aes(temp, rate), SoG_l, size = 2, alpha = 0.5) +
+  theme_bw(base_size = 12) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Shell length',
+       title = 'Quadratic: SoG')
+
+p_quadratic_SoG
+
+#SoG_l: quadratic: Estimate parameters & CI intervals ----
+extra_params <- calc_params(fit_nlsLM) %>%
+  pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
+
+ci_extra_params <- Boot(fit_nlsLM, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(fit_nlsLM)), R = 200, method = 'case') %>%
+  confint(., method = 'bca') %>%
+  as.data.frame() %>%
+  rename(conf_lower = 1, conf_upper = 2) %>%
+  rownames_to_column(., var = 'param') %>%
+  mutate(method = 'case bootstrap')
+
+ci_extra_params <- left_join(ci_extra_params, extra_params)
+
+ci_params_select_SoG_l <- ci_extra_params %>% 
+  filter(param == "ctmax" | param == "topt") %>% 
+  mutate(SR = "Strait of Georgia",
+         RV = "l",
+         model = "quadratic")
+
+ggplot(ci_params_select, aes(param, estimate)) +
+  geom_point(size = 4) +
+  geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
+  theme_bw() +
+  facet_wrap(~param, scales = 'free') +
+  scale_x_discrete('') +
+  labs(title = 'Quadratic - SoG')
+
+
+#Create combined l plot----
+preds_all <- d_preds_CC %>% 
+  rbind(d_preds_SoG) %>% 
+  mutate(SR = as.factor(SR))
+
+boot_conf_all <- boot1_conf_preds_CC %>% 
+  rbind(boot1_conf_preds_SoG) %>% 
+  mutate(SR = as.factor(SR))
+
+CC_l_2 <- CC_l %>% 
+  mutate(SR = "Central Coast")
+SoG_l_2 <- SoG_l %>% 
+  mutate(SR = "Strait of Georgia")
+
+l_all <- CC_l_2 %>% 
+  rbind(SoG_l_2)
+
+# plot data and model fit
+pl_quadratic <- ggplot() +
+  stat_summary(aes(y = rate, x = temp, col = SR), data = l_all, fun=mean, geom="point", size = 3) +
+  stat_summary(aes(y = rate, x = temp, col = SR), data = l_all, fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5) +
+  geom_line(aes(temp, .fitted, col = SR), preds_all, linewidth = 1) +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper, fill = SR), boot_conf_all,  alpha = 0.3) +
+  scale_colour_manual(values = c("skyblue", "coral")) +
+  scale_fill_manual(values = c("skyblue3", "coral3")) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Shell length growth (g)',
+       col = "Source Region",
+       fill = "Source Region") + 
+  theme_cowplot(16) + 
+  theme(legend.position = "none")
+
+#CC_fr: Quadratic: Fit data----
+# fit with Gaussian model
+d_fit <- nest(CC_fr, data = c(temp, rate)) %>%
+  mutate(quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+                                              data = .x,
+                                              iter = c(4,4,4),
+                                              start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 10,
+                                              start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 10,
+                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              supp_errors = 'Y',
+                                              convergence_count = FALSE)),
+         # create new temperature data
+         new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
+         # predict over that data,
+         preds =  map2(quadratic, new_data, ~augment(.x, newdata = .y)))
+
+# unnest predictions
+d_preds_CC <- select(d_fit, preds) %>%
+  unnest(preds) %>% 
+  mutate(SR = "Central Coast")
+
+# plot data and predictions
+ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_CC, col = 'blue') +
+  geom_point(aes(temp, rate), CC_fr, size = 2, alpha = 0.5) +
+  theme_bw(base_size = 12) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Feeding rate',
+       title = 'Central Coast')
+
+#CC_fr: Quadratic: refit model using nlsLM----
+fit_nlsLM <- minpack.lm::nlsLM(rate~quadratic_2008(temp = temp, a, b, c),
+                               data = CC_fr,
+                               start = coef(d_fit$quadratic[[1]]),
+                               lower = get_lower_lims(CC_fr$temp, CC_fr$rate, model_name = 'quadratic_2008'),
+                               upper = get_upper_lims(CC_fr$temp, CC_fr$rate, model_name = 'quadratic_2008'),
+                               weights = rep(1, times = nrow(CC_fr)))
+
+# bootstrap using case resampling
+boot1 <- Boot(fit_nlsLM, method = 'case')
+
+# look at the data
+head(boot1$t)
+
+hist(boot1, layout = c(2,2))
+
+#CC_fr: quadratic: Now plot the bootstrapped models----
+#create predictions of each bootstrapped model
+boot1_preds <- boot1$t %>%
+  as.data.frame() %>%
+  drop_na() %>%
+  mutate(iter = 1:n()) %>%
+  group_by_all() %>%
+  do(data.frame(temp = seq(min(CC_fr$temp), max(CC_fr$temp), length.out = 100))) %>%
+  ungroup() %>%
+  mutate(pred = quadratic_2008(temp = temp, a, b, c))
+
+# calculate bootstrapped confidence intervals
+boot1_conf_preds_CC <- group_by(boot1_preds, temp) %>%
+  summarise(conf_lower = quantile(pred, 0.025),
+            conf_upper = quantile(pred, 0.975)) %>%
+  ungroup() %>% 
+  mutate(SR = "Central Coast")
+
+# plot bootstrapped CIs
+ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_CC, col = 'blue') +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds_CC, fill = 'blue', alpha = 0.3) +
+  geom_point(aes(temp, rate), CC_fr, size = 2, alpha = 0.5) +
+  theme_bw(base_size = 12) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Feeding rate',
+       title = 'Quadratic: CC')
+
+#CC_fr: quadratic: Estimate parameters & CI intervals ----
+extra_params <- calc_params(fit_nlsLM) %>%
+  pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
+
+ci_extra_params <- Boot(fit_nlsLM, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(fit_nlsLM)), R = 200, method = 'case') %>%
+  confint(., method = 'bca') %>%
+  as.data.frame() %>%
+  rename(conf_lower = 1, conf_upper = 2) %>%
+  rownames_to_column(., var = 'param') %>%
+  mutate(method = 'case bootstrap')
+
+ci_extra_params <- left_join(ci_extra_params, extra_params)
+
+ci_params_select_CC_fr <- ci_extra_params %>% 
+  filter(param == "ctmax" | param == "topt") %>% 
+  mutate(SR = "Central Coast",
+         RV = "fr",
+         model = "quadratic")
+
+ggplot(ci_params_select, aes(param, estimate)) +
+  geom_point(size = 4) +
+  geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
+  theme_bw() +
+  facet_wrap(~param, scales = 'free') +
+  scale_x_discrete('') +
+  labs(title = 'quadratic - CC')
+
+#SoG_fr: quadratic: Fit data----
+# fit with Gaussian model
+d_fit <- nest(SoG_fr, data = c(temp, rate)) %>%
+  mutate(quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+                                              data = .x,
+                                              iter = c(4,4,4),
+                                              start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 10,
+                                              start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 10,
+                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
+                                              supp_errors = 'Y',
+                                              convergence_count = FALSE)),
+         # create new temperature data
+         new_data = map(data, ~tibble(temp = seq(min(.x$temp), max(.x$temp), length.out = 100))),
+         # predict over that data,
+         preds =  map2(quadratic, new_data, ~augment(.x, newdata = .y)))
+
+# unnest predictions
+d_preds_SoG <- select(d_fit, preds) %>%
+  unnest(preds) %>% 
+  mutate(SR = "Strait of Georgia")
+
+# plot data and predictions
+ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_SoG, col = 'blue') +
+  geom_point(aes(temp, rate), SoG_fr, size = 2, alpha = 0.5) +
+  theme_bw(base_size = 12) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Feeding rate',
+       title = 'Strait of Georgia')
+
+#SoG_fr: quadratic: refit model using nlsLM----
+fit_nlsLM <- minpack.lm::nlsLM(rate~quadratic_2008(temp = temp, a, b, c),
+                               data = SoG_fr,
+                               start = coef(d_fit$quadratic[[1]]),
+                               lower = get_lower_lims(SoG_fr$temp, SoG_fr$rate, model_name = 'quadratic_2008'),
+                               upper = get_upper_lims(SoG_fr$temp, SoG_fr$rate, model_name = 'quadratic_2008'),
+                               weights = rep(1, times = nrow(SoG_fr)))
+
+# bootstrap using case resampling
+boot1 <- Boot(fit_nlsLM, method = 'case')
+
+# look at the data
+head(boot1$t)
+
+hist(boot1, layout = c(2,2))
+
+#SoG_fr: quadratic: Now plot the bootstrapped models----
+#create predictions of each bootstrapped model
+boot1_preds <- boot1$t %>%
+  as.data.frame() %>%
+  drop_na() %>%
+  mutate(iter = 1:n()) %>%
+  group_by_all() %>%
+  do(data.frame(temp = seq(min(SoG_fr$temp), max(SoG_fr$temp), length.out = 100))) %>%
+  ungroup() %>%
+  mutate(pred = quadratic_2008(temp = temp, a, b, c))
+
+# calculate bootstrapped confidence intervals
+boot1_conf_preds_SoG <- group_by(boot1_preds, temp) %>%
+  summarise(conf_lower = quantile(pred, 0.025),
+            conf_upper = quantile(pred, 0.975)) %>%
+  ungroup() %>% 
+  mutate(SR = "Strait of Georgia")
+
+# plot bootstrapped CIs
+ggplot() +
+  geom_line(aes(temp, .fitted), d_preds_SoG, col = 'blue') +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot1_conf_preds_SoG, fill = 'blue', alpha = 0.3) +
+  geom_point(aes(temp, rate), SoG_fr, size = 2, alpha = 0.5) +
+  theme_bw(base_size = 12) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Feeding rate',
+       title = 'Quadratic: SoG')
+
+#SoG_fr: quadratic: Estimate parameters & CI intervals ----
+extra_params <- calc_params(fit_nlsLM) %>%
+  pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
+
+ci_extra_params <- Boot(fit_nlsLM, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(fit_nlsLM)), R = 200, method = 'case') %>%
+  confint(., method = 'bca') %>%
+  as.data.frame() %>%
+  rename(conf_lower = 1, conf_upper = 2) %>%
+  rownames_to_column(., var = 'param') %>%
+  mutate(method = 'case bootstrap')
+
+ci_extra_params <- left_join(ci_extra_params, extra_params)
+
+ci_params_select_SoG_fr <- ci_extra_params %>% 
+  filter(param == "ctmax" | param == "topt") %>% 
+  mutate(SR = "Strait of Georgia",
+         RV = "fr",
+         model = "quadratic")
+
+ggplot(ci_params_select, aes(param, estimate)) +
+  geom_point(size = 4) +
+  geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
+  theme_bw() +
+  facet_wrap(~param, scales = 'free') +
+  scale_x_discrete('') +
+  labs(title = 'Quadratic - SoG')
+
+#Create combined fr plot----
+preds_all <- d_preds_CC %>% 
+  rbind(d_preds_SoG) %>% 
+  mutate(SR = as.factor(SR))
+
+boot_conf_all <- boot1_conf_preds_CC %>% 
+  rbind(boot1_conf_preds_SoG) %>% 
+  mutate(SR = as.factor(SR))
+
+CC_fr_2 <- CC_fr %>% 
+  mutate(SR = "Central Coast")
+SoG_fr_2 <- SoG_fr %>% 
+  mutate(SR = "Strait of Georgia")
+
+fr_all <- CC_fr_2 %>% 
+  rbind(SoG_fr_2)
+
+# plot data and model fit
+pfr_quadratic <- ggplot() +
+  stat_summary(aes(y = rate, x = temp, col = SR), data = fr_all, fun=mean, geom="point", size = 3) +
+  stat_summary(aes(y = rate, x = temp, col = SR), data = fr_all, fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5) +
+  geom_line(aes(temp, .fitted, col = SR), preds_all, linewidth = 1) +
+  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper, fill = SR), boot_conf_all,  alpha = 0.3) +
+  scale_colour_manual(values = c("skyblue", "coral")) +
+  scale_fill_manual(values = c("skyblue3", "coral3")) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Per capita weekly feeding rate',
+       col = "Source Region",
+       fill = "Source Region") + 
+  theme_cowplot(16) 
+
+#Create collated TPC figure----
+p_comb_TPC <- plot_grid(pfr_quadratic + theme(axis.text.x = element_blank(), axis.title.x = element_blank(), legend.position = "none"),
+                        pTiW_quadratic + theme(axis.text.x = element_blank(), axis.title.x = element_blank()),
+                        get_legend(pfr_quadratic),
+                        pl_quadratic + theme(axis.title.x = element_blank()),
+                        pShW_quadratic+ theme(axis.title.x = element_blank()), NULL,
+                        ncol = 3, rel_widths = c(1,1,0.4), axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Temperature °C", fontface = "plain", x = 0.4, hjust = 0, size = 16)
+p_comb_TPC_title <- plot_grid(p_comb_TPC, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(p_comb_TPC_title, file = "plots/supp_figs/FigS?_TPC.pdf", height = 7, width = 12, dpi = 300)
+
+
+#Create collated parameters table----
+params_bootstrapped <- ci_params_select_CC_TiW %>% 
+  rbind(ci_params_select_SoG_TiW, 
+        ci_params_select_CC_ShW, ci_params_select_SoG_ShW,
+        ci_params_select_CC_l, ci_params_select_SoG_l,
+        ci_params_select_CC_fr, ci_params_select_SoG_fr) %>% 
+  select(SR, RV, param, estimate, conf_lower, conf_upper, model, method) %>% 
+  arrange(desc(param)) %>% 
+  mutate(RV = ifelse(RV == "fr", "FR",
+                     ifelse(RV == "l", "L", RV)),
+         RV = factor(RV, level = c("FR", "TiW", "ShW", "L")),
+         param = ifelse(param == "topt", "Topt", "CTmax"),
+         param = factor(param, level = c("Topt", "CTmax")))
+
+#Visualize these in a ggplot
+pparams_TPC <- ggplot(params_bootstrapped, aes(RV, estimate, colour = SR)) +
+  geom_point(aes(fill = SR), size = 4, alpha = 0.5, position=position_dodge(0.8)) + 
+  geom_errorbar(aes(ymin=conf_lower, ymax=conf_upper), width=.1, position=position_dodge(0.8)) +
+  facet_grid(~param, scales = "free") +
+  labs(x = "Response variable", y = "Temperature", colour = "Source region",
+       fill = "Source region") +
+  scale_colour_manual(values = c("skyblue", "coral"))+ 
+  theme_cowplot(16) +
+  theme(strip.background = element_blank(),
+        legend.position = c(0.7, 0.3))
+
+ggsave(pparams_TPC, file = "plots/supp_figs/FigS?_params.pdf", height = 6, width = 9, dpi = 300)
