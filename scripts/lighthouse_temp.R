@@ -41,7 +41,8 @@ lighthouse <- rbind(egg_1, departure_1) %>%
          year = as.factor(year),
          month = as.factor(month)) %>% 
   group_by(station, year, month) %>% 
-  summarize(avgtemp = mean(temp), maxtemp = max(temp), sdtemp = sd(temp), temp90th = quantile(temp, 0.90)) %>% 
+  summarize(avgtemp = mean(temp), maxtemp = max(temp), sdtemp = sd(temp), temp90th = quantile(temp, 0.90),
+            temp95th = quantile(temp, .95)) %>% 
   ungroup() %>% 
   mutate(date = as.yearmon(paste(year, month), "%Y %m"))
 
@@ -55,12 +56,55 @@ lighthouse_annual <- rbind(egg_1, departure_1) %>%
 
 #Visualize the data----
 both <- ggplot(lighthouse, aes(date, temp90th, group = station)) + 
-  geom_line(aes(colour = station), size = 0.7) +
+  geom_line(aes(colour = station), linewidth = 0.7) +
   scale_colour_manual(values = c("coral", "skyblue")) +
   labs(x = "Year", y = "90th percentile SST (°C)") +
   theme_cowplot(16) + theme(legend.position = "top", legend.justification = "right")
 
 ggsave(both, file = "plots/lighthouse/both_lighthouse_stations.pdf", height = 5, width = 9, dpi = 300)
+
+
+#Calculate the 95th percentile for each station----
+#Calculate the monthly 95th percentile over the years between 2012-2020
+#This is summarized by month first then you calculate the 95fth percentile of the monthly temps then take the max monthly temp
+temp95th_month <- lighthouse %>% 
+  group_by(station, month) %>% 
+  summarize(temp95th_mean = mean(temp95th)) %>% 
+  ungroup() %>% 
+  group_by(station) %>% 
+  summarize(max_95th = max(temp95th_mean))
+
+#Can try doing it based on the original dataset also (i.e., do the 95th percentile of the months based on the daily temps)
+temp95th_month_day <- rbind(egg_1, departure_1) %>% 
+  mutate(station = as.factor(station),
+         year = as.factor(year),
+         month = as.factor(month)) %>% 
+  group_by(station, month) %>% 
+  summarize(temp95th = quantile(temp, .95)) %>% 
+  ungroup() %>% 
+  group_by(station) %>% 
+  summarize(max_95th = max(temp95th)) %>% 
+  mutate(method = "lighthouse_day_month")
+
+#It's slightly higher when you calculate the 95th percentile based on the raw daily SST measurements
+temp95th_moth_var <- rbind(egg_1, departure_1) %>% 
+  mutate(station = as.factor(station),
+         year = as.factor(year),
+         month = as.factor(month)) %>% 
+  group_by(station, year, month) %>% 
+  summarize(temp95th = quantile(temp, .95)) %>% 
+  ungroup() %>% 
+  group_by(station, month) %>% 
+  summarize(mean_95th = mean(temp95th), sd_95th = sd(temp95th), n_95th = n()) %>% 
+  ungroup() %>% 
+  mutate(se_95th = sd_95th/sqrt(n_95th),
+         lower.ci.95th = mean_95th - qt(1 - (0.05 / 2), n_95th - 1) * se_95th,
+         upper.ci.95th = mean_95th + qt(1 - (0.05 / 2), n_95th - 1) * se_95th) %>% 
+  ungroup() %>% 
+  group_by(station) %>% 
+  filter(mean_95th == max(mean_95th)) %>% 
+  mutate(method = "lighthouse_day_month") %>% 
+  select(!c(sd_95th, se_95th, n_95th))
 
 #Now create a new dataframe that's melted (long) and visualize both the mean and 90th percentile----
 sum_long <- lighthouse %>% 

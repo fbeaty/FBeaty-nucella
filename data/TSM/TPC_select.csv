@@ -1,0 +1,25 @@
+,SR,RV,TSM_metric,CTmax,CTmax.ci.lower,CTmax.ci.upper,iButton_water,iButton_all,lighthouse,TSM_estimate
+1,Central Coast,TiW,TSM_water_lighthouse,22.08,20.78,22.9,16.58,17.5,16,6.08
+2,Strait of Georgia,TiW,TSM_water_lighthouse,22.16,21.36,22.64,19.25,24,20.2,1.96
+3,Central Coast,ShW,TSM_water_lighthouse,22.24,21.88,26.19,16.58,17.5,16,6.24
+4,Strait of Georgia,ShW,TSM_water_lighthouse,21.84,21.55,22.22,19.25,24,20.2,1.64
+5,Central Coast,L,TSM_water_lighthouse,22.33,21.76,26.33,16.58,17.5,16,6.33
+6,Strait of Georgia,L,TSM_water_lighthouse,22.05,21.79,22.37,19.25,24,20.2,1.85
+7,Central Coast,FR,TSM_water_lighthouse,24.66,23.69,25.98,16.58,17.5,16,8.66
+8,Strait of Georgia,FR,TSM_water_lighthouse,23.03,22.73,23.45,19.25,24,20.2,2.83
+9,Central Coast,TiW,TSM_water_iButton,22.08,20.78,22.9,16.58,17.5,16,5.5
+10,Strait of Georgia,TiW,TSM_water_iButton,22.16,21.36,22.64,19.25,24,20.2,2.91
+11,Central Coast,ShW,TSM_water_iButton,22.24,21.88,26.19,16.58,17.5,16,5.65
+12,Strait of Georgia,ShW,TSM_water_iButton,21.84,21.55,22.22,19.25,24,20.2,2.59
+13,Central Coast,L,TSM_water_iButton,22.33,21.76,26.33,16.58,17.5,16,5.75
+14,Strait of Georgia,L,TSM_water_iButton,22.05,21.79,22.37,19.25,24,20.2,2.8
+15,Central Coast,FR,TSM_water_iButton,24.66,23.69,25.98,16.58,17.5,16,8.08
+16,Strait of Georgia,FR,TSM_water_iButton,23.03,22.73,23.45,19.25,24,20.2,3.78
+17,Central Coast,TiW,TSM_all_iButton,22.08,20.78,22.9,16.58,17.5,16,4.58
+18,Strait of Georgia,TiW,TSM_all_iButton,22.16,21.36,22.64,19.25,24,20.2,-1.84
+19,Central Coast,ShW,TSM_all_iButton,22.24,21.88,26.19,16.58,17.5,16,4.74
+20,Strait of Georgia,ShW,TSM_all_iButton,21.84,21.55,22.22,19.25,24,20.2,-2.16
+21,Central Coast,L,TSM_all_iButton,22.33,21.76,26.33,16.58,17.5,16,4.83
+22,Strait of Georgia,L,TSM_all_iButton,22.05,21.79,22.37,19.25,24,20.2,-1.95
+23,Central Coast,FR,TSM_all_iButton,24.66,23.69,25.98,16.58,17.5,16,7.16
+24,Strait of Georgia,FR,TSM_all_iButton,23.03,22.73,23.45,19.25,24,20.2,-0.97

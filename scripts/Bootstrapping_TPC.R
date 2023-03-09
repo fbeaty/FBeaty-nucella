@@ -115,7 +115,7 @@ ci_params_select_CC_TiW <- ci_extra_params %>%
          RV = "TiW",
          model = "quadratic")
 
-ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select_CC_TiW, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
@@ -219,7 +219,7 @@ ci_params_select_SoG_TiW <- ci_extra_params %>%
          RV = "TiW",
          model = "quadratic")
 
-ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select_SoG_TiW, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
@@ -357,7 +357,7 @@ ci_params_select_CC_ShW <- ci_extra_params %>%
          RV = "ShW",
          model = "quadratic")
 
-ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select_CC_ShW, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
@@ -461,7 +461,7 @@ ci_params_select_SoG_ShW <- ci_extra_params %>%
          RV = "ShW",
          model = "quadratic")
 
-ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select_SoG_ShW, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
@@ -599,7 +599,7 @@ ci_params_select_CC_l <- ci_extra_params %>%
          RV = "l",
          model = "quadratic")
 
-ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select_CC_l, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
@@ -703,7 +703,7 @@ ci_params_select_SoG_l <- ci_extra_params %>%
          RV = "l",
          model = "quadratic")
 
-ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select_SoG_l, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
@@ -838,7 +838,7 @@ ci_params_select_CC_fr <- ci_extra_params %>%
          RV = "fr",
          model = "quadratic")
 
-ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select_CC_fr, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
@@ -940,7 +940,7 @@ ci_params_select_SoG_fr <- ci_extra_params %>%
          RV = "fr",
          model = "quadratic")
 
-ggplot(ci_params_select, aes(param, estimate)) +
+ggplot(ci_params_select_SoG_fr, aes(param, estimate)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
@@ -1007,16 +1007,20 @@ params_bootstrapped <- ci_params_select_CC_TiW %>%
          param = ifelse(param == "topt", "Topt", "CTmax"),
          param = factor(param, level = c("Topt", "CTmax")))
 
+params_bootstrapped_CTmax <- params_bootstrapped %>% 
+  filter(param == "CTmax")
+
 #Visualize these in a ggplot
-pparams_TPC <- ggplot(params_bootstrapped, aes(RV, estimate, colour = SR)) +
+level_order = c("TiW", "ShW", "L", "FR")
+name_RV = c("Tissue weight", "Shell weight", "Shell length", "Feeding rate")
+
+pparams_TPC <- ggplot(params_bootstrapped_CTmax, aes(RV, estimate, colour = SR)) +
   geom_point(aes(fill = SR), size = 4, alpha = 0.5, position=position_dodge(0.8)) + 
   geom_errorbar(aes(ymin=conf_lower, ymax=conf_upper), width=.1, position=position_dodge(0.8)) +
-  facet_grid(~param, scales = "free") +
-  labs(x = "Response variable", y = "Temperature", colour = "Source region",
+  labs(x = "Response variable", y = "CTmax", colour = "Source region",
        fill = "Source region") +
+  scale_x_discrete(limits = level_order, labels = name_RV) +
   scale_colour_manual(values = c("skyblue", "coral"))+ 
-  theme_cowplot(16) +
-  theme(strip.background = element_blank(),
-        legend.position = c(0.7, 0.3))
+  theme_cowplot(16) 
 
-ggsave(pparams_TPC, file = "plots/supp_figs/FigS?_params.pdf", height = 6, width = 9, dpi = 300)
+ggsave(pparams_TPC, file = "plots/supp_figs/FigS?_CTmax.pdf", height = 6, width = 9, dpi = 300)

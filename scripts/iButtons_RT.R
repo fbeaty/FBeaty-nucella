@@ -1381,6 +1381,26 @@ ggplot(comb_hour_sep_water, aes(Obs_date, avgtemp, colour = SP)) +
   theme_cowplot(16) + theme(legend.position = c(0.06, 0.7), strip.background = element_blank(),
                             strip.text = element_text(size = 18))
 
+#Calculate 95th percentile seawater and all temperature----
+#do it by month first, then across the whole time, then just the 
+temp95th_water <- comb_hour_sep_water %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(SR, month) %>% 
+  summarize(temp95th = quantile(avgtemp, 0.95)) %>% 
+  ungroup() %>% 
+  group_by(SR) %>% 
+  summarize(maxtemp95th = max(temp95th)) %>% 
+  mutate(method = "iButton_water_hour_month")
+
+temp95th_all <- comb_hour_sep %>% 
+  mutate(month = month(Date)) %>% 
+  group_by(SR, month) %>% 
+  summarize(temp95th = quantile(avgtemp, 0.95)) %>% 
+  ungroup() %>% 
+  group_by(SR) %>% 
+  summarize(maxtemp95th = max(temp95th)) %>% 
+  mutate(method = "iButton_all_hour_month")
+
 #Now calculate the daily iButton temperatures separated by water and air----
 comb_water <- comb_hour_sep %>% 
   filter(in.water == "water") %>% 
