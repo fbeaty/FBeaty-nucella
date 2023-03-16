@@ -54,6 +54,13 @@ TSM_summarized <- TSM_select %>%
   mutate(across(where(is.numeric), ~ round(., 2)),
          RV = "ave") 
 
+TSM_summarized_lighthouse <- TSM_select %>% 
+  group_by(SR, TSM_metric) %>% 
+  summarize(mean_TSM = mean(TSM_estimate), mean_CTmax = mean(CTmax), mean_CT_lower = mean(CTmax.ci.lower),
+            mean_CT_upper = mean(CTmax.ci.upper), mean_lighthouse = mean(lighthouse)) %>%  
+  rename(TSM_estimate = mean_TSM, CTmax = mean_CTmax, CTmax.ci.lower = mean_CT_lower, CTmax.ci.upper = mean_CT_upper, lighthouse = mean_lighthouse) %>% 
+  mutate(across(where(is.numeric), ~ round(., 2)),
+         RV = "ave") 
 #Removed this because don't need to calculate average of TSM
 #sd_TSM = sd(TSM_estimate), n_TSM = n(),
   #    mutate(se_TSM = sd_TSM/sqrt(n_TSM),
@@ -68,6 +75,13 @@ TSM_iButton_seawater <- TSM_select_round %>%
   filter(TSM_metric == "TSM_water_iButton") %>% 
   select(!c(iButton_all, lighthouse)) %>% 
   rbind(filter(TSM_summarized, TSM_metric == "TSM_water_iButton")) %>% 
+  select(!TSM_metric)
+
+#Now create a table with just hte lighthouse data
+TSM_lighthouse <- TSM_select_round %>% 
+  filter(TSM_metric == "TSM_water_lighthouse") %>% 
+  select(!c(iButton_water, iButton_all)) %>% 
+  rbind(filter(TSM_summarized_lighthouse, TSM_metric == "TSM_water_lighthouse")) %>% 
   select(!TSM_metric)
 
 write_csv(TSM_iButton_seawater, file = "data/TSM/TSM_iButton_seawater.csv")
