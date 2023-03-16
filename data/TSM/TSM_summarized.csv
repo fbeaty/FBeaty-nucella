@@ -1,0 +1,7 @@
+SR,TSM_metric,mean_TSM,lower.ci.TSM,upper.ci.TSM,RV
+Central Coast,TSM_all_iButton,5.33,3.38,7.28,ave
+Central Coast,TSM_water_iButton,6.24,4.29,8.19,ave
+Central Coast,TSM_water_lighthouse,6.83,4.88,8.78,ave
+Strait of Georgia,TSM_all_iButton,-1.73,-2.56,-0.89,ave
+Strait of Georgia,TSM_water_iButton,3.02,2.19,3.86,ave
+Strait of Georgia,TSM_water_lighthouse,2.07,1.24,2.91,ave
