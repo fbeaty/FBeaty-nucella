@@ -5,11 +5,7 @@
 
 #Decision for tissue weight: the AICs for Briere, Gaussian, Pawal, and Sharpe fit pretty well, with Gaussian being the best fit
 #BUT: I think I will go with Briere as my final model because it aligns very strongly with Gaussian but includes Tmax in its parameters, which is close to CTmax, which I am interested in
-
-#The models you narrowed the search down to include: 
-#briere, gaussian, modified gaussian, pawar, and sharpe-schoolfield low
-
-#Code results: Gaussian is the best fitting model for both CC and SoG
+#Update: I'm going with the quadratic model beacuse it fits the other parameters better when we bootstrapped them! 
 
 #TiW: Gaussian, but Briere is close and better estimates of bootstrapped parameters, quadratic is w/in 1 AIC tho, Briere w/in 3
 #ShW: Quadratic, but Briere is w/in 2 AIC

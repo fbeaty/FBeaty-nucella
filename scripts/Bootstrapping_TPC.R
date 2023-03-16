@@ -227,8 +227,6 @@ ggplot(ci_params_select_SoG_TiW, aes(param, estimate)) +
   scale_x_discrete('') +
   labs(title = 'Quadratic - SoG')
 
-
-
 #Create combined TiW plot----
 preds_all <- d_preds_CC %>% 
   rbind(d_preds_SoG) %>% 
@@ -240,7 +238,7 @@ boot_conf_all <- boot1_conf_preds_CC %>%
 
 CC_TiW_2 <- CC_TiW %>% 
   mutate(SR = "Central Coast")
-SoG_TiW_2 <- SoG_ShW %>% 
+SoG_TiW_2 <- SoG_TiW %>% 
   mutate(SR = "Strait of Georgia")
 
 TiW_all <- CC_TiW_2 %>% 
@@ -468,8 +466,6 @@ ggplot(ci_params_select_SoG_ShW, aes(param, estimate)) +
   facet_wrap(~param, scales = 'free') +
   scale_x_discrete('') +
   labs(title = 'Quadratic - SoG')
-
-
 
 #Create combined ShW plot----
 preds_all <- d_preds_CC %>% 
@@ -710,7 +706,6 @@ ggplot(ci_params_select_SoG_l, aes(param, estimate)) +
   facet_wrap(~param, scales = 'free') +
   scale_x_discrete('') +
   labs(title = 'Quadratic - SoG')
-
 
 #Create combined l plot----
 preds_all <- d_preds_CC %>% 
