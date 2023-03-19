@@ -65,6 +65,10 @@ RV_alive <- RV_base %>%
 
 rm(cedar_reg, heron_reg, pruth_reg, kwak_reg)
 
+RV_i <- RV_alive %>% 
+  filter(Stage == "Init")
+#So, you had 372 snails in your initial database
+
 RV_survival <- RV_base %>% 
   filter(!ID %in% ID_ostrina) %>% 
   filter(!OS == "") %>% 
@@ -76,7 +80,19 @@ RV_survival <- RV_base %>%
          OR = ifelse(OR == "Nanaimo", "Strait of Georgia", "Central Coast"),
          OS = as.factor(OS),
          Block = as.factor(Block)) %>% 
-  select(Date, Stage, SR, SP, OR, OS, Block, ID, DIED)
+  select(Date, Stage, SR, SP, OR, OS, Block, ID, DIED) %>% 
+  unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) %>% 
+  filter(Stage != "Init",
+         !c(Stage == "Mid" & DIED == 0))
+#This leaves us with 340 as your total sample size (somehow 32 went missing...)
+#init = 372
+#mid = 345
+#final = 323
+
+#total = 340
+#total missing from middle = 27
+#total missing between middle and final = 5
+str(RV_survival)
 
 #Calculate the average & SD of growth & survival metrics to visualize across the 3 time periods ----
 #First check for outliers caused by high mortality within block that only leaves 1 individual left (which often means the mean - mean values are disproportionate)
@@ -333,6 +349,7 @@ pairs(grpMeans)
 #according to https://stats.stackexchange.com/questions/281528/dealing-with-model-assumption-violation-homogeneity-of-regression-coefficients
 #If initL or interactions were non-significant (e.g. lmer_length_2), I dropped those terms from the model
 lmer_length_1 <- lmer(diff_l ~ OR*SR + initL + (1|OS/OS_block) + (1|SP), data = RV_lm)
+
 summary(lmer_length_1)
 
 #Verify assumptions of model
@@ -404,6 +421,12 @@ Anova(lmer_surv_1, type = "III")
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
 grpMeans_surv_1 <- emmeans(lmer_surv_1, ~ OR*SR, data = RV_lm)
 pairs(grpMeans_surv_1, simple = list("OR", "SR"))
+
+#Build generalized linear mixed effects model for survival----
+fit <- glmer(DIED ~ OR*SR + (1|OS_block:OS), family = binomial(link = "logit"), control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+             data = RV_survival)
+summary(fit)
+Anova(fit, type = "III")
 
 #Remove all the unneeded objects for survival analysis----
 rm(length_OR_box, length_OR_me, RV_alive, RV_combined_OR_SR, RV_diff, test,

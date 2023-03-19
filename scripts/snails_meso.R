@@ -149,7 +149,33 @@ meso_clean_surv_1 <- meso_clean_surv %>%
 
 meso_clean_surv <- meso_clean_surv_1 %>% 
   filter(Stage == "Final") 
-    
+
+#Create dataframe for the binomial lmer survival
+#You want the final survival, but to have it be 366 length beacuse that's the initial length (i.e., make sure you have a df with 0 if survived 1 if died)
+#First remove all the starting day survival (because everything's alive at the start!)
+#Remove the tanks that experienced chiller failures & 100% mortality within first experimental days: 3, 5, 6 :( :(
+#Remove the lowered pH treatment tanks: 17, 20, 21, 24, 18, 19, 22, 23
+
+meso_surv_1 <- meso_survival %>% 
+  select(!X) %>% 
+  filter(!Date == "2018-07-16") %>% 
+  filter(!Tank %in% tanks_remove) %>% 
+  mutate(Date = as.Date(Date, format = "%Y-%m-%d"),
+         Treat = as.factor(ifelse(Tank == 9 | Tank == 12, "12",
+                                    ifelse(Tank == 4 | Tank == 7 | Tank == 11 | Tank == 14 | Tank == 16, "15",
+                                           ifelse(Tank == 1 | Tank == 10 | Tank == 13, "19",
+                                                  ifelse(Tank == 2 | Tank == 8 | Tank == 15, "22", NA)))))) %>% 
+  mutate(SR = ifelse(SP == "Cedar" | SP == "Heron", "Strait of Georgia", "Central Coast"))
+
+str(meso_surv_1)
+
+#Plot survival data
+ggplot(meso_surv_1, aes(Treat, Dead, group = SR, colour = SR)) + 
+  geom_point(size = 3, alpha=0.5, position = position_jitterdodge(dodge.width = 0.6, jitter.width=0.3))  +
+  scale_fill_manual(values = c("skyblue", "coral")) +
+  scale_colour_manual(values = c("skyblue3", "coral3")) +
+  theme_cowplot(16)
+
 #Calculate the average & SD of metrics to visualize across the 2 time periods ----
 #Note: Because submerged weight was only collected in the middle of the experiment, changes to tissue & shell weight are only reflective of
 #the growth between mid & final stages (reference this in figure captions?)
@@ -369,7 +395,7 @@ summary(lmer_thick_1)
 #Verify assumptions of model
 plot(lmer_thick_1)
 visreg(lmer_thick_1, "SR", by = "Treat")
-visreg(lmer_thick_1, "iniTh", by = "SR", overlay = TRUE)
+visreg(lmer_thick_1, "initTh", by = "SR", overlay = TRUE)
 visreg(lmer_thick_1, "initTh", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
@@ -432,4 +458,19 @@ Anova(meso_surv, type = "III")
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
 grpMeans_surv <- emmeans(meso_surv, ~ SR + Treat, data = meso_clean_surv)
 pairs(grpMeans_surv, simple = list("SR", "Treat"))
+
+#Build generalized linear mixed-effects model for survival----
+#Using the meso_surv_1 dataframe
+meso_surv_2 <- meso_surv_1 %>% 
+  mutate(SR = as.factor(SR),
+         SP = as.factor(SP),
+         Tank = as.numeric(as.character(Tank)),
+         Treat = as.numeric(as.character(Treat)))
+
+str(meso_surv_2)
+#Treat = numeric, SR = factor, Tank = numeric
+
+fit <- glmer(Dead ~ Treat*SR + (1|Tank:Treat), family = binomial(link = "logit"), data =  meso_surv_2)
+summary(fit)
+Anova(test_2, type = "III")
 
