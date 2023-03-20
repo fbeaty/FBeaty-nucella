@@ -372,7 +372,14 @@ rm(initL_aov, initTh_aov, initTiW_aov, initShW_aov)
 #Build linear mixed effects models for temp exp----
 #Fixed effects: SR, Treat & intxn
 #Random effects: Tank & Sp (1|Tank), (1|SP)
+str(meso_lm)
+
+meso_lm_1 <- meso_lm %>% 
+  mutate(Treat = as.numeric(as.character(Treat)))
+
 lmer_length_1 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm)
+lmer_length_2 <- lmer(diff_l ~ SR*Treat + initL + (1|Tank) + (1|SP), data = meso_lm_1)
+
 summary(lmer_length_1)
 
 #Verify assumptions of model
@@ -383,6 +390,7 @@ visreg(lmer_length_1, "initL", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_length_1, type = "III")
+Anova(lmer_length_2, type = "III")
 
 #Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_length_1 <- emmeans(lmer_length_1, ~ SR*Treat, data = meso_lm)
@@ -390,6 +398,7 @@ pairs(grpMeans_length_1, simple = list("SR", "Treat"))
 
 #Shell thickness: 
 lmer_thick_1 <- lmer(diff_Th ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm) 
+lmer_thick_2 <- lmer(diff_Th ~ SR*Treat + initTh + (1|Tank) + (1|SP), data = meso_lm_1) 
 summary(lmer_thick_1)
 
 #Verify assumptions of model
@@ -400,6 +409,7 @@ visreg(lmer_thick_1, "initTh", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_thick_1, type = "III")
+Anova(lmer_thick_2, type = "III")
 
 #Since there are significant interactions, use the following notation for the Tukey posthoc
 grpMeans_thick_1 <- emmeans(lmer_thick_1, ~ SR + Treat, data = meso_lm)
@@ -407,6 +417,7 @@ pairs(grpMeans_thick_1, simple = list("SR", "Treat"))
 
 #Shell weight:
 lmer_ShW_1 <- lmer(diff_ShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm) 
+lmer_ShW_2 <- lmer(diff_ShW ~ SR*Treat + initShW + (1|Tank) + (1|SP), data = meso_lm_1) 
 summary(lmer_ShW_1)
 
 #Verify assumptions of model
@@ -415,6 +426,7 @@ visreg(lmer_ShW_1, "SR", by = "Treat")
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_ShW_1, type = "III") 
+Anova(lmer_ShW_2, type = "III") 
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
 grpMeans_ShW_1 <- emmeans(lmer_ShW_1, ~ SR + Treat, data = meso_lm)
@@ -422,6 +434,7 @@ pairs(grpMeans_ShW_1, simple = list("SR", "Treat"))
 
 #Tissue weight
 lmer_TiW_1 <- lmer(diff_TiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm) 
+lmer_TiW_2 <- lmer(diff_TiW ~ SR*Treat + initTiW + (1|Tank) + (1|SP), data = meso_lm_1) 
 summary(lmer_TiW_1)
 
 #Verify assumptions of model
@@ -432,6 +445,7 @@ visreg(lmer_TiW_1, "initTiW", by = "Treat", overlay = TRUE)
 
 #Analyse mixed-effects model using anova & Tukey posthoc test with emmeans, with kenward-roger df method
 Anova(lmer_TiW_1, type = "III") 
+Anova(lmer_TiW_2, type = "III") 
 
 #Since there are no significant interactions, use the following notation for the Tukey posthoc
 grpMeans_TiW_1 <- emmeans(lmer_TiW_1, ~ SR + Treat, data = meso_lm)
