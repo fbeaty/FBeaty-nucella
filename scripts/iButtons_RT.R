@@ -1042,10 +1042,12 @@ ggplot(aug, aes(Obs_date, avgtemp)) +
   geom_point () +
   labs(x = "Date", y = "temperature (°C)") +
   geom_hline(yintercept = 18.7, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 16.2, linetype = "dashed", alpha = 0.8, col = "grey") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 aug <- aug %>% 
-  mutate(in.water = ifelse(avgtemp > 18.7, 1, 0))
+  mutate(in.water = ifelse(avgtemp > 18.7, 1, 
+                           ifelse(avgtemp < 16.2, 1, 0)))
 
 aug_tides <- rbind(aug)
 #Heron: Now combine the monthly datasets and visualize with different colours for air and water----
@@ -1262,7 +1264,7 @@ ggplot(july, aes(Obs_date, avgtemp)) +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 july_1 <- july %>% 
-  filter(Date > "2019-06-30" & Date < "2019-07-07")
+  filter(Date > "2019-06-30" & Date < "2019-07-06")
 
 ggplot(july_1, aes(Obs_date, avgtemp)) + 
   geom_point () +
@@ -1273,17 +1275,33 @@ ggplot(july_1, aes(Obs_date, avgtemp)) +
 july_1 <- july_1 %>% 
   mutate(in.water = ifelse(avgtemp > 21, 1, 0))
 
+july_1.5 <- july %>% 
+  filter(Date > "2019-07-05" & Date < "2019-07-12")
+
+ggplot(july_1.5, aes(Obs_date, avgtemp)) + 
+  geom_point () +
+  labs(x = "Date", y = "temperature (°C)") +
+  geom_hline(yintercept = 19.5, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 15.9, linetype = "dashed", alpha = 0.8, col = "grey") +
+  theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
+
+july_1.5 <- july_1.5 %>% 
+  mutate(in.water = ifelse(avgtemp > 19.5, 1, 
+                           ifelse(avgtemp < 15.9, 1, 0)))
+
 july_2 <- sum_hour_c %>% 
-  filter(Date > "2019-07-06" & Date < "2019-07-22") 
+  filter(Date > "2019-07-11" & Date < "2019-07-22") 
 
 ggplot(july_2, aes(Obs_date, avgtemp)) + 
   geom_point () +
   labs(x = "Date", y = "temperature (°C)") +
   geom_hline(yintercept = 19.6, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 15.6, linetype = "dashed", alpha = 0.8, col = "grey") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 july_2 <- july_2 %>% 
-  mutate(in.water = ifelse(avgtemp > 19.6, 1, 0))
+  mutate(in.water = ifelse(avgtemp > 19.6, 1, 
+                           ifelse(avgtemp < 15.6, 1, 0)))
 
 july_3 <- sum_hour_c %>% 
   filter(Date > "2019-07-21" & Date < "2019-08-01") 
@@ -1297,7 +1315,7 @@ ggplot(july_3, aes(Obs_date, avgtemp)) +
 july_3 <- july_3 %>% 
   mutate(in.water = ifelse(avgtemp > 20.6, 1, 0))
 
-july_tides <- rbind(july_1, july_2, july_3)
+july_tides <- rbind(july_1, july_1.5, july_2, july_3)
 
 #Now aug!
 aug <- sum_hour_c %>% 
@@ -1316,10 +1334,12 @@ ggplot(aug_1, aes(Obs_date, avgtemp)) +
   geom_point () +
   labs(x = "Date", y = "temperature (°C)") +
   geom_hline(yintercept = 19.9, linetype = "dashed", alpha = 0.8, col = "grey") +
+  geom_hline(yintercept = 16.5, linetype = "dashed", alpha = 0.8, col = "grey") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
 
 aug_1 <- aug_1 %>% 
-  mutate(in.water = ifelse(avgtemp > 19.9, 1, 0))
+  mutate(in.water = ifelse(avgtemp > 19.9, 1, 
+                           ifelse(avgtemp < 16.5, 1, 0)))
 
 aug_2 <- sum_hour_c %>% 
   filter(Date > "2019-08-07" & Date < "2019-08-30")
@@ -1347,7 +1367,6 @@ ggplot(comb_months_c, aes(Obs_date, avgtemp, colour = in.water)) +
   #geom_line(aes(group = "all")) +
   labs(x = "Date", y = "temperature (°C)", colour = "medium") +
   theme_cowplot(16) + theme(legend.position = c(0.1, 0.75))
-
 
 #Remove monthly objects----
 rm(april, april_1, april_2, april_3, april_4, april_5, aug, aug_1, aug_2, july, july_1, july_2, july_3, july_4,
@@ -1381,7 +1400,7 @@ ggplot(comb_hour_sep_water, aes(Obs_date, avgtemp, colour = SP)) +
   theme_cowplot(16) + theme(legend.position = c(0.06, 0.7), strip.background = element_blank(),
                             strip.text = element_text(size = 18))
 
-#Calculate 95th percentile seawater and all temperature----
+#Calculate 95th percentile seawater and all temperature for the TSM measurements----
 #do it by month first, then across the whole time, then just the 
 temp95th_water <- comb_hour_sep_water %>% 
   mutate(month = month(Date)) %>% 
