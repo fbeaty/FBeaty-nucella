@@ -336,7 +336,7 @@ d_fits <- nest(CC_ShW, data = c(temp, rate)) %>%
                                                      supp_errors = 'Y',
                                                      convergence_count = FALSE)))
 
-glimpse(select(d_fits, 1:7))
+glimpse(select(d_fits, 1:6))
 d_fits$briere2[[1]]
 
 #CC_ShW: Visualize model outputs & calculate parameters----

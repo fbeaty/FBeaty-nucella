@@ -159,6 +159,7 @@ var_cal <- egg_1 %>%
 
 meanvar <- var_nan %>% 
   rbind(var_cal)
+
 #Visualize temps from May - Sept
 months <- c(5:9)
 

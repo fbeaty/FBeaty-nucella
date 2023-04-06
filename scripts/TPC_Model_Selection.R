@@ -129,15 +129,6 @@ d_fits <- nest(SoG_TiW, data = c(temp, rate)) %>%
                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
                                              supp_errors = 'Y',
                                              convergence_count = FALSE)),
-        pawar = map(data, ~nls_multstart(rate~pawar_2018(temp, r_tref,e,eh, th, tref = 12),
-                                          data = .x,
-                                          iter = c(4,4,4,4),
-                                          start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') - 0.5,
-                                          start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') + 0.5,
-                                          lower = get_lower_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          upper = get_upper_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          supp_errors = 'Y',
-                                          convergence_count = FALSE)),
         quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
                                              data = .x,
                                              iter = c(4,4,4),
@@ -146,20 +137,11 @@ d_fits <- nest(SoG_TiW, data = c(temp, rate)) %>%
                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                              supp_errors = 'Y',
-                                             convergence_count = FALSE)),
-        sharpeschoolhigh = map(data, ~nls_multstart(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                                                     data = .x,
-                                                     iter = c(4,4,4,4),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)))
+                                             convergence_count = FALSE)))
 
 # stack models
 d_stack <- select(d_fits, -data) %>%
-  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:sharpeschoolhigh)
+  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:quadratic)
 
 # get predictions using augment
 newdata <- tibble(temp = seq(min(SoG_TiW$temp), max(SoG_TiW$temp), length.out = 100))
@@ -238,16 +220,7 @@ d_fits <- nest(CC_ShW, data = c(temp, rate)) %>%
                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
                                              supp_errors = 'Y',
                                              convergence_count = FALSE)),
-         pawar = map(data, ~nls_multstart(rate~pawar_2018(temp, r_tref,e,eh, th, tref = 12),
-                                          data = .x,
-                                          iter = c(4,4,4,4),
-                                          start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') - 0.5,
-                                          start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') + 0.5,
-                                          lower = get_lower_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          upper = get_upper_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          supp_errors = 'Y',
-                                          convergence_count = FALSE)),
-         quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
+          quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
                                               data = .x,
                                               iter = c(4,4,4),
                                               start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 0.5,
@@ -255,20 +228,11 @@ d_fits <- nest(CC_ShW, data = c(temp, rate)) %>%
                                               lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               supp_errors = 'Y',
-                                              convergence_count = FALSE)),
-         sharpeschoolhigh = map(data, ~nls_multstart(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                                                     data = .x,
-                                                     iter = c(4,4,4,4),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)))
+                                              convergence_count = FALSE)))
 
 # stack models
 d_stack <- select(d_fits, -data) %>%
-  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:sharpeschoolhigh)
+  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:quadratic)
 
 # get predictions using augment
 newdata <- tibble(temp = seq(min(CC_ShW$temp), max(CC_ShW$temp), length.out = 100))
@@ -350,15 +314,6 @@ d_fits <- nest(SoG_ShW, data = c(temp, rate)) %>%
                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
                                              supp_errors = 'Y',
                                              convergence_count = FALSE)),
-         pawar = map(data, ~nls_multstart(rate~pawar_2018(temp, r_tref,e,eh, th, tref = 12),
-                                          data = .x,
-                                          iter = c(4,4,4,4),
-                                          start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') - 0.5,
-                                          start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') + 0.5,
-                                          lower = get_lower_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          upper = get_upper_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          supp_errors = 'Y',
-                                          convergence_count = FALSE)),
          quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
                                               data = .x,
                                               iter = c(4,4,4),
@@ -367,20 +322,11 @@ d_fits <- nest(SoG_ShW, data = c(temp, rate)) %>%
                                               lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               supp_errors = 'Y',
-                                              convergence_count = FALSE)),
-         sharpeschoolhigh = map(data, ~nls_multstart(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                                                     data = .x,
-                                                     iter = c(4,4,4,4),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)))
+                                              convergence_count = FALSE)))
 
 # stack models
 d_stack <- select(d_fits, -data) %>%
-  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:sharpeschoolhigh)
+  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:quadratic)
 
 # get predictions using augment
 newdata <- tibble(temp = seq(min(SoG_ShW$temp), max(SoG_ShW$temp), length.out = 100))
@@ -555,15 +501,6 @@ d_fits <- nest(SoG_l, data = c(temp, rate)) %>%
                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
                                              supp_errors = 'Y',
                                              convergence_count = FALSE)),
-         pawar = map(data, ~nls_multstart(rate~pawar_2018(temp, r_tref,e,eh, th, tref = 12),
-                                          data = .x,
-                                          iter = c(4,4,4,4),
-                                          start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') - 0.5,
-                                          start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') + 0.5,
-                                          lower = get_lower_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          upper = get_upper_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          supp_errors = 'Y',
-                                          convergence_count = FALSE)),
          quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
                                               data = .x,
                                               iter = c(4,4,4),
@@ -572,20 +509,11 @@ d_fits <- nest(SoG_l, data = c(temp, rate)) %>%
                                               lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               supp_errors = 'Y',
-                                              convergence_count = FALSE)),
-         sharpeschoolhigh = map(data, ~nls_multstart(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                                                     data = .x,
-                                                     iter = c(4,4,4,4),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)))
+                                              convergence_count = FALSE)))
 
 # stack models
 d_stack <- select(d_fits, -data) %>%
-  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:sharpeschoolhigh)
+  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:quadratic)
 
 # get predictions using augment
 newdata <- tibble(temp = seq(min(SoG_l$temp), max(SoG_l$temp), length.out = 100))
@@ -761,15 +689,6 @@ d_fits <- nest(SoG_fr, data = c(temp, rate)) %>%
                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
                                              supp_errors = 'Y',
                                              convergence_count = FALSE)),
-         pawar = map(data, ~nls_multstart(rate~pawar_2018(temp, r_tref,e,eh, th, tref = 12),
-                                          data = .x,
-                                          iter = c(4,4,4,4),
-                                          start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') - 0.5,
-                                          start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') + 0.5,
-                                          lower = get_lower_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          upper = get_upper_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          supp_errors = 'Y',
-                                          convergence_count = FALSE)),
          quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
                                               data = .x,
                                               iter = c(4,4,4),
@@ -778,20 +697,11 @@ d_fits <- nest(SoG_fr, data = c(temp, rate)) %>%
                                               lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               supp_errors = 'Y',
-                                              convergence_count = FALSE)),
-         sharpeschoolhigh = map(data, ~nls_multstart(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                                                     data = .x,
-                                                     iter = c(4,4,4,4),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)))
+                                              convergence_count = FALSE)))
 
 # stack models
 d_stack <- select(d_fits, -data) %>%
-  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:sharpeschoolhigh)
+  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere:quadratic)
 
 # get predictions using augment
 newdata <- tibble(temp = seq(min(SoG_fr$temp), max(SoG_fr$temp), length.out = 100))

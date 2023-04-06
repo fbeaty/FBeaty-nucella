@@ -1000,7 +1000,11 @@ params_bootstrapped <- ci_params_select_CC_TiW %>%
                      ifelse(RV == "l", "L", RV)),
          RV = factor(RV, level = c("FR", "TiW", "ShW", "L")),
          param = ifelse(param == "topt", "Topt", "CTmax"),
-         param = factor(param, level = c("Topt", "CTmax")))
+         param = factor(param, level = c("Topt", "CTmax"))) %>% 
+  group_by(param, SR) %>% 
+  mutate(average_est = mean(estimate),
+         mean_CI_low = mean(conf_lower),
+         mean_CI_high = mean(conf_upper))
 
 params_bootstrapped_CTmax <- params_bootstrapped %>% 
   filter(param == "CTmax")
