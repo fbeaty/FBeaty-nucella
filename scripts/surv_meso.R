@@ -1,7 +1,7 @@
 #Survival analysis on mesocosm snails
 #Code taken from your 'Extra_ch2_script.R' file (outside of project)
 
-#MESO: Remove this as well: Clean the survival data for analysis----
+#MESO: Clean the survival data for analysis----
 #Remove the failed tanks (3, 5, 6) and assign the correct tank treatments, separate treat into temp & pH columns
 meso_survival <- read.csv("data/snail_RVs/meso_collated_survival.csv")
 tanks_remove <- c(3, 5, 6, 17, 20, 21, 24, 18, 19, 22, 23)
@@ -65,7 +65,29 @@ meso_surv_1 <- meso_surv %>%
 meso_surv_1 <- meso_surv_1 %>% 
   filter(!days_diff == 0)
 
-#Create a new datasframe that duplicates this one 49 times
+#Select only necessary columns for analysis
+meso_surv_1 <- meso_surv_1 %>% 
+  select(!pH) %>% 
+  mutate(Temp = as.numeric(as.character(Temp)),
+         SR = ifelse(SR == "Nanaimo", "Strait of Georgia", "Central Coast")) %>% 
+  rename(status = Dead,
+         time = days_diff)
+
+#Try running survival analysis based on ----
+#https://www.emilyzabor.com/tutorials/survival_analysis_in_r_tutorial.html
+
+Surv(meso_surv_1$time, meso_surv_1$status) [1:10]
+
+s1 <- survfit(Surv(time, status) ~ SR, data = meso_surv_1)
+str(s1)
+
+ggsurvplot(s1, legend.title = "Source Region", xlab = "Time, days", 
+           conf.int = TRUE, 
+           facet.by = "Temp",
+           data = meso_surv_1) 
+
+
+#Create a new datasframe that duplicates this one 49 times----
 meso_surv_2 <- meso_surv_1 %>% 
   slice(rep(1:n(), each = 49)) %>% 
   arrange(ID)
