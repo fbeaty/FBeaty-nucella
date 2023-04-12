@@ -69,9 +69,14 @@ RV_i <- RV_alive %>%
   filter(Stage == "Init")
 #So, you had 372 snails in your initial database
 
+test <- RV_base %>% 
+  filter(OR == "Calvert" & SR == "Nanaimo") %>% 
+  select(OR, OS, SR, SP, DIED, ID)
+
 RV_survival <- RV_base %>% 
   filter(!ID %in% ID_ostrina) %>% 
-  filter(!OS == "") %>% 
+  mutate(OS = ifelse(ID == "CG**", "Kwak", OS),
+         Block = ifelse(ID == "CG**", "O", Block)) %>% 
   mutate(Date = as.Date(Date, format = "%m-%d-%Y"),
          Stage = factor(Stage, levels = c("Init", "Mid", "Final")),
          SR = as.factor(SR),
@@ -81,9 +86,11 @@ RV_survival <- RV_base %>%
          OS = as.factor(OS),
          Block = as.factor(Block)) %>% 
   select(Date, Stage, SR, SP, OR, OS, Block, ID, DIED) %>% 
-  unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) %>% 
+  unite(OS_block, c("OS", "Block"), sep = "_", remove = FALSE) 
+
+RV_survival_glm <- RV_survival %>% 
   filter(Stage != "Init",
-         !c(Stage == "Mid" & DIED == 0))
+        !c(Stage == "Mid" & DIED == 0)) 
 #This leaves us with 340 as your total sample size (somehow 32 went missing...)
 #init = 372
 #mid = 345
@@ -92,7 +99,7 @@ RV_survival <- RV_base %>%
 #total = 340
 #total missing from middle = 27
 #total missing between middle and final = 5
-str(RV_survival)
+str(RV_survival_glm)
 
 #Calculate the average & SD of growth & survival metrics to visualize across the 3 time periods ----
 #First check for outliers caused by high mortality within block that only leaves 1 individual left (which often means the mean - mean values are disproportionate)
@@ -128,7 +135,7 @@ RV_cumsurv_block <- RV_survival_block %>%
                           ifelse(Stage == "Mid", n_snl/lag(n_snl, default = n_snl[1]), NA)),
          Stage = factor(Stage, levels = c("Init", "Final", "Mid"))) %>% 
   arrange(OR, OS, SR, SP, Block, Stage) %>% 
-  mutate(cumsurv = ifelse(Stage == "Final", n_snl/lag(n_snl, defaulr = n_snl[1]), cumsurv),
+  mutate(cumsurv = ifelse(Stage == "Final", n_snl/lag(n_snl, default = n_snl[1]), cumsurv),
          Stage = factor(Stage, levels = c("Init", "Mid", "Final")),
          cumsurv = 100*cumsurv) %>% 
   arrange(OR, OS, SR, SP, Block, Stage)
@@ -419,14 +426,20 @@ Anova(lmer_surv_1, type = "II")
 Anova(lmer_surv_1, type = "III")
 
 #Since there are no positive interactions, use the following notation for the Tukey posthoc
-grpMeans_surv_1 <- emmeans(lmer_surv_1, ~ OR*SR, data = RV_lm)
+grpMeans_surv_1 <- emmeans(lmer_surv_1, ~ OR+SR, data = RV_lm)
 pairs(grpMeans_surv_1, simple = list("OR", "SR"))
 
 #Build generalized linear mixed effects model for survival----
-fit <- glmer(DIED ~ OR*SR + (1|OS_block:OS), family = binomial(link = "logit"), control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-             data = RV_survival)
+fit <- glmer(DIED ~ OR*SR + (1|OS_block:OS), family = binomial(link = "logit"), 
+             #control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+             data = RV_survival_glm)
 summary(fit)
+visreg(fit, "OR", by = "SR")
 Anova(fit, type = "III")
+
+#Since there are no positive interactions, use the following notation for the Tukey posthoc
+grpMeans_surv_2 <- emmeans(fit, ~ OR*SR, data = RV_survival_glm)
+pairs(grpMeans_surv_2, simple = list("OR", "SR"))
 
 #Remove all the unneeded objects for survival analysis----
 rm(length_OR_box, length_OR_me, RV_alive, RV_combined_OR_SR, RV_diff, test,
