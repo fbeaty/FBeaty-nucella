@@ -484,7 +484,55 @@ meso_surv_2 <- meso_surv_1 %>%
 str(meso_surv_2)
 #Treat = numeric, SR = factor, Tank = numeric
 
-fit <- glmer(Dead ~ Treat*SR + (1|Tank:Treat), family = binomial(link = "logit"), data =  meso_surv_2)
+fit <- glmer(Dead ~ Treat*SR + (1|Tank), family = binomial(link = "logit"), data =  meso_surv_2)
 summary(fit)
-Anova(test_2, type = "III")
+Anova(fit, type = "III")
+
+#Now calculate LT50 for each source region. First create a glmer for each region
+meso_surv_CC <- meso_surv_2 %>% 
+  filter(SR == "Central Coast")
+
+meso_surv_SoG <- meso_surv_2 %>% 
+  filter(SR == "Strait of Georgia")
+
+fit_CC <- glmer(Dead ~ Treat + (1|Tank), family = binomial(link = "logit"), 
+                data = meso_surv_CC)
+summary(fit_CC)
+fit_SoG <- glmer(Dead ~ Treat + (1|Tank), family = binomial(link = "logit"), 
+                 data = meso_surv_SoG)
+summary(fit_SoG)
+
+#Borrowed the following function from https://stackoverflow.com/questions/42381126/how-does-one-calculate-ld50-from-a-glmer
+dose.p.glmm <-  function(obj, cf = 1:2, p = 0.5) {
+  f <- family(obj)
+  eta <- f$linkfun(p)
+  b <- fixef(obj)[cf]
+  x.p <- (eta - b[1L])/b[2L]
+  names(x.p) <- paste("p = ", format(p), ":", sep = "")
+  pd <- -cbind(1, x.p)/b[2L]
+  SE <- sqrt(((pd %*% vcov(obj)[cf, cf]) * pd) %*% c(1, 1))
+  res <- structure(x.p, SE = matrix(SE), p = p)
+  class(res) <- "glm.dose"
+  res
+}
+
+dose.p.glmm(fit)
+dose.p.glmm(fit_CC)
+dose.p.glmm(fit_SoG)
+
+#Now try calculating LT50 based on brglm for each region first using Graham's code from thesis
+library(brglm)
+library(MASS)
+library(ggiraphExtra)
+
+fit_CC <- brglm(data = meso_surv_CC,Dead~Treat, family = binomial)
+summary(fit_CC)
+dose.p(fit_CC, p = 0.5)
+ggPredict(fit_CC, se = TRUE, digits = 3) + theme_classic()
+
+fit_SoG <- brglm(data = meso_surv_SoG,Dead~Treat, family = binomial)
+summary(fit_SoG)
+dose.p(fit_SoG, p = 0.5) 
+ggPredict(fit_SoG, se = TRUE, digits = 3) + theme_classic()
+
 
