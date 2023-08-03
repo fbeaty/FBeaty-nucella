@@ -63,7 +63,6 @@ both <- ggplot(lighthouse, aes(date, temp90th, group = station)) +
 
 ggsave(both, file = "plots/lighthouse/both_lighthouse_stations.pdf", height = 5, width = 9, dpi = 300)
 
-
 #Calculate the 95th percentile for each station----
 #Calculate the monthly 95th percentile over the years between 2012-2020
 #This is summarized by month first then you calculate the 95fth percentile of the monthly temps then take the max monthly temp
@@ -108,8 +107,9 @@ temp95th_moth_var <- rbind(egg_1, departure_1) %>%
 
 #Now create a new dataframe that's melted (long) and visualize both the mean and 90th percentile----
 sum_long <- lighthouse %>% 
-  gather(metric, value, c(temp90th, avgtemp), factor_key = TRUE)
-levels(sum_long$metric) <- c("90th percentile", "Mean")
+  gather(metric, value, c(temp90th, avgtemp), factor_key = TRUE) %>% 
+  mutate(metric = fct_relevel(metric, "temp90th", after = 1)) 
+levels(sum_long$metric) <- c("Mean", "90th percentile")
 
 sum_long_facet<- ggplot(data = sum_long, aes(date, value, colour = station)) + 
   geom_line(aes(colour = station, linetype = metric), linewidth = 0.7) +
