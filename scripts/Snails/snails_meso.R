@@ -132,6 +132,11 @@ meso_food_tank <- meso_food_clean %>%
   summarize(meanPer_cap = mean(Per_cap)) %>% 
   ungroup()
 
+#Filter the feeding rate dataframe for the initial and final datapoints, summarize the average
+meso_food_stages <- meso_food_clean %>% 
+  filter(Date == "2018-09-05" | Date == "2018-07-18") %>% 
+  mutate(Stage = ifelse(Date == "2018-09-05", "Final", "Init")) 
+
 #Calculate the proportion of surviving snails based on the start and end sample size of each SP in each tank
 #Calculate the number of snails in each tank at the beginning and end
 meso_clean_surv <- meso_clean %>% 
