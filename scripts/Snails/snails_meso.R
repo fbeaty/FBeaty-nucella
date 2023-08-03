@@ -328,17 +328,17 @@ plot_temp_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
 }
 
 length_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_l, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell length growth (mm)") + 
-  labs(colour = "Source Region", fill = "Source Region") + draw_plot_label("(e)", 0.4, 11.5, fontface = "plain")
+  labs(colour = "Source Region", fill = "Source Region") + draw_plot_label("(c)", 0.4, 11.5, fontface = "plain")
 thick_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in shell lip thickness (mm)") +
-  draw_plot_label("(f)", 0.4, 0.5, fontface = "plain") +
+  draw_plot_label("(e)", 0.4, 0.5, fontface = "plain") +
   geom_hline(yintercept=0.0,linetype = "dashed", col = "grey")
 ShW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_ShW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Shell weight growth (g)")+
   draw_plot_label("(d)", 0.4, 0.7, fontface = "plain")
 TiW_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_TiW, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Tissue weight growth (g)")+
-  draw_plot_label("(c)", 0.4, 1.4, fontface = "plain")
+  draw_plot_label("(b)", 0.4, 1.4, fontface = "plain")
 SG_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, mean_SG, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in LSG (mm)")
 Feed_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meanPer_cap, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Per capita weekly feeding rate")+
-  draw_plot_label("(b)", 0.4, 1.4, fontface = "plain")
+  draw_plot_label("(a)", 0.4, 1.4, fontface = "plain")
 Surv_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)")+
   draw_plot_label("(a)", 0.4, 100, fontface = "plain")
 
@@ -356,6 +356,31 @@ xaxistitle_treat <- ggdraw() + draw_label("Temperature °C", fontface = "plain",
 meso_temp_comb_title_SR_box <- plot_grid(meso_temp_comb_SR_box, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
 ggsave(meso_temp_comb_title_SR_box, file = "plots/snails/meso/Fig_2_meso_temp_SR_box.pdf", height = 8, width = 17, dpi = 300)
+
+#Now make one grouped without survival
+meso_temp_comb_SR_box_SL <- plot_grid(Feed_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                                   TiW_temp_SR_box + theme(legend.position = "none", axis.text.x = element_blank(),  axis.title.x = element_blank()), 
+                                   get_legend(length_temp_SR_box),
+                                   length_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                   ShW_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                   thick_temp_SR_box + theme(legend.position = "none", axis.title.x = element_blank()),
+                                   ncol = 3, nrow = 2, axis = "lb", align = "hv")
+
+xaxistitle_treat <- ggdraw() + draw_label("Temperature °C", fontface = "plain", x = 0.5, hjust = 0, size = 16)
+meso_temp_comb_title_SR_box_SL <- plot_grid(meso_temp_comb_SR_box_SL, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(meso_temp_comb_title_SR_box_SL, file = "plots/supp_figs/Fig_S_meso_temp_SR_box_SL.pdf", height = 8, width = 17, dpi = 300)
+
+#Aug 2023 update: going to have survival and shell thickness as their own figures (shell thickness in sup)----
+Surv_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, cumsurv, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Survival (%)")+
+  labs(colour = "Source Region", fill = "Source Region", x = "Temperature °C") +
+  theme(legend.position = c(0.2, 0.4))
+thick_temp_SR_box <- plot_temp_box(meso_lm_block, Treat, meandiff_Th, SR, c("skyblue", "coral"), c("skyblue3", "coral3"), "Change in shell lip thickness (mm)") +
+  geom_hline(yintercept=0.0,linetype = "dashed", col = "grey") +
+  labs(colour = "Source Region", fill = "Source Region", x = "Temperature °C")
+
+ggsave(Surv_temp_SR_box, file = "plots/snails/meso/Fig_2_surv_box.pdf", height = 6, width = 7, dpi = 300)
+ggsave(thick_temp_SR_box, file = "plots/supp_figs/Fig_S_ST.pdf", height = 6, width = 10, dpi = 300)
 
 #Test whether initial size differs across tanks----
 initL_aov <- lm(initL ~ Tank + Treat, data = meso_lm)

@@ -245,6 +245,8 @@ TiW_all <- CC_TiW_2 %>%
   rbind(SoG_TiW_2)
 
 # plot data and model fit
+#Inserted vertical dotted lines for 95th percentile seawater temps measured by iButtons
+#Inserted vertical dashed lines for CTmax based on bootstrapped values and 
 pTiW_quadratic <- ggplot() +
   stat_summary(aes(y = rate, x = temp, col = SR), data = TiW_all, fun=mean, geom="point", size = 3) +
   stat_summary(aes(y = rate, x = temp, col = SR), data = TiW_all, fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5) +
@@ -257,7 +259,15 @@ pTiW_quadratic <- ggplot() +
        col = "Source Region",
        fill = "Source Region") + 
   theme_cowplot(16) + 
+  scale_x_continuous(breaks = c(12, 14, 16, 18, 20, 22, 24)) +
+  expand_limits(x = c(12, 24.7)) +
+  geom_vline(xintercept = 16.6, linetype = "dotted", colour = "skyblue", size = 1) +
+  geom_vline(xintercept = 19.2, linetype = "dotted", colour = "coral", size = 1) +
+  geom_vline(xintercept = 22.08, linetype = "dashed", colour = "skyblue", size = 1) +
+  geom_vline(xintercept = 22.16, linetype = "dashed", colour = "coral", size = 1) +
   theme(legend.position = "none")
+
+pTiW_quadratic
 
 #CC_ShW: Quadratic: Fit data----
 # fit with Gaussian model
@@ -497,7 +507,15 @@ pShW_quadratic <- ggplot() +
        col = "Source Region",
        fill = "Source Region") + 
   theme_cowplot(16) + 
+  scale_x_continuous(breaks = c(12, 14, 16, 18, 20, 22, 24)) +
+  expand_limits(x = c(12, 24.7)) +
+  geom_vline(xintercept = 16.6, linetype = "dotted", colour = "skyblue", size = 1) +
+  geom_vline(xintercept = 19.2, linetype = "dotted", colour = "coral", size = 1) +
+  geom_vline(xintercept = 22.24, linetype = "dashed", colour = "skyblue", size = 1) +
+  geom_vline(xintercept = 21.84, linetype = "dashed", colour = "coral", size = 1) +
   theme(legend.position = "none")
+
+pShW_quadratic
 
 #CC_l: Quadratic: Fit data----
 # fit with Gaussian model
@@ -737,7 +755,15 @@ pl_quadratic <- ggplot() +
        col = "Source Region",
        fill = "Source Region") + 
   theme_cowplot(16) + 
+  scale_x_continuous(breaks = c(12, 14, 16, 18, 20, 22, 24)) +
+  expand_limits(x = c(12, 24.7)) +
+  geom_vline(xintercept = 16.6, linetype = "dotted", colour = "skyblue", size = 1) +
+  geom_vline(xintercept = 19.2, linetype = "dotted", colour = "coral", size = 1) +
+  geom_vline(xintercept = 22.33, linetype = "dashed", colour = "skyblue", size = 1) +
+  geom_vline(xintercept = 22.05, linetype = "dashed", colour = "coral", size = 1) +
   theme(legend.position = "none")
+
+pl_quadratic
 
 #CC_fr: Quadratic: Fit data----
 # fit with Gaussian model
@@ -972,21 +998,34 @@ pfr_quadratic <- ggplot() +
        y = 'Per capita weekly feeding rate',
        col = "Source Region",
        fill = "Source Region") + 
-  theme_cowplot(16) 
+  theme_cowplot(16) + 
+  scale_x_continuous(breaks = c(12, 14, 16, 18, 20, 22, 24)) +
+  expand_limits(x = c(12, 24.7)) +
+  ylim(0, 1.4) +
+  geom_vline(xintercept = 16.6, linetype = "dotted", colour = "skyblue", size = 1) +
+  geom_vline(xintercept = 19.2, linetype = "dotted", colour = "coral", size = 1) +
+  geom_vline(xintercept = 24.66, linetype = "dashed", colour = "skyblue", size = 1) +
+  geom_vline(xintercept = 23.03, linetype = "dashed", colour = "coral", size = 1)
+
+pfr_quadratic
 
 #Create collated TPC figure----
-p_comb_TPC <- plot_grid(pfr_quadratic + theme(axis.text.x = element_blank(), axis.title.x = element_blank(), legend.position = "none"),
-                        pTiW_quadratic + theme(axis.text.x = element_blank(), axis.title.x = element_blank()),
+pfr_quadratic_2 <- pfr_quadratic + draw_plot_label("(a)", 12.1, 1.4, fontface = "plain")
+pTiW_quadratic_2 <- pTiW_quadratic + draw_plot_label("(b)", 12.1, 1.25, fontface = "plain")
+pl_quadratic_2 <- pl_quadratic + draw_plot_label("(c)", 12.1, 10.3, fontface = "plain")
+pShW_quadratic_2 <- pShW_quadratic + draw_plot_label("(d)", 12.1, 0.63, fontface = "plain")
+
+p_comb_TPC <- plot_grid(pfr_quadratic_2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank(), legend.position = "none"),
+                        pTiW_quadratic_2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank()),
                         get_legend(pfr_quadratic),
-                        pl_quadratic + theme(axis.title.x = element_blank()),
-                        pShW_quadratic+ theme(axis.title.x = element_blank()), NULL,
+                        pl_quadratic_2 + theme(axis.title.x = element_blank()),
+                        pShW_quadratic_2 + theme(axis.title.x = element_blank()), NULL,
                         ncol = 3, rel_widths = c(1,1,0.4), axis = "lb", align = "hv")
 
 xaxistitle_treat <- ggdraw() + draw_label("Temperature °C", fontface = "plain", x = 0.4, hjust = 0, size = 16)
 p_comb_TPC_title <- plot_grid(p_comb_TPC, xaxistitle_treat, ncol = 1, rel_heights = c(1, 0.05))
 
-ggsave(p_comb_TPC_title, file = "plots/supp_figs/FigS?_TPC.pdf", height = 7, width = 12, dpi = 300)
-
+ggsave(p_comb_TPC_title, file = "plots/TPC/Fig3_TPC.pdf", height = 7, width = 12, dpi = 300)
 
 #Create collated parameters table----
 params_bootstrapped <- ci_params_select_CC_TiW %>% 

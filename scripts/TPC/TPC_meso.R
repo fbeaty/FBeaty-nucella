@@ -4,10 +4,6 @@
 
 #Start with creating TPCs for tissue weight
 #Now try with the other growth metrics (Shell length, shell weight, per capita feeding rate)
-#Then end with the survival cause that's gonna be messy...
-
-#It doesn't make sense to run TPCs on survival data b/c it's not a biological rate process
-#Rather, you should try to estimate LT50 based on the data, maybe run a survival analysis?
 
 #Begin by removing the unnecessary objects from the meso scripts----
 rm(length_stage_temp, meso_base, meso_clean, meso_clean_1, meso_clean_2, meso_clean_f,
@@ -16,7 +12,7 @@ rm(length_stage_temp, meso_base, meso_clean, meso_clean_1, meso_clean_2, meso_cl
    meso_growth_tank, meso_growth_tank_sample, meso_growth_temp_comb, meso_lm,
    meso_lm_fin, meso_lm_init, meso_stage_temp, meso_survival, meso_temp_sampl,
    SG_stage_temp, ShW_stage_temp, Surv_stage_temp, thick_stage_temp, TiW_stage_temp, xaxistitle,
-   remove, tanks_remove, cedar_reg, heron_reg, kwak_reg, plot_temp_stage, pruth_reg)
+   remove, tanks_remove, cedar_reg, heron_reg, kwak_reg, plot_temp_stage, pruth_reg, meso_surv_1)
 
 #Load packages----
 pkgs <- c("rTPC", "nls.multstart", "broom", "tidyverse", "cowplot", "ggrepel")
@@ -75,15 +71,8 @@ SoG_fr <- meso_long %>%
   filter(SR == "Strait of Georgia" & RV == "fr") %>% 
   select(temp, rate)
 
-CC_sur <- meso_long %>% 
-  filter(SR == "Central Coast" & RV == "sur") %>% 
-  select(temp, rate)
-SoG_sur <- meso_long %>% 
-  filter(SR == "Strait of Georgia" & RV == "sur") %>% 
-  select(temp, rate)
-
 #Visualize the data----
-ggplot(SoG_sur, aes(temp, rate)) +
+ggplot(CC_fr, aes(temp, rate)) +
   geom_point() +
   theme_bw(base_size = 12) +
   labs(x = 'Temperature (ºC)',
@@ -95,20 +84,11 @@ ggplot(SoG_sur, aes(temp, rate)) +
 #and preference given to those that estimate upper dimensions of the TPC
 #You ran all the models initially with TiW and the best models that fit the data were:
 #briere2, gaussian, pawar, and sharpeschoolhigh
-
-#You ran all the models initially with TiW and the best models that fit the data were:
-#briere2, gaussian, pawar, and sharpeschoolhigh
-
 #You added quadratic since some of the values of shell weight are negative and this model works ok with negative data
 
-
 #CC_TiW: Run code from Padfield site for fitting many models----
-#You're only choosing to run this code for the models that make sense for your data (=<4 parameters)
-#and preference given to those that estimate upper dimensions of the TPC
 #For TiW briere was the best one (gaussian actually had the lowest AIC but briere estimates upper parameters and is very similar fit)
 #SO: going to just run those four for the remaining growth RVs
-
-#For ShW
 
 # fit every model formulation in rTPC
 d_fits <- nest(CC_TiW, data = c(temp, rate)) %>%
@@ -191,16 +171,6 @@ ggplot(d_preds, aes(temp, rate)) +
   geom_hline(aes(yintercept = 0), linetype = 2)
 
 #SoG_TiW: Run code from Padfield site for fitting many models----
-#You're only choosing to run this code for the models that make sense for your data (=<4 parameters)
-#and preference given to those that estimate upper dimensions of the TPC
-#You ran all the models initially with TiW and the best models that fit the data were:
-#briere2, gaussian, pawar, and sharpeschoolhigh
-
-#For TiW briere was the best one (gaussian actually had the lowest AIC but briere estimates upper parameters and is very similar fit)
-#SO: going to just run those four for the remaining growth RVs
-
-#For ShW
-
 # fit every model formulation in rTPC
 d_fits <- nest(SoG_TiW, data = c(temp, rate)) %>%
   mutate(briere2 = map(data, ~nls_multstart(rate~briere2_1999(temp = temp, tmin, tmax, a,b),
@@ -283,11 +253,6 @@ ggplot(d_preds, aes(temp, rate)) +
 
 
 #CC_ShW: Run code from Padfield site for fitting many models----
-#You're only choosing to run this code for the models that make sense for your data (=<4 parameters)
-#and preference given to those that estimate upper dimensions of the TPC
-#You ran all the models initially with TiW and the best models that fit the data were:
-#briere2, gaussian, pawar, and sharpeschoolhigh
-
 # fit every model formulation in rTPC
 d_fits <- nest(CC_ShW, data = c(temp, rate)) %>%
   mutate(briere2 = map(data, ~nls_multstart(rate~briere2_1999(temp = temp, tmin, tmax, a,b),
@@ -372,11 +337,6 @@ ggplot(d_preds, aes(temp, rate)) +
   geom_hline(aes(yintercept = 0), linetype = 2)
 
 #SoG_ShW: Run code from Padfield site for fitting many models----
-#You're only choosing to run this code for the models that make sense for your data (=<4 parameters)
-#and preference given to those that estimate upper dimensions of the TPC
-#You ran all the models initially with TiW and the best models that fit the data were:
-#briere2, gaussian, pawar, and sharpeschoolhigh
-
 # fit every model formulation in rTPC
 d_fits <- nest(SoG_ShW, data = c(temp, rate)) %>%
   mutate(briere2 = map(data, ~nls_multstart(rate~briere2_1999(temp = temp, tmin, tmax, a,b),
@@ -425,9 +385,6 @@ d_fits <- nest(SoG_ShW, data = c(temp, rate)) %>%
                                                      supp_errors = 'Y',
                                                      convergence_count = FALSE)))
 
-glimpse(select(d_fits, 1:7))
-d_fits$briere2[[1]]
-
 #SoG_ShW: Visualize model outputs & calculate parameters----
 # stack models
 d_stack <- select(d_fits, -data) %>%
@@ -459,15 +416,6 @@ ggplot(d_preds, aes(temp, rate)) +
        y = 'Shell weight',
        title = 'Strait of Georgia') +
   geom_hline(aes(yintercept = 0), linetype = 2)
-
-
-
-
-
-
-
-
-
 
 #CC_l: Run code from Padfield site for fitting many models----
 #For some reason neither pawar nor sharpe-schoolfield wanted to work so I removed them
@@ -501,9 +449,6 @@ d_fits <- nest(CC_l, data = c(temp, rate)) %>%
                                               upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
                                               supp_errors = 'Y',
                                               convergence_count = FALSE)))
-
-glimpse(select(d_fits, 1:7))
-d_fits$briere2[[1]]
 
 #CC_l: Visualize model outputs & calculate parameters----
 # stack models
@@ -586,7 +531,6 @@ d_fits <- nest(SoG_l, data = c(temp, rate)) %>%
                                                      supp_errors = 'Y',
                                                      convergence_count = FALSE)))
 
-d_fits$briere2[[1]]
 
 #SoG_l: Visualize model outputs & calculate parameters----
 # stack models
@@ -619,7 +563,6 @@ ggplot(d_preds, aes(temp, rate)) +
        y = 'Length',
        title = 'Strait of Georgia') +
   geom_hline(aes(yintercept = 0), linetype = 2)
-
 
 
 #CC_fr: Run code from Padfield site for fitting many models----
@@ -672,9 +615,6 @@ d_fits <- nest(CC_fr, data = c(temp, rate)) %>%
                                                      upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
                                                      supp_errors = 'Y',
                                                      convergence_count = FALSE)))
-
-glimpse(select(d_fits, 1:7))
-d_fits$briere2[[1]]
 
 #CC_fr: Visualize model outputs & calculate parameters----
 # stack models
@@ -757,8 +697,6 @@ d_fits <- nest(SoG_fr, data = c(temp, rate)) %>%
                                                      supp_errors = 'Y',
                                                      convergence_count = FALSE)))
 
-d_fits$briere2[[1]]
-
 #SoG_fr: Visualize model outputs & calculate parameters----
 # stack models
 d_stack <- select(d_fits, -data) %>%
@@ -790,170 +728,3 @@ ggplot(d_preds, aes(temp, rate)) +
        y = 'Feeding rate',
        title = 'Strait of Georgia') +
   geom_hline(aes(yintercept = 0), linetype = 2)
-
-
-
-#CC_sur: Run code surom Padfield site for fitting many models----
-#For some reason neither pawar nor sharpe-schoolfield wanted to work so I removed them
-
-# fit every model formulation in rTPC
-d_fits <- nest(CC_sur, data = c(temp, rate)) %>%
-  mutate(briere2 = map(data, ~nls_multstart(rate~briere2_1999(temp = temp, tmin, tmax, a,b),
-                                            data = .x,
-                                            iter = c(4,4,4,4),
-                                            start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'briere2_1999') - 10,
-                                            start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'briere2_1999') + 10,
-                                            lower = get_lower_lims(.x$temp, .x$rate, model_name = 'briere2_1999'),
-                                            upper = get_upper_lims(.x$temp, .x$rate, model_name = 'briere2_1999'),
-                                            supp_errors = 'Y',
-                                            convergence_count = FALSE)),
-         gaussian = map(data, ~nls_multstart(rate~gaussian_1987(temp = temp, rmax, topt, a),
-                                             data = .x,
-                                             iter = c(4,4,4),
-                                             start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'gaussian_1987') - 10,
-                                             start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'gaussian_1987') + 10,
-                                             lower = get_lower_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
-                                             upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
-                                             supp_errors = 'Y',
-                                             convergence_count = FALSE)),
-         pawar = map(data, ~nls_multstart(rate~pawar_2018(temp = temp, r_tref, e, eh, topt, tref = 15),
-                                          data = .x,
-                                          iter = c(4,4,4,4),
-                                          start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') - 10,
-                                          start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') + 10,
-                                          lower = get_lower_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          upper = get_upper_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          supp_errors = 'Y',
-                                          convergence_count = FALSE)),
-         quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
-                                              data = .x,
-                                              iter = c(4,4,4),
-                                              start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 0.5,
-                                              start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 0.5,
-                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
-                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
-                                              supp_errors = 'Y',
-                                              convergence_count = FALSE)),
-         sharpeschoolhigh = map(data, ~nls_multstart(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                                                     data = .x,
-                                                     iter = c(4,4,4,4),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)))
-
-#CC_sur: Visualize model outputs & calculate parameters----
-# stack models
-d_stack <- select(d_fits, -data) %>%
-  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere2:sharpeschoolhigh)
-
-# get parameters using tidy
-params <- d_stack %>%
-  mutate(., est = map(fit, tidy)) %>%
-  select(-fit) %>%
-  unnest(est)
-
-# get predictions using augment
-newdata <- tibble(temp = seq(min(CC_sur$temp), max(CC_sur$temp), length.out = 100))
-d_preds <- d_stack %>%
-  mutate(., preds = map(fit, augment, newdata = newdata)) %>%
-  select(-fit) %>%
-  unnest(preds)
-
-# plot
-ggplot(d_preds, aes(temp, rate)) +
-  geom_point(aes(temp, rate), CC_sur) +
-  geom_line(aes(temp, .fitted), col = 'blue') +
-  facet_wrap(~model_name, labeller = labeller("model_name"), scales = 'free', ncol = 2) +
-  theme_bw(base_size = 12) +
-  theme(legend.position = 'none',
-        strip.text = element_text(hjust = 0),
-        strip.background = element_blank()) +
-  labs(x = 'Temperature (ºC)',
-       y = 'Survival',
-       title = 'Central Coast') +
-  geom_hline(aes(yintercept = 0), linetype = 2)
-
-#SoG_sur: Run code surom Padfield site for fitting many models----
-# fit every model formulation in rTPC
-d_fits <- nest(SoG_sur, data = c(temp, rate)) %>%
-  mutate(briere2 = map(data, ~nls_multstart(rate~briere2_1999(temp = temp, tmin, tmax, a,b),
-                                            data = .x,
-                                            iter = c(4,4,4,4),
-                                            start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'briere2_1999') - 10,
-                                            start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'briere2_1999') + 10,
-                                            lower = get_lower_lims(.x$temp, .x$rate, model_name = 'briere2_1999'),
-                                            upper = get_upper_lims(.x$temp, .x$rate, model_name = 'briere2_1999'),
-                                            supp_errors = 'Y',
-                                            convergence_count = FALSE)),
-         gaussian = map(data, ~nls_multstart(rate~gaussian_1987(temp = temp, rmax, topt, a),
-                                             data = .x,
-                                             iter = c(4,4,4),
-                                             start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'gaussian_1987') - 10,
-                                             start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'gaussian_1987') + 10,
-                                             lower = get_lower_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
-                                             upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
-                                             supp_errors = 'Y',
-                                             convergence_count = FALSE)),
-         pawar = map(data, ~nls_multstart(rate~pawar_2018(temp = temp, r_tref, e, eh, topt, tref = 15),
-                                          data = .x,
-                                          iter = c(4,4,4,4),
-                                          start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') - 10,
-                                          start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'pawar_2018') + 10,
-                                          lower = get_lower_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          upper = get_upper_lims(.x$temp, .x$rate, model_name = 'pawar_2018'),
-                                          supp_errors = 'Y',
-                                          convergence_count = FALSE)),
-         quadratic = map(data, ~nls_multstart(rate~quadratic_2008(temp = temp, a, b, c),
-                                              data = .x,
-                                              iter = c(4,4,4),
-                                              start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') - 0.5,
-                                              start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'quadratic_2008') + 0.5,
-                                              lower = get_lower_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
-                                              upper = get_upper_lims(.x$temp, .x$rate, model_name = 'quadratic_2008'),
-                                              supp_errors = 'Y',
-                                              convergence_count = FALSE)),
-         sharpeschoolhigh = map(data, ~nls_multstart(rate~sharpeschoolhigh_1981(temp = temp, r_tref,e,eh,th, tref = 15),
-                                                     data = .x,
-                                                     iter = c(4,4,4,4),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'sharpeschoolhigh_1981'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)))
-
-#SoG_sur: Visualize model outputs & calculate parameters----
-# stack models
-d_stack <- select(d_fits, -data) %>%
-  pivot_longer(., names_to = 'model_name', values_to = 'fit', briere2:sharpeschoolhigh)
-
-# get parameters using tidy
-params <- d_stack %>%
-  mutate(., est = map(fit, tidy)) %>%
-  select(-fit) %>%
-  unnest(est)
-
-# get predictions using augment
-newdata <- tibble(temp = seq(min(SoG_sur$temp), max(SoG_sur$temp), length.out = 100))
-d_preds <- d_stack %>%
-  mutate(., preds = map(fit, augment, newdata = newdata)) %>%
-  select(-fit) %>%
-  unnest(preds)
-
-# plot
-ggplot(d_preds, aes(temp, rate)) +
-  geom_point(aes(temp, rate), SoG_sur) +
-  geom_line(aes(temp, .fitted), col = 'blue') +
-  facet_wrap(~model_name, labeller = labeller("model_name"), scales = 'free', ncol = 2) +
-  theme_bw(base_size = 12) +
-  theme(legend.position = 'none',
-        strip.text = element_text(hjust = 0),
-        strip.background = element_blank()) +
-  labs(x = 'Temperature (ºC)',
-       y = 'Survival',
-       title = 'Strait of Georgia') +
-  geom_hline(aes(yintercept = 0), linetype = 2)
-
