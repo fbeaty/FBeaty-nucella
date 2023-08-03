@@ -196,6 +196,8 @@ meso_growth_tank <- meso_clean %>%
             meanSG = mean(SG, na.rm = TRUE), sdSG = sd(SG, na.rm = TRUE), n = n()) %>% 
   ungroup()
 
+levels(meso_growth_tank$SP) <- c("Cedar", "Heron", "Kwakshua", "Pruth")
+
 #Calculate sample size for stage figure (i.e. number of tanks/treatment at each stage)
 meso_growth_tank_sample <- meso_growth_tank %>% 
   group_by(Stage, Treat, SP) %>% 
@@ -224,7 +226,7 @@ length_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanL, SP, c("cora
 thick_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ST (mm)")
 ShW_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")
 TiW_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")
-SG_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (mm)")
+SG_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SLG (mm)")
 Surv_stage_temp <- plot_temp_stage(meso_clean_surv_1, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")
 
 meso_stage_temp <- plot_grid(length_stage_temp + theme(legend.position = "none",
