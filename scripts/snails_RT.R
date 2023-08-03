@@ -147,6 +147,8 @@ RV_cumsurv_OR <- RV_cumsurv_block %>%
 
 RV_sum_block <- cbind(RV_growth_block, cumsurv = RV_cumsurv_block$cumsurv) 
 
+levels(RV_sum_block$SP) <- c("CEDAR", "HERON", "KWAKSHUA", "PRUTH")
+
 #Create a dataset with just the final survival averaged by block for your OR by SR visualization
 RV_cumsurv_final <- RV_cumsurv_block %>% 
   filter(Stage == "Final") %>% 
@@ -175,7 +177,7 @@ length_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanL, SP, c("coral", "cor
 thick_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanTh, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ST (mm)")
 ShW_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")
 TiW_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")
-SG_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "LSG (g)")
+SG_stage <- plot_stage_RT_me(RV_sum_block, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SLG (g)")
 
 #This one draws from a different dataframe so just code out the full plot 
 surv_stage <- ggplot(RV_cumsurv_OR, aes(Stage, meancumsurv, group = SP, colour = SP)) + 
@@ -272,6 +274,45 @@ RV_survival_glm <- RV_survival %>%
          Died_fin = ifelse(Stage == "Mid" & DIED == 1, 1,
                            ifelse(Stage == "Final", DIED, NA))) %>% 
   filter(!is.na(Died_fin))
+
+#RT: Visualize change in growth by initial size for each SP at each OS----
+#Just tried it for length, can do with the other variables too & make a formula, but later... only if necessary!
+plot_init <- function(df, x, y, fill.clr, lbl.y, lbl.fill) {
+  init_plot <- ggplot(df, aes({{x}}, {{y}}, fill = {{fill.clr}}, colour = {{fill.clr}})) + 
+    geom_point () + geom_smooth(method = lm, se = FALSE) +
+    scale_colour_manual(values = c("coral", "coral3", "skyblue", "skyblue3")) +
+    labs(x = "Initial size", y = lbl.y, fill = "Source Population", colour = "Source Population") +
+    facet_wrap(~OS, nrow = 1) +
+    theme_cowplot(16) + theme(strip.background = element_blank())
+  return(init_plot)
+}
+
+RV_lm_1 <- RV_lm 
+levels(RV_lm_1$SP) <- c("CEDAR", "HERON", "KWAKSHUA", "PRUTH")
+levels(RV_lm_1$OS) <- c("Kwakshua", "Pruth", "Cedar", "Heron")
+
+init_length <- plot_init(RV_lm_1, initL, diff_l, SP, "Change in SL (mm)")
+init_thickness <- plot_init(RV_lm_1, initTh, diff_Th, SP, "Change in ST (mm)")
+init_ShW <- plot_init(RV_lm_1, initShW, diff_ShW, SP, "Change in ShW (g)")
+init_TiW <- plot_init(RV_lm_1, initTiW, diff_TiW, SP, "Change in TiW (g)")
+init_SG <- plot_init(RV_lm_1, initL, SG, SP, "SLG (mm)")
+
+comb_init_figs <- plot_grid(init_length + theme(legend.position = "none", axis.title.x = element_blank()), 
+                            get_legend(init_length),
+                            init_thickness + theme(legend.position = "none", axis.title.x = element_blank()), 
+                            NULL,
+                            init_SG + theme(legend.position = "none", axis.title.x = element_blank()), 
+                            NULL,
+                            init_ShW + theme(legend.position = "none", axis.title.x = element_blank()), 
+                            NULL,
+                            init_TiW + theme(legend.position = "none", axis.title.x = element_blank()), 
+                            NULL,
+                            ncol = 2, nrow = 5, axis = "lb", align = "hv", rel_widths = c(1,0.2))
+
+xaxistitle <- ggdraw() + draw_label("Initial size", fontface = "plain", x = 0.43, hjust = 0, size = 16)
+comb_init_figs <- plot_grid(comb_init_figs, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
+
+ggsave(comb_init_figs, file = "plots/supp_figs/FigS6_initial_size.pdf", height = 12, width = 12, dpi = 300)
 
 #Visualize the change in RVs grouped by OR & SR and by OR & SP----
 plot_OR_RT_box <- function(df, x, y, grp, fill.values, clr.values, lbl.y){
