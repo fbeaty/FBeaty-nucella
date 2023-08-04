@@ -135,8 +135,10 @@ meso_food_tank <- meso_food_clean %>%
 #Filter the feeding rate dataframe for the initial and final datapoints, summarize the average
 meso_food_stages <- meso_food_clean %>% 
   filter(Date == "2018-09-05" | Date == "2018-07-18") %>% 
-  mutate(Stage = ifelse(Date == "2018-09-05", "Final", "Init")) 
+  mutate(Stage = ifelse(Date == "2018-09-05", "Final", "Init"),
+         Stage = factor(Stage, levels = c("Init", "Final"))) 
 
+str(meso_food_stages)
 #Calculate the proportion of surviving snails based on the start and end sample size of each SP in each tank
 #Calculate the number of snails in each tank at the beginning and end
 meso_clean_surv <- meso_clean %>% 
@@ -160,7 +162,6 @@ meso_clean_surv <- meso_clean_surv_1 %>%
 #First remove all the starting day survival (because everything's alive at the start!)
 #Remove the tanks that experienced chiller failures & 100% mortality within first experimental days: 3, 5, 6 :( :(
 #Remove the lowered pH treatment tanks: 17, 20, 21, 24, 18, 19, 22, 23
-
 meso_surv_1 <- meso_survival %>% 
   select(!X) %>% 
   filter(!Date == "2018-07-16") %>% 
@@ -217,7 +218,7 @@ plot_temp_stage <- function(df, x, y, grp, clr.values, lbl.y){
   temp_plot <- ggplot(df, aes({{x}}, {{y}}, group = {{grp}}, colour = {{grp}})) +
     stat_summary(fun=mean, geom="point", size = 3, position=position_dodge(0.3)) +
     stat_summary(fun = mean, geom = "line", size = 0.8, position=position_dodge(0.3), alpha = 0.5) +
-    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, size = 0.5,
+    stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2, linewidth = 0.5,
                  position=position_dodge(0.3)) +
     facet_wrap(~ Treat, ncol = 4) +
     scale_colour_manual(values = clr.values) +
@@ -232,6 +233,7 @@ thick_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanTh, SP, c("cora
 ShW_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanShW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "ShW (g)")
 TiW_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanTiW, SP, c("coral", "coral3", "skyblue", "skyblue3"), "TiW (g)")
 SG_stage_temp <- plot_temp_stage(meso_growth_tank, Stage, meanSG, SP, c("coral", "coral3", "skyblue", "skyblue3"), "SLG (mm)")
+fr_stage_temp <- plot_temp_stage(meso_food_stages, Stage, Per_cap, SP, c("coral", "coral3", "skyblue", "skyblue3"), "Per capita FR")
 Surv_stage_temp <- plot_temp_stage(meso_clean_surv_1, Stage, cumsurv, SP, c("coral", "coral3", "skyblue", "skyblue3"), "% Survival")
 
 meso_stage_temp <- plot_grid(length_stage_temp + theme(legend.position = "none",
@@ -249,9 +251,12 @@ meso_stage_temp <- plot_grid(length_stage_temp + theme(legend.position = "none",
                       TiW_stage_temp + theme(legend.position = "none", 
                                              axis.text.x = element_blank(), axis.title.x = element_blank()), 
                       NULL,
+                      fr_stage_temp + theme(legend.position = "none", 
+                                             axis.text.x = element_blank(), axis.title.x = element_blank()), 
+                      NULL,
                       Surv_stage_temp + theme(legend.position = "none", axis.title.x = element_blank()), 
                       NULL,
-                      ncol = 2, nrow = 6, axis = "lb", align = "hv", rel_widths = c(1,0.2))
+                      ncol = 2, nrow = 7, axis = "lb", align = "hv", rel_widths = c(1,0.2))
 
 xaxistitle <- ggdraw() + draw_label("Stage", fontface = "plain", x = 0.43, hjust = 0, size = 16)
 meso_growth_temp_comb <- plot_grid(meso_stage_temp, xaxistitle, ncol = 1, rel_heights = c(1, 0.05))
