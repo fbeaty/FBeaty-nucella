@@ -1,5 +1,5 @@
 # FBeaty-nucella
-Title: Not just range limits: warming rate and thermal sensitivity shape climate change vulnerability in a species range centre
+Title: Not just range limits: Warming rate and thermal sensitivity shape climate change vulnerability in a species range center
 
 Authors: Fiona Beaty, Alyssa-Lois M. Gehman, Graham Brownlee, Christopher D.G. Harley
 
